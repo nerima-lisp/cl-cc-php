@@ -238,26 +238,19 @@ returning the digits in lowercase as PHP does."
 
 ;;; ─── bcmath extension (arbitrary precision) ────────────────────────────────
 
-(defun %php-bcadd (left right &optional (scale 0))
-  "PHP bcadd: add two arbitrary precision numbers."
-  (let ((l (if (stringp left) (read-from-string left) left))
-        (r (if (stringp right) (read-from-string right) right))
-        (s (or scale 0)))
-    (format nil (format nil "~~,~DF" s) (+ l r))))
+(defmacro define-php-bc-binop (name op docstring)
+  "Define a PHP bcmath binary builtin NAME: coerce string operands via
+READ-FROM-STRING, apply OP, and format the result to SCALE decimal places."
+  `(defun ,name (left right &optional (scale 0))
+     ,docstring
+     (let ((l (if (stringp left) (read-from-string left) left))
+           (r (if (stringp right) (read-from-string right) right))
+           (s (or scale 0)))
+       (format nil (format nil "~~,~DF" s) (,op l r)))))
 
-(defun %php-bcsub (left right &optional (scale 0))
-  "PHP bcsub: subtract."
-  (let ((l (if (stringp left) (read-from-string left) left))
-        (r (if (stringp right) (read-from-string right) right))
-        (s (or scale 0)))
-    (format nil (format nil "~~,~DF" s) (- l r))))
-
-(defun %php-bcmul (left right &optional (scale 0))
-  "PHP bcmul: multiply."
-  (let ((l (if (stringp left) (read-from-string left) left))
-        (r (if (stringp right) (read-from-string right) right))
-        (s (or scale 0)))
-    (format nil (format nil "~~,~DF" s) (* l r))))
+(define-php-bc-binop %php-bcadd + "PHP bcadd: add two arbitrary precision numbers.")
+(define-php-bc-binop %php-bcsub - "PHP bcsub: subtract.")
+(define-php-bc-binop %php-bcmul * "PHP bcmul: multiply.")
 
 (defun %php-bcdiv (left right &optional (scale 0))
   "PHP bcdiv: divide."
@@ -267,12 +260,7 @@ returning the digits in lowercase as PHP does."
     (if (zerop r) (error "Division by zero")
         (format nil (format nil "~~,~DF" s) (/ l r)))))
 
-(defun %php-bcpow (base exp &optional (scale 0))
-  "PHP bcpow: power."
-  (let ((b (if (stringp base) (read-from-string base) base))
-        (e (if (stringp exp) (read-from-string exp) exp))
-        (s (or scale 0)))
-    (format nil (format nil "~~,~DF" s) (expt b e))))
+(define-php-bc-binop %php-bcpow expt "PHP bcpow: power.")
 
 (defun %php-bcmod (left right)
   "PHP bcmod: modulo."
@@ -327,9 +315,14 @@ returning the digits in lowercase as PHP does."
       (or (parse-integer number :radix (truncate base) :junk-allowed t) 0)
       (%php-gmp-num number)))
 
-(defun %php-gmp-add (a b) (+ (%php-gmp-num a) (%php-gmp-num b)))
-(defun %php-gmp-sub (a b) (- (%php-gmp-num a) (%php-gmp-num b)))
-(defun %php-gmp-mul (a b) (* (%php-gmp-num a) (%php-gmp-num b)))
+(defmacro define-php-gmp-binop (name op)
+  "Define a PHP gmp_* binary builtin NAME applying OP to both operands coerced to
+CL integers via %PHP-GMP-NUM."
+  `(defun ,name (a b) (,op (%php-gmp-num a) (%php-gmp-num b))))
+
+(define-php-gmp-binop %php-gmp-add +)
+(define-php-gmp-binop %php-gmp-sub -)
+(define-php-gmp-binop %php-gmp-mul *)
 (defun %php-gmp-div-q (a b &optional round)
   (declare (ignore round))
   (let ((bv (%php-gmp-num b))) (if (zerop bv) 0 (truncate (%php-gmp-num a) bv))))
@@ -338,7 +331,7 @@ returning the digits in lowercase as PHP does."
 (defun %php-gmp-pow (a b) (expt (%php-gmp-num a) (truncate (%php-gmp-num b))))
 (defun %php-gmp-abs (a) (abs (%php-gmp-num a)))
 (defun %php-gmp-neg (a) (- (%php-gmp-num a)))
-(defun %php-gmp-gcd (a b) (gcd (%php-gmp-num a) (%php-gmp-num b)))
+(define-php-gmp-binop %php-gmp-gcd gcd)
 (defun %php-gmp-cmp (a b)
   (let ((av (%php-gmp-num a)) (bv (%php-gmp-num b)))
     (cond ((< av bv) -1) ((> av bv) 1) (t 0))))

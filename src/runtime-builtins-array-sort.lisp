@@ -47,21 +47,33 @@
                       (if preserve-keys (car pair) (%php-array-next-auto-index array))
                       (cdr pair)))))
 
-(defun %php-sort (array &optional sort-flags)
-  "Sort ARRAY values ascending, reindexing numeric keys."
-  (%php-sort-pairs-by array #'cdr :sort-flags sort-flags))
+(defmacro define-php-array-sort (name docstring key-fn &key descending preserve-keys)
+  "Define a PHP array-sort builtin NAME that sorts ARRAY in place via
+%PHP-SORT-PAIRS-BY, keying each pair through KEY-FN (#'cdr for value sorts,
+#'car for key sorts) and threading the optional SORT-FLAGS argument.  DESCENDING
+and PRESERVE-KEYS select the sort direction and whether keys are retained."
+  `(defun ,name (array &optional sort-flags)
+     ,docstring
+     (%php-sort-pairs-by array ,key-fn
+                         :descending ,descending
+                         :preserve-keys ,preserve-keys
+                         :sort-flags sort-flags)))
 
-(defun %php-rsort (array &optional sort-flags)
-  "Sort ARRAY values descending, reindexing numeric keys."
-  (%php-sort-pairs-by array #'cdr :descending t :sort-flags sort-flags))
+(define-php-array-sort %php-sort
+    "Sort ARRAY values ascending, reindexing numeric keys."
+  #'cdr)
 
-(defun %php-asort (array &optional sort-flags)
-  "Sort ARRAY by value ascending, preserving keys."
-  (%php-sort-pairs-by array #'cdr :preserve-keys t :sort-flags sort-flags))
+(define-php-array-sort %php-rsort
+    "Sort ARRAY values descending, reindexing numeric keys."
+  #'cdr :descending t)
 
-(defun %php-ksort (array &optional sort-flags)
-  "Sort ARRAY by key ascending, preserving key/value associations."
-  (%php-sort-pairs-by array #'car :preserve-keys t :sort-flags sort-flags))
+(define-php-array-sort %php-asort
+    "Sort ARRAY by value ascending, preserving keys."
+  #'cdr :preserve-keys t)
+
+(define-php-array-sort %php-ksort
+    "Sort ARRAY by key ascending, preserving key/value associations."
+  #'car :preserve-keys t)
 
 (defun %php-user-sort-in-place (array compare-fn select-fn preserve-keys)
   "Sort ARRAY IN PLACE: PHP's usort/uasort/uksort take the array BY REFERENCE
@@ -89,31 +101,34 @@ updated and the sort appeared to do nothing."
                           (cdr pair)))))
     t))
 
-(defun %php-usort (array compare-fn)
-  "PHP usort: sort ARRAY in place by user COMPARE-FN on values, re-indexing keys."
-  (%php-user-sort-in-place array compare-fn #'cdr nil))
+(defmacro define-php-user-sort (name docstring select-fn preserve-keys)
+  "Define a PHP user-comparator sort builtin NAME (usort/uasort/uksort) that sorts
+ARRAY in place via %PHP-USER-SORT-IN-PLACE, selecting each pair's compared value
+through SELECT-FN (#'cdr for value sorts, #'car for key sorts) and retaining keys
+when PRESERVE-KEYS is true."
+  `(defun ,name (array compare-fn)
+     ,docstring
+     (%php-user-sort-in-place array compare-fn ,select-fn ,preserve-keys)))
 
-(defun %php-uasort (array compare-fn)
-  "PHP uasort: sort ARRAY in place by user COMPARE-FN on values, preserving keys."
-  (%php-user-sort-in-place array compare-fn #'cdr t))
+(define-php-user-sort %php-usort
+    "PHP usort: sort ARRAY in place by user COMPARE-FN on values, re-indexing keys."
+  #'cdr nil)
 
-(defun %php-uksort (array compare-fn)
-  "PHP uksort: sort ARRAY in place by user COMPARE-FN on keys, preserving keys."
-  (%php-user-sort-in-place array compare-fn #'car t))
+(define-php-user-sort %php-uasort
+    "PHP uasort: sort ARRAY in place by user COMPARE-FN on values, preserving keys."
+  #'cdr t)
 
-(defun %php-krsort (array &optional sort-flags)
-  "PHP krsort: sort ARRAY by key descending."
-  (%php-sort-pairs-by array #'car
-                      :preserve-keys t
-                      :descending t
-                      :sort-flags sort-flags))
+(define-php-user-sort %php-uksort
+    "PHP uksort: sort ARRAY in place by user COMPARE-FN on keys, preserving keys."
+  #'car t)
 
-(defun %php-arsort (array &optional sort-flags)
-  "PHP arsort: sort ARRAY by value descending, preserving keys."
-  (%php-sort-pairs-by array #'cdr
-                      :preserve-keys t
-                      :descending t
-                      :sort-flags sort-flags))
+(define-php-array-sort %php-krsort
+    "PHP krsort: sort ARRAY by key descending."
+  #'car :descending t :preserve-keys t)
+
+(define-php-array-sort %php-arsort
+    "PHP arsort: sort ARRAY by value descending, preserving keys."
+  #'cdr :descending t :preserve-keys t)
 
 (defun %php-array-multisort-spec (array)
   "Build an internal array_multisort spec for ARRAY."

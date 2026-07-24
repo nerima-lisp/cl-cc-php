@@ -2,42 +2,49 @@
 
 (in-package :cl-cc/php)
 
-(defun %php-is-int (value)
-  "Return true when VALUE is a PHP integer."
-  ;; (%php-is-int 1) => T
-  (integerp value))
+(defmacro define-php-type-predicate (name docstring predicate)
+  "Define PHP type-test builtin NAME as (PREDICATE VALUE).  PREDICATE is a symbol
+applied to the single VALUE argument — either a Common Lisp type predicate or
+another %php-is-* builtin (for the is_integer/is_long/is_double/is_real aliases)."
+  `(defun ,name (value)
+     ,docstring
+     (,predicate value)))
 
-(defun %php-is-integer (value)
-  "Alias for `%php-is-int`."
-  (%php-is-int value))
+(define-php-type-predicate %php-is-int
+    "Return true when VALUE is a PHP integer."
+  integerp)
 
-(defun %php-is-long (value)
-  "Alias for `%php-is-int`."
-  (%php-is-int value))
+(define-php-type-predicate %php-is-integer
+    "Alias for `%php-is-int`."
+  %php-is-int)
 
-(defun %php-is-float (value)
-  "Return true when VALUE is a PHP float."
-  (floatp value))
+(define-php-type-predicate %php-is-long
+    "Alias for `%php-is-int`."
+  %php-is-int)
 
-(defun %php-is-double (value)
-  "Alias for `%php-is-float`."
-  (%php-is-float value))
+(define-php-type-predicate %php-is-float
+    "Return true when VALUE is a PHP float."
+  floatp)
 
-(defun %php-is-real (value)
-  "Alias for `%php-is-float`."
-  (%php-is-float value))
+(define-php-type-predicate %php-is-double
+    "Alias for `%php-is-float`."
+  %php-is-float)
 
-(defun %php-is-string (value)
-  "Return true when VALUE is a string."
-  (stringp value))
+(define-php-type-predicate %php-is-real
+    "Alias for `%php-is-float`."
+  %php-is-float)
+
+(define-php-type-predicate %php-is-string
+    "Return true when VALUE is a string."
+  stringp)
 
 (defun %php-is-bool (value)
   "Return true when VALUE is a PHP boolean."
   (or (eq value t) (null value)))
 
-(defun %php-is-array (value)
-  "Return true when VALUE is a PHP array."
-  (hash-table-p value))
+(define-php-type-predicate %php-is-array
+    "Return true when VALUE is a PHP array."
+  hash-table-p)
 
 (defun %php-is-object (value)
   "Return true when VALUE is not a scalar, array, or PHP null."
@@ -76,9 +83,9 @@
   "Return true for PHP scalar values: int, float, string, bool."
   (or (numberp value) (stringp value) (%php-is-bool value)))
 
-(defun %php-is-iterable (value)
-  "Return true when VALUE is iterable by PHP array helpers."
-  (hash-table-p value))
+(define-php-type-predicate %php-is-iterable
+    "Return true when VALUE is iterable by PHP array helpers."
+  hash-table-p)
 
 (defun %php-string-to-int-base (s base)
   "Parse string S as an integer in BASE (PHP intval semantics).  BASE 0 detects

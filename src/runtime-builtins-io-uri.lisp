@@ -222,18 +222,21 @@
       (when fragment
         (format out "#~A" fragment)))))
 
+(defparameter +php-uri-component-fields+
+  '(("scheme" . "__scheme__")
+    ("username" . "__username__")
+    ("password" . "__password__")
+    ("host" . "__host__")
+    ("port" . "__port__")
+    ("path" . "__path__")
+    ("query" . "__query__")
+    ("fragment" . "__fragment__"))
+  "PHP-visible URI component name -> internal storage slot key.")
+
 (defun %php-uri-components-array (uri)
   (let ((result (%php-make-array)))
-    (dolist (pair '(("scheme" "__scheme__")
-                    ("username" "__username__")
-                    ("password" "__password__")
-                    ("host" "__host__")
-                    ("port" "__port__")
-                    ("path" "__path__")
-                    ("query" "__query__")
-                    ("fragment" "__fragment__"))
-             result)
-      (%php-array-set result (first pair) (%php-uri-field uri (second pair))))))
+    (dolist (pair +php-uri-component-fields+ result)
+      (%php-array-set result (car pair) (%php-uri-field uri (cdr pair))))))
 
 (defun %php-uri-object (class-name uri)
   (%php-uri-object-from-components class-name (%php-uri-parse-components uri)))
@@ -242,23 +245,24 @@
 (defun %php-uri-to-string (self) (%php-uri-build-string self))
 (defun %php-uri-to-ascii-string (self) (%php-uri-build-string self))
 (defun %php-uri-to-unicode-string (self) (%php-uri-build-string self))
-(defun %php-uri-get-scheme (self) (%php-uri-field self "__scheme__"))
-(defun %php-uri-get-raw-scheme (self) (%php-uri-get-scheme self))
-(defun %php-uri-get-username (self) (%php-uri-field self "__username__"))
-(defun %php-uri-get-raw-username (self) (%php-uri-get-username self))
-(defun %php-uri-get-password (self) (%php-uri-field self "__password__"))
-(defun %php-uri-get-raw-password (self) (%php-uri-get-password self))
-(defun %php-uri-get-host (self) (%php-uri-field self "__host__"))
-(defun %php-uri-get-raw-host (self) (%php-uri-get-host self))
-(defun %php-uri-get-ascii-host (self) (%php-uri-get-host self))
-(defun %php-uri-get-unicode-host (self) (%php-uri-get-host self))
-(defun %php-uri-get-port (self) (%php-uri-field self "__port__"))
-(defun %php-uri-get-path (self) (%php-uri-field self "__path__"))
-(defun %php-uri-get-raw-path (self) (%php-uri-get-path self))
-(defun %php-uri-get-query (self) (%php-uri-field self "__query__"))
-(defun %php-uri-get-raw-query (self) (%php-uri-get-query self))
-(defun %php-uri-get-fragment (self) (%php-uri-field self "__fragment__"))
-(defun %php-uri-get-raw-fragment (self) (%php-uri-get-fragment self))
+
+(defmacro define-php-uri-getter (name field &rest aliases)
+  "Define NAME reading FIELD off a URI object, plus ALIASES as pass-through
+synonyms of NAME."
+  `(progn
+     (defun ,name (self) (%php-uri-field self ,field))
+     ,@(mapcar (lambda (alias) `(defun ,alias (self) (,name self))) aliases)))
+
+(define-php-uri-getter %php-uri-get-scheme   "__scheme__"   %php-uri-get-raw-scheme)
+(define-php-uri-getter %php-uri-get-username "__username__" %php-uri-get-raw-username)
+(define-php-uri-getter %php-uri-get-password "__password__" %php-uri-get-raw-password)
+(define-php-uri-getter %php-uri-get-host     "__host__"     %php-uri-get-raw-host
+                                                              %php-uri-get-ascii-host
+                                                              %php-uri-get-unicode-host)
+(define-php-uri-getter %php-uri-get-port     "__port__")
+(define-php-uri-getter %php-uri-get-path     "__path__"     %php-uri-get-raw-path)
+(define-php-uri-getter %php-uri-get-query    "__query__"    %php-uri-get-raw-query)
+(define-php-uri-getter %php-uri-get-fragment "__fragment__" %php-uri-get-raw-fragment)
 
 (defun %php-uri-get-user-info (self)
   (let ((username (%php-uri-field-text self "__username__"))
@@ -276,12 +280,16 @@
     (%php-uri-set-field copy key value)
     copy))
 
-(defun %php-uri-with-scheme (self value) (%php-uri-with-field self "__scheme__" value))
-(defun %php-uri-with-host (self value) (%php-uri-with-field self "__host__" value))
-(defun %php-uri-with-port (self value) (%php-uri-with-field self "__port__" value))
-(defun %php-uri-with-path (self value) (%php-uri-with-field self "__path__" value))
-(defun %php-uri-with-query (self value) (%php-uri-with-field self "__query__" value))
-(defun %php-uri-with-fragment (self value) (%php-uri-with-field self "__fragment__" value))
+(defmacro define-php-uri-with (name field)
+  "Define NAME returning a copy of SELF with FIELD set to VALUE."
+  `(defun ,name (self value) (%php-uri-with-field self ,field value)))
+
+(define-php-uri-with %php-uri-with-scheme   "__scheme__")
+(define-php-uri-with %php-uri-with-host     "__host__")
+(define-php-uri-with %php-uri-with-port     "__port__")
+(define-php-uri-with %php-uri-with-path     "__path__")
+(define-php-uri-with %php-uri-with-query    "__query__")
+(define-php-uri-with %php-uri-with-fragment "__fragment__")
 
 (defun %php-uri-with-user-info (self username &optional password)
   (let ((copy (%php-uri-copy self)))

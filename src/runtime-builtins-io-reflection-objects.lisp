@@ -9,17 +9,16 @@
       (or (gethash "__class__" class) "")
       (%php-stringify class)))
 
-(defun %php-reflection-constant-get-file-name (self)
-  (declare (ignore self))
-  +php-null+)
+(defmacro define-php-reflection-null-getter (name)
+  "Define a ReflectionConstant getter NAME that ignores its receiver and returns
+PHP null (reflection metadata this runtime does not model)."
+  `(defun ,name (self)
+     (declare (ignore self))
+     +php-null+))
 
-(defun %php-reflection-constant-get-extension (self)
-  (declare (ignore self))
-  +php-null+)
-
-(defun %php-reflection-constant-get-extension-name (self)
-  (declare (ignore self))
-  +php-null+)
+(define-php-reflection-null-getter %php-reflection-constant-get-file-name)
+(define-php-reflection-null-getter %php-reflection-constant-get-extension)
+(define-php-reflection-null-getter %php-reflection-constant-get-extension-name)
 
 (defun %php-reflection-constant-get-attributes (self &optional name flags)
   (declare (ignore name flags))
