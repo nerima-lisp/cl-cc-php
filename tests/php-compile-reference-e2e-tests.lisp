@@ -15,18 +15,13 @@
         "<?php $o=''; foreach (['a'=>1,'b'=>2,'c'=>3] as $k=>$v){ $o=$o.$k.'='.$v.';'; } echo $o;")
       :to-equal
       "a=1;b=2;c=3;"))
-  (it-sequential
-    "php-e2e-foreach-by-reference-mutates-array"
-    (expect
-      (%php-run-capture
-        "<?php $a=[1,2]; foreach ($a as &$v) { $v=$v*10; } echo $a[0].','.$a[1];")
-      :to-equal
-      "10,20")
-    (expect
-      (%php-run-capture
-        "<?php $a=[1=>2]; foreach ($a as $k=>&$v) { $v=$k+$v; } echo $a[1];")
-      :to-equal
-      "3"))
+  (it-sequential-each
+    (("<?php $a=[1,2]; foreach ($a as &$v) { $v=$v*10; } echo $a[0].','.$a[1];"
+        "10,20")
+      ("<?php $a=[1=>2]; foreach ($a as $k=>&$v) { $v=$k+$v; } echo $a[1];" "3"))
+    "php-e2e-foreach-by-reference-mutates-array: ~S"
+    (source expected)
+    (expect (%php-run-capture source) :to-equal expected))
   (it-sequential
     "php-e2e-by-reference-function-parameter"
     (expect
@@ -34,28 +29,20 @@
         "<?php function inc(&$x) { $x=$x+1; } $n=1; inc($n); echo $n;")
       :to-equal
       "2"))
-  (it-sequential
-    "php-e2e-by-reference-function-metadata-is-source-local"
-    (expect
-      (%php-run-capture "<?php function f(&$x) { $x=$x+1; } $n=1; f($n); echo $n;")
-      :to-equal
-      "2")
-    (expect
-      (%php-run-capture "<?php function f($a,$b=10) { return $a+$b; } echo f(5);")
-      :to-equal
-      "15")
-    (expect
-      (%php-run-capture
-        "<?php function f($a,...$rest) { return $a.':'.count($rest); } echo f('x',1,2,3);")
-      :to-equal
-      "x:3"))
-  (it-sequential
-    "php-e2e-reference-assignment-aliases-variables"
-    (expect (%php-run-capture "<?php $a=1; $b=&$a; $a=2; echo $b;") :to-equal "2")
-    (expect
-      (%php-run-capture "<?php $a=1; $b=&$a; $b=3; echo $a.','.$b;")
-      :to-equal
-      "3,3"))
+  (it-sequential-each
+    (("<?php function f(&$x) { $x=$x+1; } $n=1; f($n); echo $n;" "2")
+      ("<?php function f($a,$b=10) { return $a+$b; } echo f(5);" "15")
+      ("<?php function f($a,...$rest) { return $a.':'.count($rest); } echo f('x',1,2,3);"
+        "x:3"))
+    "php-e2e-by-reference-function-metadata-is-source-local: ~S"
+    (source expected)
+    (expect (%php-run-capture source) :to-equal expected))
+  (it-sequential-each
+    (("<?php $a=1; $b=&$a; $a=2; echo $b;" "2")
+      ("<?php $a=1; $b=&$a; $b=3; echo $a.','.$b;" "3,3"))
+    "php-e2e-reference-assignment-aliases-variables: ~S"
+    (source expected)
+    (expect (%php-run-capture source) :to-equal expected))
   (it-sequential
     "php-e2e-generator-yield-foreach"
     (expect
@@ -110,13 +97,9 @@
         "<?php function apply($f,$v){ return $f($v); } echo apply(function($x){ return $x*3; }, 4);")
       :to-equal
       "12"))
-  (it-sequential
-    "php-e2e-by-reference-parameters-literal-callables"
-    (expect
-      (%php-run-capture "<?php $n=1; (function (&$x) { $x = $x + 4; })($n); echo $n;")
-      :to-equal
-      "5")
-    (expect
-      (%php-run-capture "<?php $n=2; (fn(&$x)=>++$x)($n); echo $n;")
-      :to-equal
-      "3")))
+  (it-sequential-each
+    (("<?php $n=1; (function (&$x) { $x = $x + 4; })($n); echo $n;" "5")
+      ("<?php $n=2; (fn(&$x)=>++$x)($n); echo $n;" "3"))
+    "php-e2e-by-reference-parameters-literal-callables: ~S"
+    (source expected)
+    (expect (%php-run-capture source) :to-equal expected)))

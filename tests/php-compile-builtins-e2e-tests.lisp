@@ -37,114 +37,224 @@
   (expect (%php-run-capture "<?php echo var_export(7, true);") :to-equal "7"))
 
 
-(it-sequential "php-e2e-math-non-cl-named-builtins"
-  (expect (%php-run-capture "<?php echo fmod(7,3);") :to-equal "1")
-  (expect (%php-run-capture "<?php echo fmod(-7,3);") :to-equal "-1")
-  (expect (%php-run-capture "<?php echo round(atan2(1,1),4);") :to-equal "0.7854")
-  (expect (%php-run-capture "<?php echo log10(1000);") :to-equal "3")
-  (expect (%php-run-capture "<?php echo log2(8);") :to-equal "3")
-  (expect (%php-run-capture "<?php echo hypot(3,4);") :to-equal "5")
-  (expect (%php-run-capture "<?php echo round(deg2rad(180),5);") :to-equal "3.14159")
-  (expect (%php-run-capture "<?php echo round(rad2deg(3.141592653589793),2);") :to-equal "180")
-  (expect (%php-run-capture "<?php echo base_convert('ff',16,2);") :to-equal "11111111")
-  (expect (%php-run-capture "<?php echo base_convert('255',10,16);") :to-equal "ff")
-  (expect (%php-run-capture "<?php echo is_finite(1.5)?'y':'n';") :to-equal "y")
-  (expect (%php-run-capture "<?php echo is_infinite(fdiv(1,0))?'y':'n';") :to-equal "y"))
+  (it-sequential-each
+      (("<?php echo fmod(7,3);"
+        "1")
+       ("<?php echo fmod(-7,3);"
+        "-1")
+       ("<?php echo round(atan2(1,1),4);"
+        "0.7854")
+       ("<?php echo log10(1000);"
+        "3")
+       ("<?php echo log2(8);"
+        "3")
+       ("<?php echo hypot(3,4);"
+        "5")
+       ("<?php echo round(deg2rad(180),5);"
+        "3.14159")
+       ("<?php echo round(rad2deg(3.141592653589793),2);"
+        "180")
+       ("<?php echo base_convert('ff',16,2);"
+        "11111111")
+       ("<?php echo base_convert('255',10,16);"
+        "ff")
+       ("<?php echo is_finite(1.5)?'y':'n';"
+        "y")
+       ("<?php echo is_infinite(fdiv(1,0))?'y':'n';"
+        "y"))
+      "php-e2e-math-non-cl-named-builtins: ~S"
+      (source expected)
+    (expect (%php-run-capture source) :to-equal expected))
 
 
-(it-sequential "php-e2e-serialize-unserialize"
-  (expect (%php-run-capture "<?php echo serialize(42);") :to-equal "i:42;")
-  (expect (%php-run-capture "<?php echo serialize('hello');") :to-equal "s:5:\"hello\";")
-  (expect (%php-run-capture "<?php echo serialize(true);") :to-equal "b:1;")
-  (expect (%php-run-capture "<?php echo serialize(false);") :to-equal "b:0;")
-  (expect (%php-run-capture "<?php echo serialize(null);") :to-equal "N;")
-  (expect (%php-run-capture "<?php echo serialize(3.14);") :to-equal "d:3.14;")
-  (expect (%php-run-capture "<?php echo serialize([1,2,3]);") :to-equal "a:3:{i:0;i:1;i:1;i:2;i:2;i:3;}")
-  (expect (%php-run-capture "<?php echo serialize(['a'=>1,'b'=>2]);") :to-equal "a:2:{s:1:\"a\";i:1;s:1:\"b\";i:2;}")
-  (expect (%php-run-capture "<?php class C { public $x = 7; } echo serialize(new C());") :to-equal "O:1:\"C\":1:{s:1:\"x\";i:7;}")
-  (expect (%php-run-capture "<?php class C { public $x = 7; public $y = 9; function __sleep(){ return ['y','x']; } } echo serialize(new C());") :to-equal "O:1:\"C\":2:{s:1:\"y\";i:9;s:1:\"x\";i:7;}")
-  (expect (%php-run-capture "<?php class C { public $x = 7; public $y = 9; function __sleep(){ return ['y']; } function __wakeup(){ $this->x = 6; } } $u = unserialize(serialize(new C())); echo $u->x + $u->y;") :to-equal "15")
-  (expect (%php-run-capture "<?php class C { public $x = 7; public $y = 9; function __serialize(){ return ['y'=>$this->y, 'x'=>$this->x]; } } echo serialize(new C());") :to-equal "O:1:\"C\":2:{s:1:\"y\";i:9;s:1:\"x\";i:7;}")
-  (expect (%php-run-capture "<?php class C { public $x = 7; public $y = 9; function __serialize(){ return ['y'=>$this->y, 'x'=>$this->x]; } function __unserialize($data){ $this->y = $data['y']; $this->x = $data['x'] - 1; } } $u = unserialize(serialize(new C())); echo $u->x + $u->y;") :to-equal "15")
-  (expect (%php-run-capture "<?php echo unserialize(serialize(42))+8;") :to-equal "50")
-  (expect (%php-run-capture "<?php $x=unserialize(serialize([1,2,['k'=>'v']])); echo $x[2]['k'];") :to-equal "v")
-  (expect (%php-run-capture "<?php class C { public $x = 7; } $u = unserialize(serialize(new C())); echo $u->x;") :to-equal "7")
-  (expect (%php-run-capture "<?php echo unserialize('b:1;')?'T':'F';") :to-equal "T")
-  (expect (%php-run-capture "<?php echo unserialize('garbage')?'T':'F';") :to-equal "F"))
+  (it-sequential-each
+      (("<?php echo serialize(42);"
+        "i:42;")
+       ("<?php echo serialize('hello');"
+        "s:5:\"hello\";")
+       ("<?php echo serialize(true);"
+        "b:1;")
+       ("<?php echo serialize(false);"
+        "b:0;")
+       ("<?php echo serialize(null);"
+        "N;")
+       ("<?php echo serialize(3.14);"
+        "d:3.14;")
+       ("<?php echo serialize([1,2,3]);"
+        "a:3:{i:0;i:1;i:1;i:2;i:2;i:3;}")
+       ("<?php echo serialize(['a'=>1,'b'=>2]);"
+        "a:2:{s:1:\"a\";i:1;s:1:\"b\";i:2;}")
+       ("<?php class C { public $x = 7; } echo serialize(new C());"
+        "O:1:\"C\":1:{s:1:\"x\";i:7;}")
+       ("<?php class C { public $x = 7; public $y = 9; function __sleep(){ return ['y','x']; } } echo serialize(new C());"
+        "O:1:\"C\":2:{s:1:\"y\";i:9;s:1:\"x\";i:7;}")
+       ("<?php class C { public $x = 7; public $y = 9; function __sleep(){ return ['y']; } function __wakeup(){ $this->x = 6; } } $u = unserialize(serialize(new C())); echo $u->x + $u->y;"
+        "15")
+       ("<?php class C { public $x = 7; public $y = 9; function __serialize(){ return ['y'=>$this->y, 'x'=>$this->x]; } } echo serialize(new C());"
+        "O:1:\"C\":2:{s:1:\"y\";i:9;s:1:\"x\";i:7;}")
+       ("<?php class C { public $x = 7; public $y = 9; function __serialize(){ return ['y'=>$this->y, 'x'=>$this->x]; } function __unserialize($data){ $this->y = $data['y']; $this->x = $data['x'] - 1; } } $u = unserialize(serialize(new C())); echo $u->x + $u->y;"
+        "15")
+       ("<?php echo unserialize(serialize(42))+8;"
+        "50")
+       ("<?php $x=unserialize(serialize([1,2,['k'=>'v']])); echo $x[2]['k'];"
+        "v")
+       ("<?php class C { public $x = 7; } $u = unserialize(serialize(new C())); echo $u->x;"
+        "7")
+       ("<?php echo unserialize('b:1;')?'T':'F';"
+        "T")
+       ("<?php echo unserialize('garbage')?'T':'F';"
+        "F"))
+      "php-e2e-serialize-unserialize: ~S"
+      (source expected)
+    (expect (%php-run-capture source) :to-equal expected))
 
 
-(it-sequential "php-e2e-string-escape-preservation"
-  (expect (%php-run-capture "<?php echo \"a\\.b\";") :to-equal "a\\.b")
-  (expect (%php-run-capture "<?php echo \"\\d\\w\";") :to-equal "\\d\\w")
-  (expect (%php-run-capture "<?php echo strlen(\"a\\nb\");") :to-equal "3")
-  (expect (%php-run-capture "<?php echo \"\\x41\";") :to-equal "A")
-  (expect (%php-run-capture "<?php echo \"\\u{48}\";") :to-equal "H")
-  (expect (%php-run-capture "<?php echo strlen(\"\\t\");") :to-equal "1"))    ; tab
+  (it-sequential-each
+      (("<?php echo \"a\\.b\";"
+        "a\\.b")
+       ("<?php echo \"\\d\\w\";"
+        "\\d\\w")
+       ("<?php echo strlen(\"a\\nb\");"
+        "3")
+       ("<?php echo \"\\x41\";"
+        "A")
+       ("<?php echo \"\\u{48}\";"
+        "H")
+       ("<?php echo strlen(\"\\t\");"
+        "1"))
+      "php-e2e-string-escape-preservation: ~S"
+      (source expected)
+    (expect (%php-run-capture source) :to-equal expected))    ; tab
 
 
-(it-sequential "php-e2e-md5-sha1-builtins"
-  (expect (%php-run-capture "<?php echo md5('abc');") :to-equal "900150983cd24fb0d6963f7d28e17f72")
-  (expect (%php-run-capture "<?php echo md5('');") :to-equal "d41d8cd98f00b204e9800998ecf8427e")
-  (expect (%php-run-capture "<?php echo bin2hex(md5('abc', true));") :to-equal "900150983cd24fb0d6963f7d28e17f72")
-  (expect (%php-run-capture "<?php echo sha1('abc');") :to-equal "a9993e364706816aba3e25717850c26c9cd0d89d")
-  (expect (%php-run-capture "<?php echo sha1('');") :to-equal "da39a3ee5e6b4b0d3255bfef95601890afd80709")
-  (expect (%php-run-capture "<?php echo bin2hex(sha1('abc', true));") :to-equal "a9993e364706816aba3e25717850c26c9cd0d89d"))
+  (it-sequential-each
+      (("<?php echo md5('abc');"
+        "900150983cd24fb0d6963f7d28e17f72")
+       ("<?php echo md5('');"
+        "d41d8cd98f00b204e9800998ecf8427e")
+       ("<?php echo bin2hex(md5('abc', true));"
+        "900150983cd24fb0d6963f7d28e17f72")
+       ("<?php echo sha1('abc');"
+        "a9993e364706816aba3e25717850c26c9cd0d89d")
+       ("<?php echo sha1('');"
+        "da39a3ee5e6b4b0d3255bfef95601890afd80709")
+       ("<?php echo bin2hex(sha1('abc', true));"
+        "a9993e364706816aba3e25717850c26c9cd0d89d"))
+      "php-e2e-md5-sha1-builtins: ~S"
+      (source expected)
+    (expect (%php-run-capture source) :to-equal expected))
 
 
-(it-sequential "php-e2e-crc32-builtin"
-  (expect (%php-run-capture "<?php echo crc32('');") :to-equal "0")
-  (expect (%php-run-capture "<?php echo crc32('abc');") :to-equal "891568578")
-  (expect (%php-run-capture "<?php echo crc32('foo');") :to-equal "2356372769"))
+  (it-sequential-each
+      (("<?php echo crc32('');"
+        "0")
+       ("<?php echo crc32('abc');"
+        "891568578")
+       ("<?php echo crc32('foo');"
+        "2356372769"))
+      "php-e2e-crc32-builtin: ~S"
+      (source expected)
+    (expect (%php-run-capture source) :to-equal expected))
 
 
-(it-sequential "php-e2e-preg-replace-callback"
-  (expect (%php-run-capture "<?php echo preg_replace_callback('/\\d/', fn($m)=>$m[0]*2, 'a1b2');") :to-equal "a2b4")
-  (expect (%php-run-capture "<?php echo preg_replace_callback('/[a-z]+/', fn($m)=>strtoupper($m[0]), 'hi there');") :to-equal "HI THERE")
-  (expect (%php-run-capture "<?php echo preg_replace_callback('/\\d/', fn($m)=>'X', '1234', 2);") :to-equal "XX34")
-  (expect (%php-run-capture "<?php echo preg_replace_callback(\"/\\d/\", fn($m)=>$m[0]*2, 'a1b2');") :to-equal "a2b4")
-  (expect (%php-run-capture "<?php echo preg_replace_callback('/(\\w+)=(\\d+)/', fn($m)=>$m[1].':'.$m[2], 'x=12 y=34');") :to-equal "x:12 y:34")
-  (expect (%php-run-capture "<?php echo preg_replace_callback('/((\\d)(\\d))/', fn($m)=>$m[2].'-'.$m[3], '42');") :to-equal "4-2")
-  (expect (%php-run-capture "<?php echo preg_replace_callback_array(['/\\d/'=>fn($m)=>'N','/[a-z]/'=>fn($m)=>'L'], 'a1b2');") :to-equal "LNLN")
-  (expect (%php-run-capture "<?php echo preg_replace_callback_array(['/(\\w)(\\d)/'=>fn($m)=>$m[2].$m[1]], 'a1 b2');") :to-equal "1a 2b"))
+  (it-sequential-each
+      (("<?php echo preg_replace_callback('/\\d/', fn($m)=>$m[0]*2, 'a1b2');"
+        "a2b4")
+       ("<?php echo preg_replace_callback('/[a-z]+/', fn($m)=>strtoupper($m[0]), 'hi there');"
+        "HI THERE")
+       ("<?php echo preg_replace_callback('/\\d/', fn($m)=>'X', '1234', 2);"
+        "XX34")
+       ("<?php echo preg_replace_callback(\"/\\d/\", fn($m)=>$m[0]*2, 'a1b2');"
+        "a2b4")
+       ("<?php echo preg_replace_callback('/(\\w+)=(\\d+)/', fn($m)=>$m[1].':'.$m[2], 'x=12 y=34');"
+        "x:12 y:34")
+       ("<?php echo preg_replace_callback('/((\\d)(\\d))/', fn($m)=>$m[2].'-'.$m[3], '42');"
+        "4-2")
+       ("<?php echo preg_replace_callback_array(['/\\d/'=>fn($m)=>'N','/[a-z]/'=>fn($m)=>'L'], 'a1b2');"
+        "LNLN")
+       ("<?php echo preg_replace_callback_array(['/(\\w)(\\d)/'=>fn($m)=>$m[2].$m[1]], 'a1 b2');"
+        "1a 2b"))
+      "php-e2e-preg-replace-callback: ~S"
+      (source expected)
+    (expect (%php-run-capture source) :to-equal expected))
 
 
-(it-sequential "php-e2e-preg-capture-groups"
-  (expect (%php-run-capture "<?php echo preg_replace('/(\\w)(\\w)/', '$2$1', 'abcd');") :to-equal "badc")
-  (expect (%php-run-capture "<?php echo preg_replace('/(\\d+)-(\\d+)/', '$2/$1', '12-34');") :to-equal "34/12")
-  (expect (%php-run-capture "<?php echo preg_replace('/\\d+/', '[$0]', 'a12b');") :to-equal "a[12]b")
-  (expect (%php-run-capture "<?php echo preg_replace('/(\\w+)/', '${1}!', 'hi');") :to-equal "hi!")
-  (expect (%php-run-capture "<?php echo preg_replace('/((\\d)(\\d))/', '$2-$3', '42');") :to-equal "4-2")
-  (expect (%php-run-capture "<?php echo preg_match_all('/\\d/', '1a2b3');") :to-equal "3")
-  (expect (%php-run-capture "<?php echo preg_match_all('/\\w+/', 'foo bar baz');") :to-equal "3")
-  (expect (%php-run-capture "<?php echo preg_match_all('/\\d/', 'abc');") :to-equal "0"))
+  (it-sequential-each
+      (("<?php echo preg_replace('/(\\w)(\\w)/', '$2$1', 'abcd');"
+        "badc")
+       ("<?php echo preg_replace('/(\\d+)-(\\d+)/', '$2/$1', '12-34');"
+        "34/12")
+       ("<?php echo preg_replace('/\\d+/', '[$0]', 'a12b');"
+        "a[12]b")
+       ("<?php echo preg_replace('/(\\w+)/', '${1}!', 'hi');"
+        "hi!")
+       ("<?php echo preg_replace('/((\\d)(\\d))/', '$2-$3', '42');"
+        "4-2")
+       ("<?php echo preg_match_all('/\\d/', '1a2b3');"
+        "3")
+       ("<?php echo preg_match_all('/\\w+/', 'foo bar baz');"
+        "3")
+       ("<?php echo preg_match_all('/\\d/', 'abc');"
+        "0"))
+      "php-e2e-preg-capture-groups: ~S"
+      (source expected)
+    (expect (%php-run-capture source) :to-equal expected))
 
 
-(it-sequential "php-e2e-preg-match-out-param"
-  (expect (%php-run-capture "<?php preg_match('/(\\d+)-(\\d+)/', '12-34', $m); echo $m[1].'|'.$m[2];") :to-equal "12|34")
-  (expect (%php-run-capture "<?php $r=preg_match('/(\\d+)/', 'abc123', $m); echo $r.':'.$m[0].':'.$m[1];") :to-equal "1:123:123")
-  (expect (%php-run-capture "<?php preg_match('/(\\w+)@(\\w+)/', 'bob@host', $m); echo $m[1].' at '.$m[2];") :to-equal "bob at host")
-  (expect (%php-run-capture "<?php echo preg_match('/\\d/', 'abc', $m);") :to-equal "0")
-  (expect (%php-run-capture "<?php preg_match_all('/(\\d)/', '1a2b3', $m); echo implode(',', $m[1]);") :to-equal "1,2,3")
-  (expect (%php-run-capture "<?php preg_match_all('/\\d+/', 'a12b34', $m); echo implode(',', $m[0]);") :to-equal "12,34")
-  (expect (%php-run-capture "<?php $r=preg_match('/\\d/', 'a1b2c3', $m, 0, 3); echo $r.':'.$m[0];") :to-equal "1:2")
-  (expect (%php-run-capture "<?php preg_match_all('/(\\d)/', 'a1b2c3', $m, 0, 3); echo implode(',', $m[1]);") :to-equal "2,3"))
+  (it-sequential-each
+      (("<?php preg_match('/(\\d+)-(\\d+)/', '12-34', $m); echo $m[1].'|'.$m[2];"
+        "12|34")
+       ("<?php $r=preg_match('/(\\d+)/', 'abc123', $m); echo $r.':'.$m[0].':'.$m[1];"
+        "1:123:123")
+       ("<?php preg_match('/(\\w+)@(\\w+)/', 'bob@host', $m); echo $m[1].' at '.$m[2];"
+        "bob at host")
+       ("<?php echo preg_match('/\\d/', 'abc', $m);"
+        "0")
+       ("<?php preg_match_all('/(\\d)/', '1a2b3', $m); echo implode(',', $m[1]);"
+        "1,2,3")
+       ("<?php preg_match_all('/\\d+/', 'a12b34', $m); echo implode(',', $m[0]);"
+        "12,34")
+       ("<?php $r=preg_match('/\\d/', 'a1b2c3', $m, 0, 3); echo $r.':'.$m[0];"
+        "1:2")
+       ("<?php preg_match_all('/(\\d)/', 'a1b2c3', $m, 0, 3); echo implode(',', $m[1]);"
+        "2,3"))
+      "php-e2e-preg-match-out-param: ~S"
+      (source expected)
+    (expect (%php-run-capture source) :to-equal expected))
 
 
-(it-sequential "php-e2e-ucwords-delimiters"
-  (expect (%php-run-capture "<?php echo ucwords('hello world');") :to-equal "Hello World")
-  (expect (%php-run-capture "<?php echo ucwords('world order roar');") :to-equal "World Order Roar")
-  (expect (%php-run-capture "<?php echo ucwords('fluffy vivid');") :to-equal "Fluffy Vivid")
-  (expect (%php-run-capture "<?php echo ucwords('the QUICK brown');") :to-equal "The QUICK Brown")
-  (expect (%php-run-capture "<?php echo ucwords('hello-world', '-');") :to-equal "Hello-World"))
+  (it-sequential-each
+      (("<?php echo ucwords('hello world');"
+        "Hello World")
+       ("<?php echo ucwords('world order roar');"
+        "World Order Roar")
+       ("<?php echo ucwords('fluffy vivid');"
+        "Fluffy Vivid")
+       ("<?php echo ucwords('the QUICK brown');"
+        "The QUICK Brown")
+       ("<?php echo ucwords('hello-world', '-');"
+        "Hello-World"))
+      "php-e2e-ucwords-delimiters: ~S"
+      (source expected)
+    (expect (%php-run-capture source) :to-equal expected))
 
 
-(it-sequential "php-e2e-wordwrap-cut"
-  (expect (%php-run-capture "<?php echo wordwrap('aaaaaa',3,'|',true);") :to-equal "aaa|aaa")
-  (expect (%php-run-capture "<?php echo wordwrap('a verylongword b',4,'|',true);") :to-equal "a|very|long|word|b")
-  (expect (%php-run-capture "<?php echo wordwrap('A very long woooooooord.',8,'|',true);") :to-equal "A very|long|wooooooo|ord.")
-  (expect (%php-run-capture "<?php echo wordwrap('aaaaaa',3,'|',false);") :to-equal "aaaaaa")
-  (expect (%php-run-capture "<?php echo wordwrap('aaa bbb ccc',5,'|');") :to-equal "aaa|bbb|ccc")
-  (expect (%php-run-capture "<?php echo wordwrap('The quick brown fox',10,'|');") :to-equal "The quick|brown fox"))
+  (it-sequential-each
+      (("<?php echo wordwrap('aaaaaa',3,'|',true);"
+        "aaa|aaa")
+       ("<?php echo wordwrap('a verylongword b',4,'|',true);"
+        "a|very|long|word|b")
+       ("<?php echo wordwrap('A very long woooooooord.',8,'|',true);"
+        "A very|long|wooooooo|ord.")
+       ("<?php echo wordwrap('aaaaaa',3,'|',false);"
+        "aaaaaa")
+       ("<?php echo wordwrap('aaa bbb ccc',5,'|');"
+        "aaa|bbb|ccc")
+       ("<?php echo wordwrap('The quick brown fox',10,'|');"
+        "The quick|brown fox"))
+      "php-e2e-wordwrap-cut: ~S"
+      (source expected)
+    (expect (%php-run-capture source) :to-equal expected))
 
 
 (it-sequential "php-e2e-json-encode-pretty"
@@ -154,71 +264,138 @@
   (expect (%php-run-capture "<?php echo json_encode(['x'=>[],'y'=>1],JSON_PRETTY_PRINT);") :to-equal (format nil "{~%    \"x\": [],~%    \"y\": 1~%}")))
 
 
-(it-sequential "php-e2e-json-decode"
-  (expect (%php-run-capture "<?php $d=json_decode('{\"a\":1,\"b\":2}',true); echo $d['a']+$d['b'];") :to-equal "3")
-  (expect (%php-run-capture "<?php $d=json_decode('{\"name\":\"Bob\",\"age\":30}',true); echo $d['name'].'-'.$d['age'];") :to-equal "Bob-30")
-  (expect (%php-run-capture "<?php $d=json_decode('{\"x\":{\"y\":[1,2,3]}}',true); echo $d['x']['y'][2];") :to-equal "3")
-  (expect (%php-run-capture "<?php $d=json_decode('[\"a\",\"bb\",\"ccc\"]'); echo $d[1].strlen($d[2]);") :to-equal "bb3")
-  (expect (%php-run-capture "<?php echo json_decode('true')?'y':'n';") :to-equal "y")
-  (expect (%php-run-capture "<?php echo json_decode('not json')===null?'null':'x';") :to-equal "null")
-  (expect (%php-run-capture "<?php $o=['user'=>'alice','roles'=>['admin','editor'],'active'=>true]; $r=json_decode(json_encode($o),true); echo $r['user'].':'.$r['roles'][1].':'.($r['active']?'y':'n');") :to-equal "alice:editor:y"))
+  (it-sequential-each
+      (("<?php $d=json_decode('{\"a\":1,\"b\":2}',true); echo $d['a']+$d['b'];"
+        "3")
+       ("<?php $d=json_decode('{\"name\":\"Bob\",\"age\":30}',true); echo $d['name'].'-'.$d['age'];"
+        "Bob-30")
+       ("<?php $d=json_decode('{\"x\":{\"y\":[1,2,3]}}',true); echo $d['x']['y'][2];"
+        "3")
+       ("<?php $d=json_decode('[\"a\",\"bb\",\"ccc\"]'); echo $d[1].strlen($d[2]);"
+        "bb3")
+       ("<?php echo json_decode('true')?'y':'n';"
+        "y")
+       ("<?php echo json_decode('not json')===null?'null':'x';"
+        "null")
+       ("<?php $o=['user'=>'alice','roles'=>['admin','editor'],'active'=>true]; $r=json_decode(json_encode($o),true); echo $r['user'].':'.$r['roles'][1].':'.($r['active']?'y':'n');"
+        "alice:editor:y"))
+      "php-e2e-json-decode: ~S"
+      (source expected)
+    (expect (%php-run-capture source) :to-equal expected))
 
 
-(it-sequential "php-e2e-number-format-rounding"
-  (expect (%php-run-capture "<?php echo number_format(1234.5);") :to-equal "1,235")
-  (expect (%php-run-capture "<?php echo number_format(2.5);") :to-equal "3")
-  (expect (%php-run-capture "<?php echo number_format(0.5);") :to-equal "1")
-  (expect (%php-run-capture "<?php echo number_format(1234.4);") :to-equal "1,234")
-  (expect (%php-run-capture "<?php echo number_format(-1234.5);") :to-equal "-1,235")
-  (expect (%php-run-capture "<?php echo number_format(3.14159,2);") :to-equal "3.14")
-  (expect (%php-run-capture "<?php echo number_format(1234.567,2);") :to-equal "1,234.57")
-  (expect (%php-run-capture "<?php echo number_format(1234.5,2,',','.');") :to-equal "1.234,50"))
+  (it-sequential-each
+      (("<?php echo number_format(1234.5);"
+        "1,235")
+       ("<?php echo number_format(2.5);"
+        "3")
+       ("<?php echo number_format(0.5);"
+        "1")
+       ("<?php echo number_format(1234.4);"
+        "1,234")
+       ("<?php echo number_format(-1234.5);"
+        "-1,235")
+       ("<?php echo number_format(3.14159,2);"
+        "3.14")
+       ("<?php echo number_format(1234.567,2);"
+        "1,234.57")
+       ("<?php echo number_format(1234.5,2,',','.');"
+        "1.234,50"))
+      "php-e2e-number-format-rounding: ~S"
+      (source expected)
+    (expect (%php-run-capture source) :to-equal expected))
 
 
-(it-sequential "php-e2e-round-half-away"
-  (expect (%php-run-capture "<?php echo round(2.5);") :to-equal "3")
-  (expect (%php-run-capture "<?php echo round(3.5);") :to-equal "4")
-  (expect (%php-run-capture "<?php echo round(-2.5);") :to-equal "-3")
-  (expect (%php-run-capture "<?php echo round(0.5);") :to-equal "1")
-  (expect (%php-run-capture "<?php echo round(2.4);") :to-equal "2")
-  (expect (%php-run-capture "<?php echo round(-2.4);") :to-equal "-2")
-  (expect (%php-run-capture "<?php echo round(3.14159,2);") :to-equal "3.14")
-  (expect (%php-run-capture "<?php echo round(1.95583,2);") :to-equal "1.96")
-  (expect (%php-run-capture "<?php echo round(1241757,-3);") :to-equal "1242000"))
+  (it-sequential-each
+      (("<?php echo round(2.5);"
+        "3")
+       ("<?php echo round(3.5);"
+        "4")
+       ("<?php echo round(-2.5);"
+        "-3")
+       ("<?php echo round(0.5);"
+        "1")
+       ("<?php echo round(2.4);"
+        "2")
+       ("<?php echo round(-2.4);"
+        "-2")
+       ("<?php echo round(3.14159,2);"
+        "3.14")
+       ("<?php echo round(1.95583,2);"
+        "1.96")
+       ("<?php echo round(1241757,-3);"
+        "1242000"))
+      "php-e2e-round-half-away: ~S"
+      (source expected)
+    (expect (%php-run-capture source) :to-equal expected))
 
 
-(it-sequential "php-e2e-sprintf-flags"
-  (expect (%php-run-capture "<?php echo sprintf('%e',12345.678);") :to-equal "1.234568e+4")
-  (expect (%php-run-capture "<?php echo sprintf('%E',0.00012);") :to-equal "1.200000E-4")
-  (expect (%php-run-capture "<?php echo sprintf('%+d %+d',5,-5);") :to-equal "+5 -5")
-  (expect (%php-run-capture "<?php echo sprintf('%+05d',42);") :to-equal "+0042")
-  (expect (%php-run-capture "<?php echo sprintf('%05d',-42);") :to-equal "-0042")
-  (expect (%php-run-capture "<?php echo sprintf(\"%'*10d\",42);") :to-equal "********42")
-  (expect (%php-run-capture "<?php echo sprintf(\"%'-10s\",'hi');") :to-equal "--------hi")
-  (expect (%php-run-capture "<?php echo sprintf('%05d',42);") :to-equal "00042")
-  (expect (%php-run-capture "<?php echo sprintf('[%-5s]','ab');") :to-equal "[ab   ]")
-  (expect (%php-run-capture "<?php echo sprintf('%.2f',3.14159);") :to-equal "3.14")
-  (expect (%php-run-capture "<?php echo sprintf('%x %X %o',255,255,8);") :to-equal "ff FF 10"))
+  (it-sequential-each
+      (("<?php echo sprintf('%e',12345.678);"
+        "1.234568e+4")
+       ("<?php echo sprintf('%E',0.00012);"
+        "1.200000E-4")
+       ("<?php echo sprintf('%+d %+d',5,-5);"
+        "+5 -5")
+       ("<?php echo sprintf('%+05d',42);"
+        "+0042")
+       ("<?php echo sprintf('%05d',-42);"
+        "-0042")
+       ("<?php echo sprintf(\"%'*10d\",42);"
+        "********42")
+       ("<?php echo sprintf(\"%'-10s\",'hi');"
+        "--------hi")
+       ("<?php echo sprintf('%05d',42);"
+        "00042")
+       ("<?php echo sprintf('[%-5s]','ab');"
+        "[ab   ]")
+       ("<?php echo sprintf('%.2f',3.14159);"
+        "3.14")
+       ("<?php echo sprintf('%x %X %o',255,255,8);"
+        "ff FF 10"))
+      "php-e2e-sprintf-flags: ~S"
+      (source expected)
+    (expect (%php-run-capture source) :to-equal expected))
 
 
-(it-sequential "php-e2e-base-conversions"
-  (expect (%php-run-capture "<?php echo dechex(255);") :to-equal "ff")
-  (expect (%php-run-capture "<?php echo hexdec('ff');") :to-equal "255")
-  (expect (%php-run-capture "<?php echo decbin(10);") :to-equal "1010")
-  (expect (%php-run-capture "<?php echo bindec('1010');") :to-equal "10")
-  (expect (%php-run-capture "<?php echo decoct(64);") :to-equal "100")
-  (expect (%php-run-capture "<?php echo octdec('100');") :to-equal "64")
-  (expect (%php-run-capture "<?php echo dechex(-1);") :to-equal "ffffffffffffffff")
-  (expect (%php-run-capture "<?php echo hexdec(dechex(48879));") :to-equal "48879"))
+  (it-sequential-each
+      (("<?php echo dechex(255);"
+        "ff")
+       ("<?php echo hexdec('ff');"
+        "255")
+       ("<?php echo decbin(10);"
+        "1010")
+       ("<?php echo bindec('1010');"
+        "10")
+       ("<?php echo decoct(64);"
+        "100")
+       ("<?php echo octdec('100');"
+        "64")
+       ("<?php echo dechex(-1);"
+        "ffffffffffffffff")
+       ("<?php echo hexdec(dechex(48879));"
+        "48879"))
+      "php-e2e-base-conversions: ~S"
+      (source expected)
+    (expect (%php-run-capture source) :to-equal expected))
 
 
-(it-sequential "php-e2e-max-min"
-  (expect (%php-run-capture "<?php echo max([3,1,2]);") :to-equal "3")
-  (expect (%php-run-capture "<?php echo min([3,1,2]);") :to-equal "1")
-  (expect (%php-run-capture "<?php echo max(1,5,3);") :to-equal "5")
-  (expect (%php-run-capture "<?php echo max(1,'10',5);") :to-equal "10")
-  (expect (%php-run-capture "<?php echo min(2.5,2,3);") :to-equal "2")
-  (expect (%php-run-capture "<?php echo max(42);") :to-equal "42"))
+  (it-sequential-each
+      (("<?php echo max([3,1,2]);"
+        "3")
+       ("<?php echo min([3,1,2]);"
+        "1")
+       ("<?php echo max(1,5,3);"
+        "5")
+       ("<?php echo max(1,'10',5);"
+        "10")
+       ("<?php echo min(2.5,2,3);"
+        "2")
+       ("<?php echo max(42);"
+        "42"))
+      "php-e2e-max-min: ~S"
+      (source expected)
+    (expect (%php-run-capture source) :to-equal expected))
 
 
 (it-sequential "php-e2e-symbol-registered-builtins"
@@ -288,20 +465,26 @@ header('Set-Cookie: b=2', false);
 echo json_encode(headers_list());") :to-equal "[\"X-Test: b\",\"Set-Cookie: a=1\",\"Set-Cookie: b=2\"]")))
 
 
-(it-sequential "php-e2e-extract-static-array-literal"
-  (expect (%php-run-capture
-                   "<?php echo function_exists('extract')?'present':'absent';") :to-equal "present")
-  (expect (%php-run-capture
-                   "<?php extract(['a'=>1,'b'=>'two','_c'=>3,'bad-key'=>4,5=>6]); echo $a.':'.$b.':'.$_c.':'.(isset($bad)?'y':'n');") :to-equal "1:two:3:n")
-  (expect (%php-run-capture
-                   "<?php $a='old'; extract(['a'=>'new']); echo $a;") :to-equal "new"))
+  (it-sequential-each
+      (("<?php echo function_exists('extract')?'present':'absent';"
+        "present")
+       ("<?php extract(['a'=>1,'b'=>'two','_c'=>3,'bad-key'=>4,5=>6]); echo $a.':'.$b.':'.$_c.':'.(isset($bad)?'y':'n');"
+        "1:two:3:n")
+       ("<?php $a='old'; extract(['a'=>'new']); echo $a;"
+        "new"))
+      "php-e2e-extract-static-array-literal: ~S"
+      (source expected)
+    (expect (%php-run-capture source) :to-equal expected))
 
 
-(it-sequential "php-e2e-empty-undefined-variable"
-  (expect (%php-run-capture
-                   "<?php echo empty($missing)?'empty':'set';") :to-equal "empty")
-  (expect (%php-run-capture
-                   "<?php $a=0; $b='value'; $c=null; echo (empty($a)?'empty':'set').':'.(empty($b)?'empty':'set').':'.(empty($c)?'empty':'set');") :to-equal "empty:set:empty"))
+  (it-sequential-each
+      (("<?php echo empty($missing)?'empty':'set';"
+        "empty")
+       ("<?php $a=0; $b='value'; $c=null; echo (empty($a)?'empty':'set').':'.(empty($b)?'empty':'set').':'.(empty($c)?'empty':'set');"
+        "empty:set:empty"))
+      "php-e2e-empty-undefined-variable: ~S"
+      (source expected)
+    (expect (%php-run-capture source) :to-equal expected))
 
 
 (it-sequential "php-e2e-scanf-reads-standard-input"
@@ -320,97 +503,156 @@ echo json_encode(headers_list());") :to-equal "[\"X-Test: b\",\"Set-Cookie: a=1\
                    "<?php echo (STDIN===null?'bad':'in'); echo ':'; fwrite(STDOUT,'out'); echo ':'; echo (STDERR===null?'bad':'err');") :to-equal "in:out:err"))
 
 
-(it-sequential "php-e2e-compact-captures-static-visible-variables"
-  (expect (%php-run-capture
-                   "<?php echo function_exists('compact')?'present':'absent';") :to-equal "present")
-  (expect (%php-run-capture
-                   "<?php $name='Ada'; $age=36; $r=compact('name','age','missing'); echo $r['name'].':'.$r['age'];") :to-equal "Ada:36")
-  (expect (%php-run-capture
-                   "<?php $x='yes'; $r=compact(['x']); echo $r['x'];") :to-equal "yes")
-  (expect (%php-run-capture
-                   "<?php $x='ok'; $y=7; $r=compact(['x',['y']]); echo $r['x'].':'.$r['y'];") :to-equal "ok:7"))
+  (it-sequential-each
+      (("<?php echo function_exists('compact')?'present':'absent';"
+        "present")
+       ("<?php $name='Ada'; $age=36; $r=compact('name','age','missing'); echo $r['name'].':'.$r['age'];"
+        "Ada:36")
+       ("<?php $x='yes'; $r=compact(['x']); echo $r['x'];"
+        "yes")
+       ("<?php $x='ok'; $y=7; $r=compact(['x',['y']]); echo $r['x'].':'.$r['y'];"
+        "ok:7"))
+      "php-e2e-compact-captures-static-visible-variables: ~S"
+      (source expected)
+    (expect (%php-run-capture source) :to-equal expected))
 
 
-(it-sequential "php-e2e-settype-mutates-variable"
-  (expect (%php-run-capture
-                   "<?php $x=5; settype($x,'string'); echo gettype($x).':'.$x;") :to-equal "string:5")
-  (expect (%php-run-capture
-                   "<?php $x='12abc'; settype($x,'integer'); echo gettype($x).':'.$x;") :to-equal "integer:12")
-  (expect (%php-run-capture
-                   "<?php $x='0'; settype($x,'bool'); echo gettype($x).':'.($x?'true':'false');") :to-equal "boolean:false")
-  (expect (%php-run-capture
-                   "<?php $x='value'; settype($x,'null'); echo gettype($x).':'.$x;") :to-equal "NULL:")
-  (expect (%php-run-capture
-                   "<?php $x=7; settype($x,'array'); echo gettype($x).':'.$x[0];") :to-equal "array:7")
-  (expect (%php-run-capture
-                   "<?php $x=7; settype($x,'object'); echo gettype($x).':'.get_class($x).':'.$x->scalar;") :to-equal "object:stdClass:7")
-  (expect (%php-run-capture
-                   "<?php $x=['name'=>'ada']; settype($x,'object'); echo gettype($x).':'.get_class($x).':'.$x->name;") :to-equal "object:stdClass:ada")
-  (expect (%php-run-capture
-                   "<?php $x=9; echo settype($x,'bogus')?'ok':'fail'; echo ':'.$x;") :to-equal "fail:9"))
+  (it-sequential-each
+      (("<?php $x=5; settype($x,'string'); echo gettype($x).':'.$x;"
+        "string:5")
+       ("<?php $x='12abc'; settype($x,'integer'); echo gettype($x).':'.$x;"
+        "integer:12")
+       ("<?php $x='0'; settype($x,'bool'); echo gettype($x).':'.($x?'true':'false');"
+        "boolean:false")
+       ("<?php $x='value'; settype($x,'null'); echo gettype($x).':'.$x;"
+        "NULL:")
+       ("<?php $x=7; settype($x,'array'); echo gettype($x).':'.$x[0];"
+        "array:7")
+       ("<?php $x=7; settype($x,'object'); echo gettype($x).':'.get_class($x).':'.$x->scalar;"
+        "object:stdClass:7")
+       ("<?php $x=['name'=>'ada']; settype($x,'object'); echo gettype($x).':'.get_class($x).':'.$x->name;"
+        "object:stdClass:ada")
+       ("<?php $x=9; echo settype($x,'bogus')?'ok':'fail'; echo ':'.$x;"
+        "fail:9"))
+      "php-e2e-settype-mutates-variable: ~S"
+      (source expected)
+    (expect (%php-run-capture source) :to-equal expected))
 
 
-(it-sequential "php-e2e-sscanf-format-parsing"
-  (expect (%php-run-capture
-                   "<?php $v=sscanf('12 bob 3.5','%d %s %f'); echo $v[0].':'.$v[1].':'.$v[2];") :to-equal "12:bob:3.5")
-  (expect (%php-run-capture
-                   "<?php $r=sscanf('12-bob','%d-%s',$id,$name); echo $r.':'.$id.':'.$name;") :to-equal "2:12:bob")
-  (expect (%php-run-capture
-                   "<?php $v=sscanf('abcdef','%2c%2s'); echo $v[0].':'.$v[1];") :to-equal "ab:cd")
-  (expect (%php-run-capture
-                   "<?php $v=sscanf('ff 010','%x %i'); echo $v[0].':'.$v[1];") :to-equal "255:8")
-  (expect (%php-run-capture
-                   "<?php $r=sscanf('42 nope','%d:%s',$n,$s); echo $r.':'.$n.':'.$s;") :to-equal "1:42:"))
+  (it-sequential-each
+      (("<?php $v=sscanf('12 bob 3.5','%d %s %f'); echo $v[0].':'.$v[1].':'.$v[2];"
+        "12:bob:3.5")
+       ("<?php $r=sscanf('12-bob','%d-%s',$id,$name); echo $r.':'.$id.':'.$name;"
+        "2:12:bob")
+       ("<?php $v=sscanf('abcdef','%2c%2s'); echo $v[0].':'.$v[1];"
+        "ab:cd")
+       ("<?php $v=sscanf('ff 010','%x %i'); echo $v[0].':'.$v[1];"
+        "255:8")
+       ("<?php $r=sscanf('42 nope','%d:%s',$n,$s); echo $r.':'.$n.':'.$s;"
+        "1:42:"))
+      "php-e2e-sscanf-format-parsing: ~S"
+      (source expected)
+    (expect (%php-run-capture source) :to-equal expected))
 
 
-(it-sequential "php-e2e-intval-base"
-  (expect (%php-run-capture "<?php echo intval('42');") :to-equal "42")
-  (expect (%php-run-capture "<?php echo intval('1A',16);") :to-equal "26")
-  (expect (%php-run-capture "<?php echo intval('0x1A',16);") :to-equal "26")
-  (expect (%php-run-capture "<?php echo intval('077',8);") :to-equal "63")
-  (expect (%php-run-capture "<?php echo intval('1010',2);") :to-equal "10")
-  (expect (%php-run-capture "<?php echo intval('0x1A',0);") :to-equal "26")
-  (expect (%php-run-capture "<?php echo intval('017',0);") :to-equal "15")
-  (expect (%php-run-capture "<?php echo intval('0b101',0);") :to-equal "5")
-  (expect (%php-run-capture "<?php echo intval('-FF',16);") :to-equal "-255")
-  (expect (%php-run-capture "<?php echo intval('42abc');") :to-equal "42")
-  (expect (%php-run-capture "<?php echo intval('42',10);") :to-equal "42"))
+  (it-sequential-each
+      (("<?php echo intval('42');"
+        "42")
+       ("<?php echo intval('1A',16);"
+        "26")
+       ("<?php echo intval('0x1A',16);"
+        "26")
+       ("<?php echo intval('077',8);"
+        "63")
+       ("<?php echo intval('1010',2);"
+        "10")
+       ("<?php echo intval('0x1A',0);"
+        "26")
+       ("<?php echo intval('017',0);"
+        "15")
+       ("<?php echo intval('0b101',0);"
+        "5")
+       ("<?php echo intval('-FF',16);"
+        "-255")
+       ("<?php echo intval('42abc');"
+        "42")
+       ("<?php echo intval('42',10);"
+        "42"))
+      "php-e2e-intval-base: ~S"
+      (source expected)
+    (expect (%php-run-capture source) :to-equal expected))
 
 
-(it-sequential "php-e2e-gmdate-weekday"
-  (expect (%php-run-capture "<?php echo gmdate('D',0);") :to-equal "Thu")
-  (expect (%php-run-capture "<?php echo gmdate('l',0);") :to-equal "Thursday")
-  (expect (%php-run-capture "<?php echo gmdate('N',0);") :to-equal "4")
-  (expect (%php-run-capture "<?php echo gmdate('w',0);") :to-equal "4")
-  (expect (%php-run-capture "<?php echo gmdate('D',86400*3);") :to-equal "Sun")
-  (expect (%php-run-capture "<?php echo gmdate('w',86400*3);") :to-equal "0")
-  (expect (%php-run-capture "<?php echo gmdate('N',86400*3);") :to-equal "7")
-  (expect (%php-run-capture "<?php echo gmdate('g:i A',3661);") :to-equal "1:01 AM")
-  (expect (%php-run-capture "<?php echo gmdate('Y-m-d H:i:s',86400);") :to-equal "1970-01-02 00:00:00")
-  (expect (%php-run-capture "<?php echo gmdate('l, F j, Y',0);") :to-equal "Thursday, January 1, 1970"))
+  (it-sequential-each
+      (("<?php echo gmdate('D',0);"
+        "Thu")
+       ("<?php echo gmdate('l',0);"
+        "Thursday")
+       ("<?php echo gmdate('N',0);"
+        "4")
+       ("<?php echo gmdate('w',0);"
+        "4")
+       ("<?php echo gmdate('D',86400*3);"
+        "Sun")
+       ("<?php echo gmdate('w',86400*3);"
+        "0")
+       ("<?php echo gmdate('N',86400*3);"
+        "7")
+       ("<?php echo gmdate('g:i A',3661);"
+        "1:01 AM")
+       ("<?php echo gmdate('Y-m-d H:i:s',86400);"
+        "1970-01-02 00:00:00")
+       ("<?php echo gmdate('l, F j, Y',0);"
+        "Thursday, January 1, 1970"))
+      "php-e2e-gmdate-weekday: ~S"
+      (source expected)
+    (expect (%php-run-capture source) :to-equal expected))
 
 
-(it-sequential "php-e2e-gmdate-formats"
-  (expect (%php-run-capture "<?php echo gmdate('L',0);") :to-equal "0")
-  (expect (%php-run-capture "<?php echo gmdate('L',63072000);") :to-equal "1")
-  (expect (%php-run-capture "<?php echo gmdate('t',0);") :to-equal "31")
-  (expect (%php-run-capture "<?php echo gmdate('t',2678400);") :to-equal "28")
-  (expect (%php-run-capture "<?php echo gmdate('t',65750400);") :to-equal "29")
-  (expect (%php-run-capture "<?php echo gmdate('z',0);") :to-equal "0")
-  (expect (%php-run-capture "<?php echo gmdate('z',86400);") :to-equal "1")
-  (expect (%php-run-capture "<?php echo gmdate('jS',0);") :to-equal "1st")
-  (expect (%php-run-capture "<?php echo gmdate('jS',86400);") :to-equal "2nd")
-  (expect (%php-run-capture "<?php echo gmdate('jS',172800);") :to-equal "3rd")
-  (expect (%php-run-capture "<?php echo gmdate('jS',864000);") :to-equal "11th")
-  (expect (%php-run-capture "<?php echo gmdate('jS',1728000);") :to-equal "21st"))
+  (it-sequential-each
+      (("<?php echo gmdate('L',0);"
+        "0")
+       ("<?php echo gmdate('L',63072000);"
+        "1")
+       ("<?php echo gmdate('t',0);"
+        "31")
+       ("<?php echo gmdate('t',2678400);"
+        "28")
+       ("<?php echo gmdate('t',65750400);"
+        "29")
+       ("<?php echo gmdate('z',0);"
+        "0")
+       ("<?php echo gmdate('z',86400);"
+        "1")
+       ("<?php echo gmdate('jS',0);"
+        "1st")
+       ("<?php echo gmdate('jS',86400);"
+        "2nd")
+       ("<?php echo gmdate('jS',172800);"
+        "3rd")
+       ("<?php echo gmdate('jS',864000);"
+        "11th")
+       ("<?php echo gmdate('jS',1728000);"
+        "21st"))
+      "php-e2e-gmdate-formats: ~S"
+      (source expected)
+    (expect (%php-run-capture source) :to-equal expected))
 
 
-(it-sequential "php-e2e-date-construct-and-udiff"
-  (expect (%php-run-capture "<?php echo gmmktime(0,0,0,1,2,1970);") :to-equal "86400")
-  (expect (%php-run-capture "<?php echo gmdate('Y-m-d',mktime(0,0,0,12,25,2000));") :to-equal "2000-12-25")
-  (expect (%php-run-capture "<?php echo json_encode(array_values(array_udiff([1,2,3,4],[2,4],fn($a,$b)=>$a-$b)));") :to-equal "[1,3]")
-  (expect (%php-run-capture "<?php echo json_encode(array_values(array_uintersect([1,2,3,4],[2,4,5],fn($a,$b)=>$a-$b)));") :to-equal "[2,4]")
-  (expect (%php-run-capture "<?php echo json_encode(array_values(array_udiff(['A','b','C'],['a','B'],fn($x,$y)=>strcasecmp($x,$y))));") :to-equal "[\"C\"]"))
+  (it-sequential-each
+      (("<?php echo gmmktime(0,0,0,1,2,1970);"
+        "86400")
+       ("<?php echo gmdate('Y-m-d',mktime(0,0,0,12,25,2000));"
+        "2000-12-25")
+       ("<?php echo json_encode(array_values(array_udiff([1,2,3,4],[2,4],fn($a,$b)=>$a-$b)));"
+        "[1,3]")
+       ("<?php echo json_encode(array_values(array_uintersect([1,2,3,4],[2,4,5],fn($a,$b)=>$a-$b)));"
+        "[2,4]")
+       ("<?php echo json_encode(array_values(array_udiff(['A','b','C'],['a','B'],fn($x,$y)=>strcasecmp($x,$y))));"
+        "[\"C\"]"))
+      "php-e2e-date-construct-and-udiff: ~S"
+      (source expected)
+    (expect (%php-run-capture source) :to-equal expected))
 
 
   )
