@@ -216,11 +216,14 @@
                            (list (%php-tok-to-cst op-tok) lhs rhs)))))
     lhs))
 
-(defun php-cst-parse-mul (ts)
-  (php-cst-parse-binop ts '("*" "/") #'php-cst-parse-unary))
+(defmacro define-php-cst-binop-level (name ops next-parser)
+  "Define left-associative binary-operator precedence level NAME, parsing
+OPS (a literal list of operator strings) over operands from NEXT-PARSER."
+  `(defun ,name (ts)
+     (php-cst-parse-binop ts ',ops #',next-parser)))
 
-(defun php-cst-parse-add (ts)
-  (php-cst-parse-binop ts '("+" "-" ".") #'php-cst-parse-mul))
+(define-php-cst-binop-level php-cst-parse-mul ("*" "/") php-cst-parse-unary)
+(define-php-cst-binop-level php-cst-parse-add ("+" "-" ".") php-cst-parse-mul)
 
 (defun php-cst-parse-pipe (ts)
   "Parse PHP 8.5 pipe operator."
@@ -233,15 +236,10 @@
                                              (list (%php-tok-to-cst op-tok) lhs rhs)))))
     lhs))
 
-(defun php-cst-parse-cmp (ts)
-  (php-cst-parse-binop ts '("==" "===" "!=" "!==" "<" ">" "<=" ">=")
-                       #'php-cst-parse-pipe))
-
-(defun php-cst-parse-and (ts)
-  (php-cst-parse-binop ts '("&&") #'php-cst-parse-cmp))
-
-(defun php-cst-parse-or (ts)
-  (php-cst-parse-binop ts '("||") #'php-cst-parse-and))
+(define-php-cst-binop-level php-cst-parse-cmp
+    ("==" "===" "!=" "!==" "<" ">" "<=" ">=") php-cst-parse-pipe)
+(define-php-cst-binop-level php-cst-parse-and ("&&") php-cst-parse-cmp)
+(define-php-cst-binop-level php-cst-parse-or ("||") php-cst-parse-and)
 
 (defun php-cst-parse-expr (ts)
   "Parse an expression, including assignment."
