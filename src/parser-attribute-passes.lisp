@@ -169,25 +169,24 @@
                              args))
         (%php-attribute-string-arg (first args)))))
 
-(defun %php-no-discard-function-message (function-key attribute)
-  "Build the user warning message for a discarded #[NoDiscard] function result."
-  (let* ((function-name (string-downcase function-key))
-         (base (format nil "The return value of function ~A() should either be used or intentionally ignored by casting it as (void)"
-                       function-name))
+(defun %php-no-discard-message (kind-label name-key attribute)
+  "Build the user warning message for a discarded #[NoDiscard] KIND-LABEL
+(\"function\" or \"method\") result named by NAME-KEY."
+  (let* ((name (string-downcase name-key))
+         (base (format nil "The return value of ~A ~A() should either be used or intentionally ignored by casting it as (void)"
+                       kind-label name))
          (message (%php-no-discard-message-argument attribute)))
     (if (and message (plusp (length message)))
         (format nil "~A, ~A" base message)
         base)))
 
+(defun %php-no-discard-function-message (function-key attribute)
+  "Build the user warning message for a discarded #[NoDiscard] function result."
+  (%php-no-discard-message "function" function-key attribute))
+
 (defun %php-no-discard-method-message (method-key attribute)
   "Build the user warning message for a discarded #[NoDiscard] method result."
-  (let* ((method-name (string-downcase method-key))
-         (base (format nil "The return value of method ~A() should either be used or intentionally ignored by casting it as (void)"
-                       method-name))
-         (message (%php-no-discard-message-argument attribute)))
-    (if (and message (plusp (length message)))
-        (format nil "~A, ~A" base message)
-        base)))
+  (%php-no-discard-message "method" method-key attribute))
 
 (defun %php-symbol-name-key (symbol)
   "Return SYMBOL's case-insensitive PHP lookup key."
