@@ -22,6 +22,94 @@
   "Remove BOUND-VARS from REF-VARS for recursive body rewriting."
   (set-difference ref-vars (mapcar #'%php-param-name bound-vars) :test #'eq))
 
+(defparameter +php-ref-rewrite-simple-node-specs+
+  ;; (predicate constructor (keyword accessor kind)...) — KIND is :walk (recurse
+  ;; via WALK), :walk-list (recurse via WALK-LIST), :walk-initargs (recurse via
+  ;; WALK-INITARGS), or :pass (copy verbatim). Covers every %PHP-REWRITE-REF-VARS
+  ;; node type whose rebuild is a pure field-by-field copy with no additional
+  ;; logic; node types with ref-var membership tests, %PHP-SHADOW-REF-VARS calls,
+  ;; or non-uniform per-element handling stay as their own explicit COND clauses.
+  (list
+   (list #'ast-binop-p #'make-ast-binop
+         (list :op #'ast-binop-op :pass)
+         (list :lhs #'ast-binop-lhs :walk)
+         (list :rhs #'ast-binop-rhs :walk))
+   (list #'ast-if-p #'make-ast-if
+         (list :cond #'ast-if-cond :walk)
+         (list :then #'ast-if-then :walk)
+         (list :else #'ast-if-else :walk))
+   (list #'ast-progn-p #'make-ast-progn
+         (list :forms #'ast-progn-forms :walk-list))
+   (list #'ast-print-p #'make-ast-print
+         (list :expr #'ast-print-expr :walk))
+   (list #'ast-call-p #'make-ast-call
+         (list :func #'ast-call-func :walk)
+         (list :args #'ast-call-args :walk-list))
+   (list #'ast-apply-p #'make-ast-apply
+         (list :func #'ast-apply-func :walk)
+         (list :args #'ast-apply-args :walk-list))
+   (list #'ast-block-p #'make-ast-block
+         (list :name #'ast-block-name :pass)
+         (list :body #'ast-block-body :walk-list))
+   (list #'ast-return-from-p #'make-ast-return-from
+         (list :name #'ast-return-from-name :pass)
+         (list :value #'ast-return-from-value :walk))
+   (list #'ast-values-p #'make-ast-values
+         (list :forms #'ast-values-forms :walk-list))
+   (list #'ast-multiple-value-call-p #'make-ast-multiple-value-call
+         (list :func #'ast-mv-call-func :walk)
+         (list :args #'ast-mv-call-args :walk-list))
+   (list #'ast-multiple-value-prog1-p #'make-ast-multiple-value-prog1
+         (list :first #'ast-mv-prog1-first :walk)
+         (list :forms #'ast-mv-prog1-forms :walk-list))
+   (list #'ast-catch-p #'make-ast-catch
+         (list :tag #'ast-catch-tag :walk)
+         (list :body #'ast-catch-body :walk-list))
+   (list #'ast-throw-p #'make-ast-throw
+         (list :tag #'ast-throw-tag :walk)
+         (list :value #'ast-throw-value :walk))
+   (list #'ast-unwind-protect-p #'make-ast-unwind-protect
+         (list :protected #'ast-unwind-protected :walk)
+         (list :cleanup #'ast-unwind-cleanup :walk-list))
+   (list #'ast-list-p #'make-ast-list
+         (list :elements #'ast-list-elements :walk-list))
+   (list #'ast-the-p #'make-ast-the
+         (list :type #'ast-the-type :pass)
+         (list :value #'ast-the-value :walk))
+   (list #'ast-make-instance-p #'make-ast-make-instance
+         (list :class #'ast-make-instance-class :walk)
+         (list :initargs #'ast-make-instance-initargs :walk-initargs))
+   (list #'ast-slot-value-p #'make-ast-slot-value
+         (list :object #'ast-slot-value-object :walk)
+         (list :slot #'ast-slot-value-slot :pass))
+   (list #'ast-set-slot-value-p #'make-ast-set-slot-value
+         (list :object #'ast-set-slot-value-object :walk)
+         (list :slot #'ast-set-slot-value-slot :pass)
+         (list :value #'ast-set-slot-value-value :walk))
+   (list #'ast-set-gethash-p #'make-ast-set-gethash
+         (list :key #'ast-set-gethash-key :walk)
+         (list :table #'ast-set-gethash-table :walk)
+         (list :value #'ast-set-gethash-value :walk)))
+  "Field-rewrite specs for %PHP-REWRITE-REF-VARS's structurally-uniform AST node types.")
+
+(defun %php-find-simple-node-spec (node)
+  "Return the +PHP-REF-REWRITE-SIMPLE-NODE-SPECS+ entry whose predicate matches NODE."
+  (find-if (lambda (spec) (funcall (first spec) node))
+           +php-ref-rewrite-simple-node-specs+))
+
+(defun %php-rewrite-simple-node (node spec refs walk-fn walk-list-fn walk-initargs-fn)
+  "Rebuild NODE from SPEC, walking fields per their KIND and copying :pass fields."
+  (destructuring-bind (predicate constructor . field-specs) spec
+    (declare (ignore predicate))
+    (apply constructor
+           (loop for (keyword accessor kind) in field-specs
+                 append (list keyword
+                              (ecase kind
+                                (:pass (funcall accessor node))
+                                (:walk (funcall walk-fn (funcall accessor node) refs))
+                                (:walk-list (funcall walk-list-fn (funcall accessor node) refs))
+                                (:walk-initargs (funcall walk-initargs-fn (funcall accessor node) refs))))))))
+
 (defun %php-rewrite-ref-vars (node-or-list ref-vars)
   "Rewrite reads/writes of REF-VARS so PHP by-reference locals use ref boxes."
   (labels ((walk-list (forms refs)
@@ -52,18 +140,6 @@
                   (if (ref-var-p var refs)
                       (call 'cl-cc/php::%php-ref-set! (make-ast-var :name var) value)
                       (make-ast-setq :var var :value value))))
-               ((ast-binop-p node)
-                (make-ast-binop :op (ast-binop-op node)
-                                :lhs (walk (ast-binop-lhs node) refs)
-                                :rhs (walk (ast-binop-rhs node) refs)))
-               ((ast-if-p node)
-                (make-ast-if :cond (walk (ast-if-cond node) refs)
-                             :then (walk (ast-if-then node) refs)
-                             :else (walk (ast-if-else node) refs)))
-               ((ast-progn-p node)
-                (make-ast-progn :forms (walk-list (ast-progn-forms node) refs)))
-               ((ast-print-p node)
-                (make-ast-print :expr (walk (ast-print-expr node) refs)))
                ((ast-let-p node)
                 (let* ((bindings (ast-let-bindings node))
                        (ref-bindings (remove-if-not (lambda (binding)
@@ -122,18 +198,6 @@
                                   :declarations (ast-defun-declarations node)
                                   :documentation (ast-defun-documentation node)
                                   :body (walk-list (ast-defun-body node) body-refs))))
-               ((ast-call-p node)
-                (make-ast-call :func (walk (ast-call-func node) refs)
-                               :args (walk-list (ast-call-args node) refs)))
-               ((ast-apply-p node)
-                (make-ast-apply :func (walk (ast-apply-func node) refs)
-                                :args (walk-list (ast-apply-args node) refs)))
-               ((ast-block-p node)
-                (make-ast-block :name (ast-block-name node)
-                                :body (walk-list (ast-block-body node) refs)))
-               ((ast-return-from-p node)
-                (make-ast-return-from :name (ast-return-from-name node)
-                                      :value (walk (ast-return-from-value node) refs)))
                ((ast-tagbody-p node)
                 (make-ast-tagbody
                  :tags (mapcar (lambda (tag)
@@ -141,28 +205,11 @@
                                       (walk tag refs)
                                       tag))
                                 (ast-tagbody-tags node))))
-               ((ast-values-p node)
-                (make-ast-values :forms (walk-list (ast-values-forms node) refs)))
-               ((ast-multiple-value-call-p node)
-                (make-ast-multiple-value-call :func (walk (ast-mv-call-func node) refs)
-                                              :args (walk-list (ast-mv-call-args node) refs)))
-               ((ast-multiple-value-prog1-p node)
-                (make-ast-multiple-value-prog1 :first (walk (ast-mv-prog1-first node) refs)
-                                               :forms (walk-list (ast-mv-prog1-forms node) refs)))
                ((ast-multiple-value-bind-p node)
                 (let ((body-refs (%php-shadow-ref-vars refs (ast-mvb-vars node))))
                   (make-ast-multiple-value-bind :vars (ast-mvb-vars node)
                                                 :values-form (walk (ast-mvb-values-form node) refs)
                                                 :body (walk-list (ast-mvb-body node) body-refs))))
-               ((ast-catch-p node)
-                (make-ast-catch :tag (walk (ast-catch-tag node) refs)
-                                :body (walk-list (ast-catch-body node) refs)))
-               ((ast-throw-p node)
-                (make-ast-throw :tag (walk (ast-throw-tag node) refs)
-                                :value (walk (ast-throw-value node) refs)))
-               ((ast-unwind-protect-p node)
-                (make-ast-unwind-protect :protected (walk (ast-unwind-protected node) refs)
-                                         :cleanup (walk-list (ast-unwind-cleanup node) refs)))
                ((ast-handler-case-p node)
                 (make-ast-handler-case :form (walk (ast-handler-case-form node) refs)
                                        :clauses (mapcar (lambda (clause)
@@ -172,26 +219,11 @@
                                                                              (%php-shadow-ref-vars refs
                                                                                                     (when var (list var)))))))
                                                         (ast-handler-case-clauses node))))
-               ((ast-list-p node)
-                (make-ast-list :elements (walk-list (ast-list-elements node) refs)))
-               ((ast-the-p node)
-                (make-ast-the :type (ast-the-type node)
-                              :value (walk (ast-the-value node) refs)))
-               ((ast-make-instance-p node)
-                (make-ast-make-instance :class (walk (ast-make-instance-class node) refs)
-                                        :initargs (walk-initargs (ast-make-instance-initargs node) refs)))
-               ((ast-slot-value-p node)
-                (make-ast-slot-value :object (walk (ast-slot-value-object node) refs)
-                                     :slot (ast-slot-value-slot node)))
-               ((ast-set-slot-value-p node)
-                (make-ast-set-slot-value :object (walk (ast-set-slot-value-object node) refs)
-                                         :slot (ast-set-slot-value-slot node)
-                                         :value (walk (ast-set-slot-value-value node) refs)))
-               ((ast-set-gethash-p node)
-                (make-ast-set-gethash :key (walk (ast-set-gethash-key node) refs)
-                                      :table (walk (ast-set-gethash-table node) refs)
-                                      :value (walk (ast-set-gethash-value node) refs)))
-               (t node))))
+               (t (let ((spec (%php-find-simple-node-spec node)))
+                    (if spec
+                        (%php-rewrite-simple-node node spec refs
+                                                  #'walk #'walk-list #'walk-initargs)
+                        node))))))
     (walk node-or-list ref-vars)))
 
 (defun %php-reference-marker (expr)
