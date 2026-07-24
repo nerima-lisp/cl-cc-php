@@ -437,38 +437,18 @@
       "php-e2e-float-stringification: ~S"
       (source expected)
     (expect (%php-run-capture source) :to-equal expected))
-  (it-sequential
-    "php-e2e-first-class-callable"
-    (expect
-      (%php-run-capture
-        "<?php function sq($x){return $x*$x;} $f=sq(...); echo $f(5);")
-      :to-equal
-      "25")
-    (expect
-      (%php-run-capture
-        "<?php function sub($a,$b){return $a-$b;} $f=sub(...); echo $f(10,3);")
-      :to-equal
-      "7")
-    (expect
-      (%php-run-capture
-        "<?php function dbl($x){return $x*2;} $f=dbl(...); echo array_sum(array_map($f,[1,2,3]));")
-      :to-equal
-      "12")
-    (expect
-      (%php-run-capture "<?php $f=strlen(...); echo $f('hello');")
-      :to-equal
-      "5")
-    (expect
-      (%php-run-capture
-        "<?php function sq($x){return $x*$x;} echo array_sum(array_map(sq(...),[1,2,3]));")
-      :to-equal
-      "14")
-    (expect
-      (%php-run-capture "<?php function sq($x){return $x*$x;} echo sq(5);")
-      :to-equal
-      "25")
-    (expect
-      (%php-run-capture
-        "<?php function s(...$n){return array_sum($n);} $a=[1,2]; echo s(...$a);")
-      :to-equal
-      "3")))
+  (it-sequential-each
+      (("<?php function sq($x){return $x*$x;} $f=sq(...); echo $f(5);" "25")
+       ("<?php function sub($a,$b){return $a-$b;} $f=sub(...); echo $f(10,3);"
+        "7")
+       ("<?php function dbl($x){return $x*2;} $f=dbl(...); echo array_sum(array_map($f,[1,2,3]));"
+        "12")
+       ("<?php $f=strlen(...); echo $f('hello');" "5")
+       ("<?php function sq($x){return $x*$x;} echo array_sum(array_map(sq(...),[1,2,3]));"
+        "14")
+       ("<?php function sq($x){return $x*$x;} echo sq(5);" "25")
+       ("<?php function s(...$n){return array_sum($n);} $a=[1,2]; echo s(...$a);"
+        "3"))
+      "php-e2e-first-class-callable: ~S"
+      (source expected)
+    (expect (%php-run-capture source) :to-equal expected)))
