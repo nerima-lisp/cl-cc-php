@@ -6,8 +6,10 @@
   (:import-from :cl-weave
                 #:expect
                 #:it-sequential
+                #:it-property
                 #:signals
-                #:run-all)
+                #:run-all
+                #:gen-string)
   (:export #:run-tests))
 
 (in-package :cl-cc-php/test)

@@ -130,6 +130,7 @@
    (:file "php-ctype-tests")
    (:file "php-string-multibyte-tests")
    (:file "php-string-extra-tests")
+   (:file "php-string-case-property-tests")
    (:file "php84-tests-language")
    (:file "php85-tests-language")
    (:file "php85-tests-runtime-behavior")
