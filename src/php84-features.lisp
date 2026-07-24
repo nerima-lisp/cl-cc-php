@@ -360,35 +360,20 @@ STREAM must begin with T-LPAREN. Returns (values callable-ref rest known-vars)."
   "Return true when FIBER is suspended."
   (php-fiber-suspended-p (%php-fiber-state fiber)))
 
-(defun %php-fiber-start-method (self &rest args)
-  (apply #'%php-fiber-start self args))
-
-(defun %php-fiber-resume-method (self &optional (value nil))
-  (%php-fiber-resume self value))
-
-(defun %php-fiber-get-return-method (self)
-  (%php-fiber-get-return self))
-
-(defun %php-fiber-is-started-method (self)
-  (%php-fiber-started-p self))
-
-(defun %php-fiber-is-suspended-method (self)
-  (%php-fiber-suspended-p self))
-
-(defun %php-fiber-is-running-method (self)
-  (%php-fiber-running-p self))
-
-(defun %php-fiber-is-terminated-method (self)
-  (%php-fiber-terminated-p self))
-
+;; %php-fiber-install-methods below only needs each name's implementation
+;; SYMBOL (it looks up the function via SYMBOL-FUNCTION), so the table
+;; references %php-fiber-start/-resume/-get-return/-started-p/-suspended-p/
+;; -running-p/-terminated-p directly — their (fiber ...) parameter lists
+;; already match the (self ...) shape a Fiber method call needs, with no
+;; forwarding wrapper required.
 (defparameter +php-fiber-methods+
-  '(("start"        %php-fiber-start-method)
-    ("resume"       %php-fiber-resume-method)
-    ("getReturn"    %php-fiber-get-return-method)
-    ("isStarted"    %php-fiber-is-started-method)
-    ("isSuspended"  %php-fiber-is-suspended-method)
-    ("isRunning"    %php-fiber-is-running-method)
-    ("isTerminated" %php-fiber-is-terminated-method))
+  '(("start"        %php-fiber-start)
+    ("resume"       %php-fiber-resume)
+    ("getReturn"    %php-fiber-get-return)
+    ("isStarted"    %php-fiber-started-p)
+    ("isSuspended"  %php-fiber-suspended-p)
+    ("isRunning"    %php-fiber-running-p)
+    ("isTerminated" %php-fiber-terminated-p))
   "PHP Fiber object method names and their Common Lisp implementations.")
 
 (defun %php-fiber-make (callback)
