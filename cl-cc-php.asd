@@ -90,3 +90,44 @@
     (:file "unsupported")
     (:file "grammar")
    (:file "grammar-stmt")))
+
+;; A separate system: the e2e suites need to compile and *run* PHP source
+;; through the full pipeline (cl-cc/compile:compile-string, cl-cc/vm:run-compiled),
+;; which pulls in far more than cl-cc-php's own :depends-on — folding
+;; :cl-cc-pipeline into the main system would make every consumer of the PHP
+;; frontend drag along codegen/optimize/regalloc/emit for no reason. Load this
+;; system to run the test suite.
+(asdf:defsystem :cl-cc-php/tests
+  :description "Test suite for cl-cc-php, run directly on cl-weave"
+  :author "takeokunn <bararararatty@gmail.com>"
+  :license "MIT"
+  :homepage "https://github.com/nerima-lisp/cl-cc-php"
+  :bug-tracker "https://github.com/nerima-lisp/cl-cc-php/issues"
+  :source-control (:git "https://github.com/nerima-lisp/cl-cc-php")
+  :depends-on (:cl-cc-php :cl-cc-pipeline :cl-weave)
+  :pathname "tests"
+  :serial t
+  :components
+  ((:file "package")
+   (:file "php-parser-test-support")
+   (:file "php-e2e-test-support")
+   (:file "php-tests")
+   (:file "php-grammar-tests")
+   (:file "php-grammar-stmt-tests")
+   (:file "php-parser-core-stmt-tests")
+   (:file "php-parser-control-array-tests")
+   (:file "php-parser-expression-tests")
+   (:file "php-parser-namespace-tests")
+   (:file "php-parser-type-class-tests")
+   (:file "php-interfaces-tests")
+   (:file "php-traits-tests")
+   (:file "php84-tests-language")
+   (:file "php85-tests-language")
+   (:file "php85-tests-runtime-behavior")
+   (:file "php85-tests-runtime-objects")
+   (:file "php85-tests-runtime-tokenizer")
+   (:file "php-compile-array-e2e-tests")
+   (:file "php-compile-builtins-e2e-tests")
+   (:file "php-compile-core-e2e-tests")
+   (:file "php-compile-object-e2e-tests")
+   (:file "php-compile-reference-e2e-tests")))

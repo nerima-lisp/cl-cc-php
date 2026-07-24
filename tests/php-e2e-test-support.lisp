@@ -1,4 +1,4 @@
-(in-package :cl-cc/test)
+(in-package :cl-cc-php/test)
 
 
 
@@ -7,7 +7,7 @@
     "Compile PHP SOURCE to VM and run it, returning everything it echoed as a
 string. compile-string with :language :php registers the PHP host bridges, so a
 fresh VM state runs the program end-to-end."
-    (let* ((result  (cl-cc:compile-string source :target :vm :language :php))
+    (let* ((result  (cl-cc/compile:compile-string source :target :vm :language :php))
            (program (cl-cc/compile:compilation-result-program result))
            (out     (make-string-output-stream)))
       (cl-cc/vm:run-compiled program :output-stream out)
@@ -19,7 +19,7 @@ fresh VM state runs the program end-to-end."
     "Compile PHP SOURCE and capture both stdout and error output."
     (let ((cl-cc/php::*php-ini-settings* ini-settings)
           (cl-cc/php::*php-error-reporting-level* 32767))
-      (let* ((result  (cl-cc:compile-string source :target :vm :language :php))
+      (let* ((result  (cl-cc/compile:compile-string source :target :vm :language :php))
              (program (cl-cc/compile:compilation-result-program result))
              (out     (make-string-output-stream))
              (err     (make-string-output-stream)))

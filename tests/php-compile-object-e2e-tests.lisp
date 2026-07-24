@@ -1,4 +1,6 @@
-(in-package :cl-cc/test)
+(in-package :cl-cc-php/test)
+
+(describe "PHP compile e2e: objects"
 
 
 (it-sequential "php-e2e-static-members"
@@ -77,7 +79,7 @@
 
 
 (it-sequential "php-compile-enum-static-builtins"
-  (let ((result (cl-cc:compile-string
+  (let ((result (cl-cc/compile:compile-string
                  "<?php enum Status: int { case Draft = 0; case Published = 1; } $a = Status::Published; $b = Status::from(1); $c = Status::tryFrom(99); $d = Status::cases();"
                  :target :vm
                  :language :php)))
@@ -189,3 +191,5 @@
                    "<?php $f=new SplFixedArray(2); $f->offsetSet(0,'x'); $f->offsetSet(1,'y'); $f->setSize(3); $f->offsetSet(2,'z'); echo $f->offsetGet(0).$f->offsetGet(1).$f->getSize().$f->offsetGet(2);") :to-equal "xy3z")
   (expect (%php-run-capture
                    "<?php $min=new SplMinHeap(); $max=new SplMaxHeap(); foreach([3,1,2] as $v){$min->insert($v);$max->insert($v);} echo $min->extract().$max->extract();") :to-equal "13"))
+
+  )

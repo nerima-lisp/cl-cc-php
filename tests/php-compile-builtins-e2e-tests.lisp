@@ -1,4 +1,6 @@
-(in-package :cl-cc/test)
+(in-package :cl-cc-php/test)
+
+(describe "PHP compile e2e: builtins"
 
 
 (it-sequential "php-runtime-yield-helper-preserves-value"
@@ -410,6 +412,5 @@ echo json_encode(headers_list());") :to-equal "[\"X-Test: b\",\"Set-Cookie: a=1\
   (expect (%php-run-capture "<?php echo json_encode(array_values(array_uintersect([1,2,3,4],[2,4,5],fn($a,$b)=>$a-$b)));") :to-equal "[2,4]")
   (expect (%php-run-capture "<?php echo json_encode(array_values(array_udiff(['A','b','C'],['a','B'],fn($x,$y)=>strcasecmp($x,$y))));") :to-equal "[\"C\"]"))
 
-(eval-when (:load-toplevel :execute)
-  (%run-registered-tests-from-source-file
-   (or *compile-file-pathname* *load-pathname*)))
+
+  )

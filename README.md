@@ -15,12 +15,27 @@ Source extracted from the cl-cc monorepo. Unlike the dependency-free leaf repos
 (cl-cc-ast), cl-cc-php depends on cl-cc-ast, cl-cc-bootstrap, cl-cc-parse, and
 cl-cc-vm (the last three still internal to cl-cc), so standalone Nix CI is
 pending those systems being consumable as flake inputs (or cl-cc consumed as a
-flake input). The `.asd` loads correctly against a cl-cc checkout.
+flake input). The `.asd` loads correctly against a cl-cc checkout, and the
+`:cl-cc-php/tests` system (see below) runs the full test suite directly on
+[cl-weave](https://github.com/nerima-lisp/cl-weave) with no adapter layer.
 
 ## Usage
 
 ```lisp
 (asdf:load-system :cl-cc-php)
+```
+
+## Testing
+
+Tests live under `tests/` and run on [cl-weave](https://github.com/nerima-lisp/cl-weave)
+directly — no compatibility shim, no umbrella `cl-cc/test` package. Loading
+`:cl-cc-php/tests` additionally requires `cl-cc-pipeline` (for the e2e suites,
+which compile and run PHP source end-to-end) and `cl-weave` itself to be
+reachable in the ASDF source-registry:
+
+```lisp
+(asdf:load-system :cl-cc-php/tests)
+(cl-cc-php/test:run-tests)
 ```
 
 ## License

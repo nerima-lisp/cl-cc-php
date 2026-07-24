@@ -1,7 +1,8 @@
 ;;;; tests/unit/frontend/php-tests.lisp
 ;;;; Unit tests for PHP frontend: lexer and parser
+(in-package :cl-cc-php/test)
 
-(in-package :cl-cc/test)
+(describe "PHP lexer and parser"
 
 
 ;;; Lexer helpers (local, not imported from cl-cc)
@@ -134,10 +135,10 @@
   (let ((ast (first (cl-cc/php:parse-php-source "<?php echo 42;"))))
     ;; echo lowers to a PRINC call (no trailing newline) wrapping a %php-concat
     ;; call (PHP string conversion); the echoed int is the concat's first arg.
-    (expect (cl-cc:ast-call-p ast) :to-be-truthy)
-    (let ((concat (first (cl-cc:ast-call-args ast))))
-      (expect (cl-cc:ast-call-p concat) :to-be-truthy)
-      (expect (ast-int-p (first (cl-cc:ast-call-args concat))) :to-be-truthy)))
+    (expect (cl-cc/ast:ast-call-p ast) :to-be-truthy)
+    (let ((concat (first (cl-cc/ast:ast-call-args ast))))
+      (expect (cl-cc/ast:ast-call-p concat) :to-be-truthy)
+      (expect (ast-int-p (first (cl-cc/ast:ast-call-args concat))) :to-be-truthy)))
   (let ((ast (first (cl-cc/php:parse-php-source "<?php $x = 42;"))))
     (expect (or (ast-let-p ast) (ast-setq-p ast)) :to-be-truthy))
   (let ((ast (first (cl-cc/php:parse-php-source "<?php if ($x) { echo 1; }"))))
@@ -166,6 +167,5 @@
     (expect (ast-quote-p ast) :to-be-truthy)
     (expect (ast-quote-value ast) :to-equal "hello")))
 
-(eval-when (:load-toplevel :execute)
-  (%run-registered-tests-from-source-file
-   (or *compile-file-pathname* *load-pathname*)))
+
+  )

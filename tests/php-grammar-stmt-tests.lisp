@@ -1,4 +1,6 @@
-(in-package :cl-cc/test)
+(in-package :cl-cc-php/test)
+
+(describe "PHP grammar statement lowering"
 
 
 (defun %php-cst-parse-one (source)
@@ -89,10 +91,10 @@
     (expect diagnostics :to-equal nil)
     (expect (= 1 (length forms)) :to-be-truthy)
     (let ((node (first forms)))
-      (expect (cl-cc:cst-node-kind node) :to-be :for)
-      (expect (= 5 (length (cl-cc:cst-interior-children node))) :to-be-truthy)
-      (let ((body-node (fifth (cl-cc:cst-interior-children node))))
-        (expect (cl-cc:cst-node-kind body-node) :to-be :body)))))
+      (expect (cl-cc/parse:cst-node-kind node) :to-be :for)
+      (expect (= 5 (length (cl-cc/parse:cst-interior-children node))) :to-be-truthy)
+      (let ((body-node (fifth (cl-cc/parse:cst-interior-children node))))
+        (expect (cl-cc/parse:cst-node-kind body-node) :to-be :body)))))
 
 (it-sequential "php-grammar-stmt-foreach-key-value-has-four-children"
   (destructuring-bind (forms diagnostics)
@@ -100,8 +102,8 @@
     (expect diagnostics :to-equal nil)
     (expect (= 1 (length forms)) :to-be-truthy)
     (let ((node (first forms)))
-      (expect (cl-cc:cst-node-kind node) :to-be :foreach)
-      (expect (= 4 (length (cl-cc:cst-interior-children node))) :to-be-truthy))))
+      (expect (cl-cc/parse:cst-node-kind node) :to-be :foreach)
+      (expect (= 4 (length (cl-cc/parse:cst-interior-children node))) :to-be-truthy))))
 
 ;;; P3a+b: function return type and param defaults
 (it-sequential "php-grammar-stmt-function-with-return-type"
@@ -109,14 +111,14 @@
       (%php-cst-parse-one "<?php function add($a, $b): int { return $a + $b; }")
     (expect diagnostics :to-equal nil)
     (expect (= 1 (length forms)) :to-be-truthy)
-    (expect (cl-cc:cst-node-kind (first forms)) :to-be :function-def)))
+    (expect (cl-cc/parse:cst-node-kind (first forms)) :to-be :function-def)))
 
 (it-sequential "php-grammar-stmt-function-with-default-param"
   (destructuring-bind (forms diagnostics)
       (%php-cst-parse-one "<?php function greet($name = \"world\") { return $name; }")
     (expect diagnostics :to-equal nil)
     (expect (= 1 (length forms)) :to-be-truthy)
-    (expect (cl-cc:cst-node-kind (first forms)) :to-be :function-def)))
+    (expect (cl-cc/parse:cst-node-kind (first forms)) :to-be :function-def)))
 
 ;;; P3c: class implements — single and multiple
 (it-sequential "php-grammar-stmt-class-single-implements"
@@ -124,14 +126,14 @@
       (%php-cst-parse-one "<?php class Box implements Iface { public function get($x) { return $x; } }")
     (expect diagnostics :to-equal nil)
     (expect (= 1 (length forms)) :to-be-truthy)
-    (expect (cl-cc:cst-node-kind (first forms)) :to-be :class-def)))
+    (expect (cl-cc/parse:cst-node-kind (first forms)) :to-be :class-def)))
 
 (it-sequential "php-grammar-stmt-class-multiple-implements"
   (destructuring-bind (forms diagnostics)
       (%php-cst-parse-one "<?php class Box implements IfaceA, IfaceB { public $x; }")
     (expect diagnostics :to-equal nil)
     (expect (= 1 (length forms)) :to-be-truthy)
-    (expect (cl-cc:cst-node-kind (first forms)) :to-be :class-def)))
+    (expect (cl-cc/parse:cst-node-kind (first forms)) :to-be :class-def)))
 
 ;;; P4: structural assertions on simple statements
 (it-sequential "php-grammar-stmt-echo-has-two-children"
@@ -140,34 +142,34 @@
     (expect diagnostics :to-equal nil)
     (expect (= 1 (length forms)) :to-be-truthy)
     (let ((node (first forms)))
-      (expect (cl-cc:cst-node-kind node) :to-be :echo)
-      (expect (= 2 (length (cl-cc:cst-interior-children node))) :to-be-truthy))))
+      (expect (cl-cc/parse:cst-node-kind node) :to-be :echo)
+      (expect (= 2 (length (cl-cc/parse:cst-interior-children node))) :to-be-truthy))))
 
 (it-sequential "php-grammar-stmt-return-with-value-has-two-children"
   (destructuring-bind (forms diagnostics)
       (%php-cst-parse-one "<?php return 42;")
     (expect diagnostics :to-equal nil)
     (let ((node (first forms)))
-      (expect (cl-cc:cst-node-kind node) :to-be :return)
-      (expect (= 2 (length (cl-cc:cst-interior-children node))) :to-be-truthy))))
+      (expect (cl-cc/parse:cst-node-kind node) :to-be :return)
+      (expect (= 2 (length (cl-cc/parse:cst-interior-children node))) :to-be-truthy))))
 
 (it-sequential "php-grammar-stmt-bare-return-has-one-child"
   (destructuring-bind (forms diagnostics)
       (%php-cst-parse-one "<?php return;")
     (expect diagnostics :to-equal nil)
     (let ((node (first forms)))
-      (expect (cl-cc:cst-node-kind node) :to-be :return)
-      (expect (= 1 (length (cl-cc:cst-interior-children node))) :to-be-truthy))))
+      (expect (cl-cc/parse:cst-node-kind node) :to-be :return)
+      (expect (= 1 (length (cl-cc/parse:cst-interior-children node))) :to-be-truthy))))
 
 (it-sequential "php-grammar-stmt-if-only-has-then-no-else"
   (destructuring-bind (forms diagnostics)
       (%php-cst-parse-one "<?php if ($x) { echo 1; }")
     (expect diagnostics :to-equal nil)
     (let ((node (first forms)))
-      (expect (cl-cc:cst-node-kind node) :to-be :if)
-      (let ((kinds (mapcar #'cl-cc:cst-node-kind
-                           (remove-if-not #'cl-cc:cst-interior-p
-                                          (cl-cc:cst-interior-children node)))))
+      (expect (cl-cc/parse:cst-node-kind node) :to-be :if)
+      (let ((kinds (mapcar #'cl-cc/parse:cst-node-kind
+                           (remove-if-not #'cl-cc/parse:cst-interior-p
+                                          (cl-cc/parse:cst-interior-children node)))))
         (expect (member :then kinds) :to-be-truthy)
         (expect (member :else kinds) :to-be-falsy)))))
 
@@ -176,10 +178,10 @@
       (%php-cst-parse-one "<?php if ($x) { echo 1; } else { echo 2; }")
     (expect diagnostics :to-equal nil)
     (let ((node (first forms)))
-      (expect (cl-cc:cst-node-kind node) :to-be :if)
-      (let ((kinds (mapcar #'cl-cc:cst-node-kind
-                           (remove-if-not #'cl-cc:cst-interior-p
-                                          (cl-cc:cst-interior-children node)))))
+      (expect (cl-cc/parse:cst-node-kind node) :to-be :if)
+      (let ((kinds (mapcar #'cl-cc/parse:cst-node-kind
+                           (remove-if-not #'cl-cc/parse:cst-interior-p
+                                          (cl-cc/parse:cst-interior-children node)))))
         (expect (member :then kinds) :to-be-truthy)
         (expect (member :else kinds) :to-be-truthy)))))
 
@@ -188,13 +190,12 @@
       (%php-cst-parse-one "<?php try { echo 1; } catch (Ex $e) { echo 2; }")
     (expect diagnostics :to-equal nil)
     (let ((node (first forms)))
-      (expect (cl-cc:cst-node-kind node) :to-be :try-catch)
-      (let ((kinds (mapcar #'cl-cc:cst-node-kind
-                           (remove-if-not #'cl-cc:cst-interior-p
-                                          (cl-cc:cst-interior-children node)))))
+      (expect (cl-cc/parse:cst-node-kind node) :to-be :try-catch)
+      (let ((kinds (mapcar #'cl-cc/parse:cst-node-kind
+                           (remove-if-not #'cl-cc/parse:cst-interior-p
+                                          (cl-cc/parse:cst-interior-children node)))))
         (expect (member :try-body kinds) :to-be-truthy)
         (expect (member :catch kinds) :to-be-truthy)))))
 
-(eval-when (:load-toplevel :execute)
-  (%run-registered-tests-from-source-file
-   (or *compile-file-pathname* *load-pathname*)))
+
+  )

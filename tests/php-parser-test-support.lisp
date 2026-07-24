@@ -1,4 +1,4 @@
-(in-package :cl-cc/test)
+(in-package :cl-cc-php/test)
 
 
 (defun %php-first (src)
@@ -8,14 +8,14 @@
 (defun %php-first-binding-value (src)
   "Parse SRC as an assignment and return the value expression from the first binding."
   (let ((ast (%php-first src)))
-    (expect (cl-cc:ast-let-p ast) :to-be-truthy)
-    (cdr (first (cl-cc:ast-let-bindings ast)))))
+    (expect (cl-cc/ast:ast-let-p ast) :to-be-truthy)
+    (cdr (first (cl-cc/ast:ast-let-bindings ast)))))
 
 (defun %php-call-name (ast)
   "Return the symbol name for an AST-CALL function when it is a variable."
-  (when (and (cl-cc:ast-call-p ast)
-             (cl-cc:ast-var-p (cl-cc:ast-call-func ast)))
-    (symbol-name (cl-cc:ast-var-name (cl-cc:ast-call-func ast)))))
+  (when (and (cl-cc/ast:ast-call-p ast)
+             (cl-cc/ast:ast-var-p (cl-cc/ast:ast-call-func ast)))
+    (symbol-name (cl-cc/ast:ast-var-name (cl-cc/ast:ast-call-func ast)))))
 
 (defun %php-assert-full-source-unsupported (src)
   "Assert that checking every parsed form in SRC rejects unsupported PHP."
