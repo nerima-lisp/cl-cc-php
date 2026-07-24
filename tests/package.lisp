@@ -6,6 +6,7 @@
   (:import-from :cl-weave
                 #:expect
                 #:it-sequential
+                #:it-sequential-each
                 #:it-property
                 #:signals
                 #:run-all
