@@ -13,11 +13,15 @@ monorepo as a **plugin repo**.
 
 Source extracted from the cl-cc monorepo. Unlike the dependency-free leaf repos
 (cl-cc-ast), cl-cc-php depends on cl-cc-ast, cl-cc-bootstrap, cl-cc-parse, and
-cl-cc-vm (the last three still internal to cl-cc), so standalone Nix CI is
-pending those systems being consumable as flake inputs (or cl-cc consumed as a
-flake input). The `.asd` loads correctly against a cl-cc checkout, and the
-`:cl-cc-php/tests` system (see below) runs the full test suite directly on
-[cl-weave](https://github.com/nerima-lisp/cl-weave) with no adapter layer.
+cl-cc-vm — bootstrap and vm are the compiler's self-referential core and are
+an explicit non-goal for further splitting (see cl-cc's
+`docs/repo-split-design.md`), so `flake.nix` pulls them from a `cl-cc`
+checkout as a plain (non-flake) source tree, the same pattern cl-cc's own
+flake uses for cl-prolog/cl-weave/cl-cc-ast. `nix flake check` builds and runs
+the full suite hermetically. The `.asd` also loads correctly against a bare
+cl-cc checkout outside Nix, and the `:cl-cc-php/tests` system (see below) runs
+directly on [cl-weave](https://github.com/nerima-lisp/cl-weave) with no
+adapter layer.
 
 ## Usage
 
@@ -36,6 +40,28 @@ reachable in the ASDF source-registry:
 ```lisp
 (asdf:load-system :cl-cc-php/tests)
 (cl-cc-php/test:run-tests)
+```
+
+### Via Nix
+
+```sh
+nix flake check
+```
+
+builds a hermetic sandbox providing SBCL plus `cl-cc` (for
+bootstrap/ast/parse/vm/pipeline/…), `cl-weave`, `cl-prolog`, and
+`cl-parser-kit` — all pinned in `flake.lock` — and runs `scripts/run-tests.lisp`.
+
+### Without Nix
+
+`scripts/run-tests.lisp` also runs directly against sibling checkouts (the
+default it falls back to is `../cl-cc`, `../cl-weave`, `../cl-prolog`,
+`../cl-parser-kit` next to this repo — override with the
+`CL_CC_PHP_CL_CC_ROOT` / `CL_CC_PHP_CL_WEAVE_ROOT` /
+`CL_CC_PHP_CL_PROLOG_ROOT` / `CL_CC_PHP_CL_PARSER_KIT_ROOT` env vars):
+
+```sh
+sbcl --script scripts/run-tests.lisp
 ```
 
 ## License

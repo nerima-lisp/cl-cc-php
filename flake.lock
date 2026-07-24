@@ -1,0 +1,95 @@
+{
+  "nodes": {
+    "cl-cc": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1784793467,
+        "narHash": "sha256-wmA1qPa4gL+dhXDzP30l1rc86AUE+H5IFsBDHuHmiUs=",
+        "owner": "nerima-lisp",
+        "repo": "cl-cc",
+        "rev": "a5b8f0117e9d2068dc7bb9cdaf6230d965a39b26",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nerima-lisp",
+        "repo": "cl-cc",
+        "type": "github"
+      }
+    },
+    "cl-parser-kit": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1784892866,
+        "narHash": "sha256-HFJr/uTqSHaN6QO5H9rekR2hWiF7xTUzzgPGusOxqRs=",
+        "owner": "nerima-lisp",
+        "repo": "cl-parser-kit",
+        "rev": "91dad7256c7ef413acbe122a947930943afeb1c4",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nerima-lisp",
+        "repo": "cl-parser-kit",
+        "type": "github"
+      }
+    },
+    "cl-prolog": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1784884724,
+        "narHash": "sha256-kzvL7CNBj4YA1Oj8oP8gPLo4t52uMlRrM0xxWlvjtxo=",
+        "owner": "nerima-lisp",
+        "repo": "cl-prolog",
+        "rev": "ed657d736a99d1543297dbe91f303129c5e3aaef",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nerima-lisp",
+        "repo": "cl-prolog",
+        "type": "github"
+      }
+    },
+    "cl-weave": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1784866842,
+        "narHash": "sha256-uFdqahTn9aTgFYnV8tkY5CLI53EGxSZGXjW6Ky1NgXY=",
+        "owner": "nerima-lisp",
+        "repo": "cl-weave",
+        "rev": "7ddc1a283878878a58ec90ab6d4742be86868ba8",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nerima-lisp",
+        "repo": "cl-weave",
+        "type": "github"
+      }
+    },
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1784783405,
+        "narHash": "sha256-4IHyyLgLBdKefkljdKod4IMn023pQiDXAWJA187cmdY=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "7525d999cd850b9a488817abc89c75dc733acf17",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixpkgs-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "cl-cc": "cl-cc",
+        "cl-parser-kit": "cl-parser-kit",
+        "cl-prolog": "cl-prolog",
+        "cl-weave": "cl-weave",
+        "nixpkgs": "nixpkgs"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}
