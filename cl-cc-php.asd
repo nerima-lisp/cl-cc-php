@@ -2,9 +2,12 @@
 
 (asdf:defsystem :cl-cc-php
   :description "CL-CC PHP frontend: lexer, parser, and grammar"
-  :author "takeokunn"
+  :author "takeokunn <bararararatty@gmail.com>"
   :license "MIT"
   :version "0.1.0"
+  :homepage "https://github.com/nerima-lisp/cl-cc-php"
+  :bug-tracker "https://github.com/nerima-lisp/cl-cc-php/issues"
+  :source-control (:git "https://github.com/nerima-lisp/cl-cc-php")
   :depends-on (:cl-cc-ast :cl-cc-bootstrap :cl-cc-parse :cl-cc-vm)
   :pathname "src"
   :serial t
@@ -86,7 +89,4 @@
     (:file "php84-features")
     (:file "unsupported")
     (:file "grammar")
-   (:file "grammar-stmt")
-   ;; Registers PHP's %PHP-* helpers as a backend bridge provider. Must load
-   ;; last, after every %PHP-* function is defined.
-   (:file "runtime-bridge-provider")))
+   (:file "grammar-stmt")))
