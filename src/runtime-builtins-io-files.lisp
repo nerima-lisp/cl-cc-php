@@ -64,11 +64,13 @@
     (and p (or (pathname-name p) (pathname-type p)))))
 
 (defun %php-is-dir (path)
-  "PHP is_dir: check if path is a directory."
-  (let* ((s (%php-path-string path))
-         (s (if (and (> (length s) 0) (char= (char s (1- (length s))) #\/)) s (concatenate 'string s "/")))
-         (p (probe-file s)))
-    (and p t)))
+  "PHP is_dir: check if path is a directory.
+Appending a trailing slash before PROBE-FILE (the traditional CL idiom for
+this check) doesn't reliably distinguish a directory from a regular file on
+every SBCL/platform combination — PROBE-FILE can still resolve a
+slash-suffixed path to a regular file. UIOP:DIRECTORY-EXISTS-P is written
+specifically to make this determination portably."
+  (and (uiop:directory-exists-p (%php-path-string path)) t))
 
 (defun %php-is-readable (filename)
   "PHP is_readable: check if file is readable."
@@ -392,7 +394,11 @@
   (handler-case
       (let ((stream (%php-array-ref handle "__stream__")))
         (when (and stream (streamp stream))
-          (unless (%php-array-ref handle "__standard__")
+          ;; %PHP-ARRAY-REF returns +PHP-NULL+ (a non-NIL symbol) for a
+          ;; missing "__standard__" key, so an ordinary UNLESS never saw NIL
+          ;; here and skipped CLOSE for every handle %PHP-FOPEN ever
+          ;; returned — files opened via fopen() were never actually closed.
+          (unless (%php-truthy (%php-array-ref handle "__standard__"))
             (close stream)))
         (%php-file-lock-release-handle handle)
         t)

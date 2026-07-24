@@ -131,6 +131,8 @@
    (:file "php-string-multibyte-tests")
    (:file "php-string-extra-tests")
    (:file "php-string-transform-tests")
+   (:file "php-string-encoding-tests")
+   (:file "php-io-files-tests")
    (:file "php-io-image-tests")
    (:file "php-string-case-property-tests")
    (:file "php84-tests-language")
