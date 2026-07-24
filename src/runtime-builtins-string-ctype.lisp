@@ -4,62 +4,51 @@
 
 ;;; ─── ctype_* character classification (PHP ext/ctype) ────────────────────────
 
-(defun %php-ctype-alpha (text)
-  "PHP ctype_alpha: check if all chars are alphabetic."
-  (let ((s (%php-stringify text)))
-    (and (> (length s) 0)
-         (every #'alpha-char-p s))))
+(defmacro define-php-ctype-predicate (name docstring predicate)
+  "Define PHP ctype_* predicate NAME: true when TEXT (stringified) is non-empty
+and every character satisfies PREDICATE."
+  `(defun ,name (text)
+     ,docstring
+     (let ((s (%php-stringify text)))
+       (and (> (length s) 0)
+            (every ,predicate s)))))
 
-(defun %php-ctype-digit (text)
-  "PHP ctype_digit: check if all chars are decimal digits."
-  (let ((s (%php-stringify text)))
-    (and (> (length s) 0)
-         (every #'digit-char-p s))))
+(define-php-ctype-predicate %php-ctype-alpha
+    "PHP ctype_alpha: check if all chars are alphabetic."
+  #'alpha-char-p)
 
-(defun %php-ctype-alnum (text)
-  "PHP ctype_alnum: check if all chars are alphanumeric."
-  (let ((s (%php-stringify text)))
-    (and (> (length s) 0)
-         (every #'alphanumericp s))))
+(define-php-ctype-predicate %php-ctype-digit
+    "PHP ctype_digit: check if all chars are decimal digits."
+  #'digit-char-p)
 
-(defun %php-ctype-space (text)
-  "PHP ctype_space: check if all chars are whitespace."
-  (let ((s (%php-stringify text)))
-    (and (> (length s) 0)
-         (every (lambda (c) (member c '(#\Space #\Tab #\Newline #\Return #\Page #\Null))) s))))
+(define-php-ctype-predicate %php-ctype-alnum
+    "PHP ctype_alnum: check if all chars are alphanumeric."
+  #'alphanumericp)
 
-(defun %php-ctype-upper (text)
-  "PHP ctype_upper: check if all chars are uppercase."
-  (let ((s (%php-stringify text)))
-    (and (> (length s) 0)
-         (every (lambda (c) (and (alpha-char-p c) (upper-case-p c))) s))))
+(define-php-ctype-predicate %php-ctype-space
+    "PHP ctype_space: check if all chars are whitespace."
+  (lambda (c) (member c '(#\Space #\Tab #\Newline #\Return #\Page #\Null))))
 
-(defun %php-ctype-lower (text)
-  "PHP ctype_lower: check if all chars are lowercase."
-  (let ((s (%php-stringify text)))
-    (and (> (length s) 0)
-         (every (lambda (c) (and (alpha-char-p c) (lower-case-p c))) s))))
+(define-php-ctype-predicate %php-ctype-upper
+    "PHP ctype_upper: check if all chars are uppercase."
+  (lambda (c) (and (alpha-char-p c) (upper-case-p c))))
 
-(defun %php-ctype-punct (text)
-  "PHP ctype_punct: check if all chars are punctuation (visible non-alphanumeric)."
-  (let ((s (%php-stringify text)))
-    (and (> (length s) 0)
-         (every (lambda (c) (and (graphic-char-p c) (not (alphanumericp c)) (not (char= c #\Space)))) s))))
+(define-php-ctype-predicate %php-ctype-lower
+    "PHP ctype_lower: check if all chars are lowercase."
+  (lambda (c) (and (alpha-char-p c) (lower-case-p c))))
 
-(defun %php-ctype-graph (text)
-  "PHP ctype_graph: check if all chars are visible (non-space graphic)."
-  (let ((s (%php-stringify text)))
-    (and (> (length s) 0)
-         (every (lambda (c) (and (graphic-char-p c) (not (char= c #\Space)))) s))))
+(define-php-ctype-predicate %php-ctype-punct
+    "PHP ctype_punct: check if all chars are punctuation (visible non-alphanumeric)."
+  (lambda (c) (and (graphic-char-p c) (not (alphanumericp c)) (not (char= c #\Space)))))
 
-(defun %php-ctype-print (text)
-  "PHP ctype_print: check if all chars are printable (including space)."
-  (let ((s (%php-stringify text)))
-    (and (> (length s) 0)
-         (every #'graphic-char-p s))))
+(define-php-ctype-predicate %php-ctype-graph
+    "PHP ctype_graph: check if all chars are visible (non-space graphic)."
+  (lambda (c) (and (graphic-char-p c) (not (char= c #\Space)))))
 
-(defun %php-ctype-xdigit (text)
-  "PHP ctype_xdigit: check if all chars are valid hexadecimal."
-  (let ((s (%php-stringify text)))
-    (and (> (length s) 0)
-         (every (lambda (c) (digit-char-p c 16)) s))))
+(define-php-ctype-predicate %php-ctype-print
+    "PHP ctype_print: check if all chars are printable (including space)."
+  #'graphic-char-p)
+
+(define-php-ctype-predicate %php-ctype-xdigit
+    "PHP ctype_xdigit: check if all chars are valid hexadecimal."
+  (lambda (c) (digit-char-p c 16)))

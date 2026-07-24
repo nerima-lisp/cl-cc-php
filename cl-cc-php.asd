@@ -121,6 +121,7 @@
    (:file "php-parser-type-class-tests")
    (:file "php-interfaces-tests")
    (:file "php-traits-tests")
+   (:file "php-ctype-tests")
    (:file "php84-tests-language")
    (:file "php85-tests-language")
    (:file "php85-tests-runtime-behavior")
