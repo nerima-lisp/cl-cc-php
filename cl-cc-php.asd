@@ -138,6 +138,7 @@
    (:file "php-io-tests")
    (:file "php-io-objects-tests")
    (:file "php-io-image-tests")
+   (:file "php-types-tests")
    (:file "php-string-case-property-tests")
    (:file "php84-tests-language")
    (:file "php85-tests-language")
