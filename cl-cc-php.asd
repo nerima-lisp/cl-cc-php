@@ -129,6 +129,7 @@
    (:file "php-interfaces-tests")
    (:file "php-traits-tests")
    (:file "php-ctype-tests")
+   (:file "php-string-core-tests")
    (:file "php-array-builtins-tests")
    (:file "php-regex-preg-tests")
    (:file "php-string-multibyte-tests")
