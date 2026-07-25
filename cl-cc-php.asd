@@ -119,6 +119,7 @@
    (:file "php-e2e-test-support")
    (:file "php-tests")
    (:file "php-grammar-tests")
+   (:file "php-grammar-cst-tests")
    (:file "php-grammar-stmt-tests")
    (:file "php-parser-core-stmt-tests")
    (:file "php-parser-control-array-tests")
