@@ -40,6 +40,12 @@ When ARITY is non-nil, also require exactly that many positional args."
 
 (defparameter *php-named-param-registry* (make-hash-table :test #'equal))
 
+(defun %php-member-slot-allocation (modifiers)
+  "Return :CLASS for a static class member (MODIFIERS contains :STATIC),
+:INSTANCE otherwise. Shared by every AST-SLOT-DEF construction site for a
+property, method, or promoted-constructor-parameter slot."
+  (if (member :static modifiers :test #'eq) :class :instance))
+
 (defun %php-param-name (param)
   (etypecase param
     (symbol (symbol-name param))

@@ -600,7 +600,7 @@ When no hooks are present, the list contains only the original property slot."
                            :name prop-sym
                            :type slot-type
                            :initform initform
-                           :allocation (if (member :static modifiers :test #'eq) :class :instance)
+                           :allocation (%php-member-slot-allocation modifiers)
                            :imports (%php-slot-metadata modifiers
                                                         :attributes attributes
                                                         :target-type :property))))

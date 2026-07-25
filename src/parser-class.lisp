@@ -159,9 +159,7 @@
           (let ((slot (make-ast-slot-def :name (php-ident-sym bare)
                                          :type slot-type
                                          :initform initform
-                                         :allocation (if (member :static modifiers :test #'eq)
-                                                         :class
-                                                         :instance)
+                                         :allocation (%php-member-slot-allocation modifiers)
                                          :imports (%php-slot-metadata modifiers
                                                                       :attributes attributes
                                                                       :target-type :property))))
@@ -188,7 +186,7 @@ PHP 8.0 constructor promotion both declares AND initializes the property."
           collect (make-ast-slot-def
                    :name      (php-ident-sym (symbol-name param))
                    :initform  (make-ast-quote :value +php-null+)
-                   :allocation (if (member :static mods :test #'eq) :class :instance)
+                   :allocation (%php-member-slot-allocation mods)
                    :imports   (%php-slot-metadata mods :target-type :property))))
 
 (defun %php-parse-class-body-member (stream known-vars &optional class-name)
@@ -264,9 +262,7 @@ EXTRA-SLOTS is a list of additional slots to inject (used for constructor promot
                        ;; methods stay :instance so each object carries its own closure.
                        (make-ast-slot-def :name (ast-defun-name method-ast)
                                           :initform method-ast
-                                          :allocation (if (member :static modifiers :test #'eq)
-                                                          :class
-                                                          :instance)
+                                          :allocation (%php-member-slot-allocation modifiers)
                                           :imports (%php-slot-metadata modifiers
                                                                        :attributes attributes
                                                                        :target-type :method)))
