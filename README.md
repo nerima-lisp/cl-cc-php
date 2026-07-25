@@ -1,68 +1,88 @@
 # cl-cc-php
 
-The PHP frontend/backend for the [cl-cc](https://github.com/nerima-lisp/cl-cc)
-Common Lisp compiler.
+[![CI](https://github.com/nerima-lisp/cl-cc-php/actions/workflows/ci.yml/badge.svg)](https://github.com/nerima-lisp/cl-cc-php/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Documentation](https://img.shields.io/badge/docs-nerima--lisp.github.io-blue)](https://nerima-lisp.github.io/cl-cc-php/)
 
-This system provides PHP language support: the lexer, parser, and grammar for
-turning PHP source into cl-cc's AST, along with the PHP runtime builtins
-(`array_*`, `str*`, math, regex/`preg_*`, type predicates, I/O, and the
-dispatch registry). It defines the `:cl-cc-php` system, extracted from the cl-cc
-monorepo as a **plugin repo**.
+The PHP frontend for the [cl-cc](https://github.com/nerima-lisp/cl-cc) Common
+Lisp compiler: a lexer, parser, and grammar that turn PHP source into cl-cc's
+AST, plus the PHP runtime builtins that compiled code calls into. Full
+documentation is at
+[nerima-lisp.github.io/cl-cc-php](https://nerima-lisp.github.io/cl-cc-php/).
 
-## Status
-
-Source extracted from the cl-cc monorepo. Unlike the dependency-free leaf repos
-(cl-cc-ast), cl-cc-php depends on cl-cc-ast, cl-cc-bootstrap, cl-cc-parse, and
-cl-cc-vm — bootstrap and vm are the compiler's self-referential core and are
-an explicit non-goal for further splitting (see cl-cc's
-`docs/repo-split-design.md`), so `flake.nix` pulls them from a `cl-cc`
-checkout as a plain (non-flake) source tree, the same pattern cl-cc's own
-flake uses for cl-prolog/cl-weave/cl-cc-ast. `nix flake check` builds and runs
-the full suite hermetically. The `.asd` also loads correctly against a bare
-cl-cc checkout outside Nix, and the `:cl-cc-php/tests` system (see below) runs
-directly on [cl-weave](https://github.com/nerima-lisp/cl-weave) with no
-adapter layer.
-
-## Usage
+## Quick Start
 
 ```lisp
-(asdf:load-system :cl-cc-php)
+(asdf:load-system "cl-cc-php")
+
+(cl-cc/php:parse-php-source "<?php $x = 1 + 2;")
 ```
 
-## Testing
+`parse-php-source` returns a list of top-level cl-cc AST nodes.
+`tokenize-php-source` gives you the token stream instead, and
+`parse-php-source-to-cst` gives you a concrete syntax tree when you need the
+surface detail the AST drops.
 
-Tests live under `tests/` and run on [cl-weave](https://github.com/nerima-lisp/cl-weave)
-directly — no compatibility shim, no umbrella `cl-cc/test` package. Loading
-`:cl-cc-php/tests` additionally requires `cl-cc-pipeline` (for the e2e suites,
-which compile and run PHP source end-to-end) and `cl-weave` itself to be
-reachable in the ASDF source-registry:
+## Install
+
+Add the flake input:
+
+```nix
+cl-cc-php = {
+  url = "github:nerima-lisp/cl-cc-php";
+  flake = false;
+};
+```
+
+Then depend on it from your `.asd`:
 
 ```lisp
-(asdf:load-system :cl-cc-php/tests)
-(cl-cc-php/test:run-tests)
+:depends-on ("cl-cc-php")
 ```
 
-### Via Nix
+cl-cc-php is not standalone. It needs `cl-cc-ast`, `cl-cc-bootstrap`,
+`cl-cc-parse`, and `cl-cc-vm`, which live inside a checkout of the cl-cc
+monorepo rather than in split-out repositories. See
+[Installation](https://nerima-lisp.github.io/cl-cc-php/installation/).
+
+## Documentation
+
+- [Quick Start](https://nerima-lisp.github.io/cl-cc-php/quick-start/)
+- [Core Concepts](https://nerima-lisp.github.io/cl-cc-php/core-concepts/)
+- [API Reference](https://nerima-lisp.github.io/cl-cc-php/api-reference/)
+- [Architecture](https://nerima-lisp.github.io/cl-cc-php/architecture/)
+- [Compatibility](https://nerima-lisp.github.io/cl-cc-php/compatibility/)
+
+## Development
 
 ```sh
-nix flake check
+nix develop                          # SBCL with the dependency roots exported
+nix flake check --print-build-logs   # tests, formatting, and docs
+nix run .#test                       # the test suite alone
+nix fmt                              # nixfmt via treefmt
 ```
 
-builds a hermetic sandbox providing SBCL plus `cl-cc` (for
-bootstrap/ast/parse/vm/pipeline/…), `cl-weave`, `cl-prolog`, and
-`cl-parser-kit` — all pinned in `flake.lock` — and runs `scripts/run-tests.lisp`.
-
-### Without Nix
-
-`scripts/run-tests.lisp` also runs directly against sibling checkouts (the
-default it falls back to is `../cl-cc`, `../cl-weave`, `../cl-prolog`,
-`../cl-parser-kit` next to this repo — override with the
-`CL_CC_PHP_CL_CC_ROOT` / `CL_CC_PHP_CL_WEAVE_ROOT` /
-`CL_CC_PHP_CL_PROLOG_ROOT` / `CL_CC_PHP_CL_PARSER_KIT_ROOT` env vars):
+Without Nix, `run-tests.lisp` falls back to sibling checkouts of `cl-cc`,
+`cl-weave`, `cl-prolog`, and `cl-parser-kit` next to this repository:
 
 ```sh
-sbcl --script scripts/run-tests.lisp
+sbcl --script run-tests.lisp
 ```
+
+See [Development](https://nerima-lisp.github.io/cl-cc-php/development/).
+
+## Contributing
+
+See the organisation-wide
+[contributing guide](https://github.com/nerima-lisp/.github/blob/main/CONTRIBUTING.md)
+and [code of conduct](https://github.com/nerima-lisp/.github/blob/main/CODE_OF_CONDUCT.md).
+
+## Support
+
+Open an issue at
+[nerima-lisp/cl-cc-php/issues](https://github.com/nerima-lisp/cl-cc-php/issues).
+For security reports, follow the
+[security policy](https://github.com/nerima-lisp/.github/blob/main/SECURITY.md).
 
 ## License
 
