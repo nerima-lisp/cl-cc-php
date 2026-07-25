@@ -1,0 +1,27 @@
+version: 2
+updates:
+  # `directory: "/"` only scans .github/workflows/* and a root-level action.yml.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: ci
+    groups:
+      github-actions:
+        patterns: ["*"]
+
+  # The nested composite action needs its own entry: its `uses:` lines are
+  # invisible to the entry above, so without this the nix-installer and Cachix
+  # pins would never be offered an update.
+  - package-ecosystem: github-actions
+    directory: "/.github/actions/nix-setup"
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: ci
+    groups:
+      github-actions:
+        patterns: ["*"]
