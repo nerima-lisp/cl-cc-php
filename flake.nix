@@ -14,13 +14,19 @@
     # leaf (cl-cc-ast) this system pulls its dependencies out of a checkout of
     # the whole monorepo rather than from independently split repos.
     #
-    # Deliberately NOT pinned to a tag, unlike every other sibling below.
-    # cl-cc is mid-rework; v0.1.0 predates the split this repo depends on, so
-    # pinning to it would fail to load. flake.lock holds the exact revision, so
-    # builds stay reproducible; revisit once cl-cc cuts a tag that includes the
-    # packages/ layout run-tests.lisp expects.
+    # Pinned to a commit, not a tag, unlike every other sibling below. cl-cc's
+    # only tag is v0.1.0, which predates the packages/ split this repository
+    # loads from, and it cannot cut a new one yet: its own `nix flake check`
+    # fails with 55 failures and 31 errors. Those are not new — its pre-
+    # migration check only ran the cl-cc-prolog-tools sub-suite, so the main
+    # suite had never been wired to the gate at all.
+    #
+    # A commit is as immutable as a tag, which is what the pinning rule is
+    # actually for; a bare `github:nerima-lisp/cl-cc` follows the default
+    # branch and would break this repository on an unrelated upstream push.
+    # Move to `/vX.Y.Z` once cl-cc's suite is green and it releases.
     cl-cc = {
-      url = "github:nerima-lisp/cl-cc";
+      url = "github:nerima-lisp/cl-cc/594456c6671356508a9393a97761be41e4ef8f1f";
       flake = false;
     };
 
