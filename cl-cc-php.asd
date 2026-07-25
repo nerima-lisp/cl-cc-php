@@ -1,14 +1,19 @@
 ;;;; cl-cc-php.asd — PHP frontend: lexer, parser, grammar
 
-(asdf:defsystem :cl-cc-php
+(asdf:defsystem "cl-cc-php"
   :description "CL-CC PHP frontend: lexer, parser, and grammar"
   :author "takeokunn <bararararatty@gmail.com>"
+  :maintainer "takeokunn <bararararatty@gmail.com>"
   :license "MIT"
   :version "0.1.0"
   :homepage "https://github.com/nerima-lisp/cl-cc-php"
   :bug-tracker "https://github.com/nerima-lisp/cl-cc-php/issues"
-  :source-control (:git "https://github.com/nerima-lisp/cl-cc-php")
-  :depends-on (:cl-cc-ast :cl-cc-bootstrap :cl-cc-parse :cl-cc-vm)
+  :source-control (:git "https://github.com/nerima-lisp/cl-cc-php.git")
+  :depends-on (:cl-cc-ast        ; AST node definitions the parser emits
+               :cl-cc-bootstrap  ; compiler self-hosting core
+               :cl-cc-parse      ; shared parsing infrastructure
+               :cl-cc-vm)        ; bytecode VM
+  :in-order-to ((test-op (test-op "cl-cc-php/test")))
   :pathname "src"
   :serial t
   :components
@@ -103,15 +108,24 @@
 ;; :cl-cc-pipeline into the main system would make every consumer of the PHP
 ;; frontend drag along codegen/optimize/regalloc/emit for no reason. Load this
 ;; system to run the test suite.
-(asdf:defsystem :cl-cc-php/tests
+(asdf:defsystem "cl-cc-php/test"
   :description "Test suite for cl-cc-php, run directly on cl-weave"
   :author "takeokunn <bararararatty@gmail.com>"
+  :maintainer "takeokunn <bararararatty@gmail.com>"
   :license "MIT"
+  :version "0.1.0"
   :homepage "https://github.com/nerima-lisp/cl-cc-php"
   :bug-tracker "https://github.com/nerima-lisp/cl-cc-php/issues"
-  :source-control (:git "https://github.com/nerima-lisp/cl-cc-php")
-  :depends-on (:cl-cc-php :cl-cc-pipeline :cl-weave)
-  :pathname "tests"
+  :source-control (:git "https://github.com/nerima-lisp/cl-cc-php.git")
+  ;; Test-only: cl-cc-pipeline provides compile-string/run-compiled so the e2e
+  ;; suites can compile and *run* PHP source end-to-end, and cl-weave is the
+  ;; test framework. Neither belongs in the shipped system's :depends-on —
+  ;; folding cl-cc-pipeline in would make every consumer of the PHP frontend
+  ;; drag along codegen/optimize/regalloc/emit for no reason.
+  :depends-on (:cl-cc-php
+               :cl-cc-pipeline  ; test-only: full compile-and-run for e2e suites
+               :cl-weave)       ; test-only: test framework
+  :pathname "t"
   :serial t
   :components
   ((:file "package")

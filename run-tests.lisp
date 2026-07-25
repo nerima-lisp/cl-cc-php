@@ -1,6 +1,6 @@
 ;;;; run-tests.lisp
 ;;;;
-;;;; CI entry point: load :cl-cc-php/tests against the still-monorepo-internal
+;;;; CI entry point: load :cl-cc-php/test against the still-monorepo-internal
 ;;;; systems it depends on (bootstrap/ast/parse/vm and, transitively via
 ;;;; cl-cc-pipeline for the e2e suites, most of cl-cc) and run the suite on
 ;;;; cl-weave. cl-cc-php is not dependency-free (see README's Status section),
@@ -30,11 +30,11 @@
   (%env-or "CL_CC_PHP_CL_PARSER_KIT_ROOT" "../cl-parser-kit"))
 
 (defparameter *cl-cc-package-subdirs*
-  ;; Every packages/<name>/ under the cl-cc checkout that :cl-cc-php/tests
+  ;; Every packages/<name>/ under the cl-cc checkout that :cl-cc-php/test
   ;; needs, transitively, to load: cl-cc-php's own four dependencies
   ;; (bootstrap ast parse vm) plus everything cl-cc-pipeline pulls in to
   ;; compile-and-run PHP source end-to-end for the e2e suites. Determined
-  ;; empirically by loading :cl-cc-php/tests and following each
+  ;; empirically by loading :cl-cc-php/test and following each
   ;; MISSING-DEPENDENCY error to its system.
   '("bootstrap" "ast" "parse" "vm" "runtime" "type" "mir" "optimize" "emit"
     "expand" "compile" "cps" "codegen" "target" "regalloc" "bytecode" "ir"
@@ -60,11 +60,11 @@
 
 (handler-case
     (progn
-      (asdf:load-system :cl-cc-php/tests)
+      (asdf:load-system :cl-cc-php/test)
       ;; RUN-TESTS signals an error on any failure rather than returning NIL,
       ;; so reaching past this call at all already means the suite is green.
       (funcall (find-symbol "RUN-TESTS" "CL-CC-PHP/TEST")))
   (error (e)
-    (format t "~&FAIL cl-cc-php/tests: ~A~%" e)
+    (format t "~&FAIL cl-cc-php/test: ~A~%" e)
     (finish-output)
     (sb-ext:exit :code 1)))
