@@ -3,17 +3,17 @@
     "cl-cc": {
       "flake": false,
       "locked": {
-        "lastModified": 1785012697,
-        "narHash": "sha256-OHO3FUugO5odhJZL5b2t91RZnCnHY8jNE/GLymifeuw=",
+        "lastModified": 1785038020,
+        "narHash": "sha256-0eThEy6Vy0qBRG3UD7i2OBWEHCdSB8/ldRZqe9lxNsE=",
         "owner": "nerima-lisp",
         "repo": "cl-cc",
-        "rev": "594456c6671356508a9393a97761be41e4ef8f1f",
+        "rev": "4aca55a2e7e3c92685870a434c2e60827a3d90a1",
         "type": "github"
       },
       "original": {
         "owner": "nerima-lisp",
         "repo": "cl-cc",
-        "rev": "594456c6671356508a9393a97761be41e4ef8f1f",
+        "rev": "4aca55a2e7e3c92685870a434c2e60827a3d90a1",
         "type": "github"
       }
     },
