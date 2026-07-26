@@ -112,7 +112,10 @@
     (:file "runtime-fibers")
     (:file "unsupported")
     (:file "grammar")
-   (:file "grammar-stmt")))
+   (:file "grammar-stmt")
+   ;; Must load last, after every %PHP-* function is defined: the provider
+   ;; thunk is called later, but the file registers it at load time.
+   (:file "runtime-bridge-provider")))
 
 ;; A separate system: the e2e suites need to compile and *run* PHP source
 ;; through the full pipeline (cl-cc/compile:compile-string, cl-cc/vm:run-compiled),
