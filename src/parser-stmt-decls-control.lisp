@@ -1,4 +1,4 @@
-;;;; packages/php/src/parser-stmt-decls-control.lisp — PHP Parser: registered control-flow statement parsers
+;;;; parser-stmt-decls-control.lisp — PHP Parser: registered control-flow statement parsers
 
 (in-package :cl-cc/php)
 

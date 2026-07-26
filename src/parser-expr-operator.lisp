@@ -1,4 +1,5 @@
-;;;; packages/php/src/parser-expr-operator.lisp -- Unary, binary, ternary, assignment, and argument-list expression parsing.
+;;;; parser-expr-operator.lisp -- Unary, binary, ternary, assignment, and argument-list expression
+;;;; parsing.
 ;;;;
 ;;;; Split from parser-expr.lisp so expression domains stay independently reviewable.
 (in-package :cl-cc/php)

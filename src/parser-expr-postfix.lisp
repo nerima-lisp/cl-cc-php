@@ -1,4 +1,5 @@
-;;;; packages/php/src/parser-expr-postfix.lisp -- Postfix parsing: member access, static access, calls, indexing, and postfix inc/dec.
+;;;; parser-expr-postfix.lisp -- Postfix parsing: member access, static access, calls, indexing, and
+;;;; postfix inc/dec.
 ;;;;
 ;;;; Split from parser-expr.lisp so expression domains stay independently reviewable.
 (in-package :cl-cc/php)

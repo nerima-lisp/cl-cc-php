@@ -1,4 +1,4 @@
-;;;; packages/php/src/runtime-builtins-string-transform.lisp -- Transform and compare PHP string operations
+;;;; runtime-builtins-string-transform.lisp -- Transform and compare PHP string operations
 
 (in-package :cl-cc/php)
 

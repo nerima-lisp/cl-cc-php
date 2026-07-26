@@ -1,4 +1,4 @@
-;;;; packages/php/src/runtime-builtins-string-format.lisp -- Formatting and escaping PHP string operations
+;;;; runtime-builtins-string-format.lisp -- Formatting and escaping PHP string operations
 
 (in-package :cl-cc/php)
 

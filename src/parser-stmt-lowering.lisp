@@ -1,4 +1,4 @@
-;;;; packages/php/src/parser-stmt-lowering.lisp — PHP Parser: Statement infrastructure and AST lowering
+;;;; parser-stmt-lowering.lisp — PHP Parser: Statement infrastructure and AST lowering
 
 (in-package :cl-cc/php)
 

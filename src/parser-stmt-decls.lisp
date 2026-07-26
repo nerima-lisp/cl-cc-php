@@ -1,4 +1,5 @@
-;;;; packages/php/src/parser-stmt-decls.lisp — PHP Parser: catch/enum/class-like, use-import, and declare parsing helpers
+;;;; parser-stmt-decls.lisp — PHP Parser: catch/enum/class-like, use-import, and declare parsing
+;;;; helpers
 
 (in-package :cl-cc/php)
 

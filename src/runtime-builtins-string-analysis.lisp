@@ -1,4 +1,5 @@
-;;;; packages/php/src/runtime-builtins-string-analysis.lisp -- Search, word, phonetic, and output PHP string operations
+;;;; runtime-builtins-string-analysis.lisp -- Search, word, phonetic, and output PHP string
+;;;; operations
 
 (in-package :cl-cc/php)
 

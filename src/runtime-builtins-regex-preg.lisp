@@ -1,4 +1,4 @@
-;;;; packages/php/src/runtime-builtins-regex-preg.lisp -- PHP preg_* regex engine and scalar regex builtins
+;;;; runtime-builtins-regex-preg.lisp -- PHP preg_* regex engine and scalar regex builtins
 
 (in-package :cl-cc/php)
 

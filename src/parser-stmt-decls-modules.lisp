@@ -1,4 +1,5 @@
-;;;; packages/php/src/parser-stmt-decls-modules.lisp — PHP Parser: include/declare/namespace/use/const/trait/function statement parsers
+;;;; parser-stmt-decls-modules.lisp — PHP Parser: include/declare/namespace/use/const/trait/function
+;;;; statement parsers
 
 (in-package :cl-cc/php)
 

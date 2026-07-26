@@ -1,4 +1,4 @@
-;;;; packages/php/src/parser-stmt-params.lisp — PHP Parser: type annotation and parameter-list parsing
+;;;; parser-stmt-params.lisp — PHP Parser: type annotation and parameter-list parsing
 
 (in-package :cl-cc/php)
 

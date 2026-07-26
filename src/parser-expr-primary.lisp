@@ -1,4 +1,5 @@
-;;;; packages/php/src/parser-expr-primary.lisp -- Primary-expression parsing: literals, variables, constants, casts, and class-relative names.
+;;;; parser-expr-primary.lisp -- Primary-expression parsing: literals, variables, constants, casts,
+;;;; and class-relative names.
 ;;;;
 ;;;; Split from parser-expr.lisp so expression domains stay independently reviewable.
 (in-package :cl-cc/php)

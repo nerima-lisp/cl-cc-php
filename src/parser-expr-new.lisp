@@ -1,4 +1,4 @@
-;;;; packages/php/src/parser-expr-new.lisp -- New-expression parsing and special runtime-backed class constructors.
+;;;; parser-expr-new.lisp -- New-expression parsing and special runtime-backed class constructors.
 ;;;;
 ;;;; Split from parser-expr.lisp so expression domains stay independently reviewable.
 (in-package :cl-cc/php)

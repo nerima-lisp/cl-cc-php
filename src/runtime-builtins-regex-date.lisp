@@ -1,4 +1,4 @@
-;;;; packages/php/src/runtime-builtins-regex-date.lisp -- PHP date/time and DateTime-compatible builtins
+;;;; runtime-builtins-regex-date.lisp -- PHP date/time and DateTime-compatible builtins
 
 (in-package :cl-cc/php)
 

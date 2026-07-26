@@ -1,4 +1,4 @@
-;;;; packages/php/src/runtime-builtins-string-extra.lisp -- Additional PHP string compatibility operations
+;;;; runtime-builtins-string-extra.lisp -- Additional PHP string compatibility operations
 
 (in-package :cl-cc/php)
 
