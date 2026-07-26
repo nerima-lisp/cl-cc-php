@@ -96,3 +96,9 @@ failed to compile and the whole match produced nothing."
         (values (%php-lower-match subject (nreverse arms) default-expr)
                 (%php-consume-expected :T-RBRACE current)
                 kv-current)))))
+
+;;; ─── Exhaustiveness failure ─────────────────────────────────────────────────
+
+(defun %php-match-error ()
+  "Signal an UnhandledMatchError equivalent for a non-exhaustive PHP match."
+  (%php-fatal-error "PHP UnhandledMatchError: Unhandled match case"))

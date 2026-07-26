@@ -233,3 +233,34 @@ with no explicit default defaults to PHP null."
   (append (%php-function-type-declarations param-types return-type returns-by-ref)
           (when param-attributes (list :php-param-attributes param-attributes))
           (%php-attribute-metadata attributes target-type)))
+
+;;; ─── Intersection types (PHP 8.1) ───────────────────────────────────────────
+;;;
+;;; `function f(Iterator&Countable $c)`. php-parse-type-annotation above
+;;; already walks `&` in its type loop; this builds the structured descriptor.
+
+(defun %php-parse-intersection-type (first-type stream)
+  "After FIRST-TYPE, consume any `& TypeName` continuations and build an
+intersection type descriptor.
+Returns (values type-spec rest-stream).
+When no & follows, returns FIRST-TYPE and STREAM unchanged."
+  (if (and stream
+           (eq (php-peek-type stream) :T-OP)
+           (string= (php-peek-value stream) "&")
+           (cdr stream)
+           (%php-type-atom-token-p (cdr stream)))
+      (let ((parts (list first-type))
+            (current (cdr stream)))       ; skip &
+        (loop
+          (unless (%php-type-atom-token-p current) (return))
+          (let ((segment (%php-type-token-string (php-peek current))))
+            (push segment parts)
+            (setf current (cdr current)))
+          (if (and (eq (php-peek-type current) :T-OP)
+                   (string= (php-peek-value current) "&")
+                   (cdr current)
+                   (%php-type-atom-token-p (cdr current)))
+              (setf current (cdr current))  ; skip & and continue
+              (return)))
+        (values (list* :intersection (nreverse parts)) current))
+      (values first-type stream)))
