@@ -256,3 +256,62 @@ are allowed; trailing junk is ignored."
                            :test #'=)))
          (%php-filter-failure flags))
         (t result)))))
+
+;;; ─── settype ────────────────────────────────────────────────────────────────
+;;;
+;;; PHP settype() mutates through a reference rather than returning, so it sits
+;;; apart from the *val conversions above even though it reuses all of them.
+
+(defun %php-settype-array-value (value)
+  "Return VALUE converted with PHP's `(array)` cast shape."
+  (let ((result (%php-make-array)))
+    (unless (%php-null-p value)
+      (%php-array-set result 0 value))
+    result))
+
+(defun %php-settype-object-value (value)
+  "Return VALUE converted with PHP's `(object)` cast shape."
+  (let ((object (%php-make-array)))
+    (%php-array-set object "__class__" "stdClass")
+    (cond
+      ((%php-null-p value))
+      ((hash-table-p value)
+       (dolist (pair (%php-array-pairs value))
+         (%php-array-set object (car pair) (cdr pair))))
+      (t
+       (%php-array-set object "scalar" value)))
+    object))
+
+(defun %php-settype (v &optional type)
+  "PHP settype: mutate the referenced value and return success."
+  (let* ((target (%php-deref v))
+         (type-name (string-downcase (%php-stringify type)))
+         (converted
+           (cond ((or (string= type-name "boolean") (string= type-name "bool"))
+                  (%php-boolval target))
+                 ((or (string= type-name "integer") (string= type-name "int"))
+                  (%php-intval target))
+                 ((or (string= type-name "float") (string= type-name "double"))
+                  (%php-floatval target))
+                 ((string= type-name "string")
+                  (%php-strval target))
+                 ((string= type-name "array")
+                  (if (hash-table-p target) target (%php-settype-array-value target)))
+                 ((string= type-name "object")
+                  (if (or (%php-object-table-p target)
+                          (and (not (%php-null-p target))
+                               (not (null target))
+                               (not (eq target t))
+                               (not (numberp target))
+                               (not (stringp target))
+                               (not (hash-table-p target))))
+                      target
+                      (%php-settype-object-value target)))
+                 ((string= type-name "null")
+                  +php-null+)
+                 (t :php-invalid-settype))))
+    (if (eq converted :php-invalid-settype)
+        nil
+        (progn
+          (%php-ref-set! v converted)
+          t))))
