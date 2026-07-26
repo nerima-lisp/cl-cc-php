@@ -58,7 +58,9 @@ input.
 | `parser-stmt-*` | Statement and declaration parsing |
 | `parser-class`, `parser-trait`, `parser-interface` | Type declarations |
 | `parser-attributes`, `parser-attribute-passes` | PHP 8 attributes |
-| `php84-features` | PHP 8.4-specific forms |
+| `parser-call-args` | Named arguments and first-class callables |
+| `parser-property-hooks` | Property hooks, asymmetric visibility, readonly |
+| `runtime-fibers` | PHP 8.1 Fibers |
 | `unsupported` | Detection and reporting of unhandled constructs |
 | `grammar`, `grammar-stmt` | CST grammar |
 
@@ -67,15 +69,19 @@ core, format, multibyte, encoding, transform, analysis, ctype, extra,
 serialization, JSON, digest), regex (`preg_*`, date, number, callback, array),
 math, types, and I/O (data, scan, files, objects, SPL, reflection, compat,
 image, output, cookie/session, tokenizer, URI). `runtime-builtins-register`
-loads last because it references all of them.
+loads last because it references all of them; the ~700 name-to-symbol entries
+it walks are data and live in `runtime-builtins-register-names*`.
 
 Load order is significant: the `.asd` uses `:serial t`.
 
 ## Test layout
 
-`t/` mirrors the source grouping. Two support files carry shared helpers, the
-rest are per-area suites. The `php-compile-*-e2e-tests` files are the ones that
-require the full pipeline.
+Every suite is named `<source>-test.lisp` after the `src/` file it covers, or
+`<source>-<aspect>-test.lisp` where one source has several aspects worth
+separating. Shared fixtures are `helpers-*.lisp` and are not suites.
+
+The `*-e2e-test.lisp` suites are the ones that require the full pipeline: they
+compile and run PHP source rather than inspecting an AST.
 
 ## Build and CI
 

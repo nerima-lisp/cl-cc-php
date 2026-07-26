@@ -89,18 +89,21 @@ include the root `CHANGELOG.md` rather than duplicating it.
 2. Add a row to the registration table that `%php-register-all-builtins` walks.
    Do not write a bespoke registration form — keeping registration as data is
    what stops the registry and the implementations from drifting apart.
-3. Add a table-driven test row in the corresponding `t/php-*-tests.lisp`.
+3. Add a table-driven test row in `t/<same-name>-test.lisp`.
 4. Update [API Reference](api-reference.md) if the symbol is exported.
 
 ## Test layout
 
 Tests live in `t/` and run on cl-weave with no adapter layer. Two support files,
-`php-parser-test-support` and `php-e2e-test-support`, carry the shared helpers.
+`helpers-parser` and `helpers-e2e`, carry the shared helpers.
+
+Every other file is named `<source>-test.lisp` after the `src/` file it covers,
+or `<source>-<aspect>-test.lisp` when one source has several aspects.
 
 Most suites are table-driven: a test is a row of input and expected output. The
-`php-compile-*-e2e-tests` suites go further and compile and run PHP source
-through the full pipeline, which is why the test system depends on
-`cl-cc-pipeline` while the shipped system does not.
+`*-e2e-test` suites go further and compile and run PHP source through the full
+pipeline, which is why the test system depends on `cl-cc-pipeline` while the
+shipped system does not.
 
 ## Versioning
 

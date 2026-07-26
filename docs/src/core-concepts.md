@@ -68,7 +68,7 @@ subtly-wrong output.
 ## Test organisation
 
 Tests live in `t/` and run on cl-weave. Two support files
-(`php-parser-test-support`, `php-e2e-test-support`) carry the shared helpers.
+(`helpers-parser`, `helpers-e2e`) carry the shared helpers.
 
 Most suites are table-driven: a test is a row of input and expected output, not
 a hand-written block. End-to-end suites go further and actually compile and run

@@ -96,7 +96,7 @@ meant produces wrong results in loose comparisons.
    file, grouped with its family.
 2. Add a row to the registration table that `%php-register-all-builtins`
    walks — do not write a bespoke registration form.
-3. Add a table-driven test row in the matching `t/php-*-tests.lisp`.
+3. Add a table-driven test row in the matching `t/<source>-test.lisp`.
 
 Keeping registration in the table is what stops the registry and the
 implementations from drifting apart.

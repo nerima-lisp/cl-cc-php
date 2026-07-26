@@ -1,4 +1,4 @@
-;;;; tests/package.lisp
+;;;; t/package.lisp — the test package for cl-cc-php.
 
 (defpackage :cl-cc-php/test
   (:use :cl :cl-cc/ast :cl-cc/parse :cl-cc/php)
