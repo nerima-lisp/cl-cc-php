@@ -31,6 +31,9 @@
     ;; hit undefined functions. register loads last (it references the others).
     (:file "runtime-builtins-core")
     (:file "runtime-builtins-array")
+    (:file "runtime-builtins-array-callable")
+    (:file "runtime-builtins-array-compare")
+    (:file "runtime-builtins-array-reshape")
     (:file "runtime-builtins-array-sort")
     (:file "runtime-builtins-string-data")
     (:file "runtime-builtins-string")
