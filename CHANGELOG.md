@@ -21,6 +21,41 @@ Added / Changed / Deprecated / Removed / Fixed / Security
 
 ## [Unreleased]
 
+### Changed
+
+- `src/package.lisp` no longer `:use`s the sibling compiler packages. The 155
+  names `src/` actually reads from `cl-cc/ast`, `cl-cc/bootstrap`, and
+  `cl-cc/parse` are taken in with `:import-from`, and the `:use` list names
+  only `#:cl`, both in `#:` designator form. No symbol identity changed.
+- Five source files over the 500-line limit were split by concern:
+  `runtime-builtins-array` into callable/compare/reshape/cursor pieces,
+  `php84-features` into `parser-call-args`, `parser-property-hooks`, and
+  `runtime-fibers`, `runtime-builtins-io` into `-io-ini`, `-io-locale`, and
+  `-io-autoload`, `runtime-builtins-io-files` into `-io-streams`, and
+  `runtime-builtins-register` into its machinery plus two name-table files.
+  `:components` order is unchanged for every pre-existing entry, so the
+  `:serial t` load order is the same.
+- `class_implements`/`class_parents`/`class_uses` and the SPL autoload registry
+  now load after `runtime-builtins-io-objects`, removing a forward reference to
+  the `%php-reflection-*` helpers they wrap.
+- No source line exceeds 100 columns. Twelve unbreakable message strings became
+  `(concatenate 'string ...)` of two literals; the messages themselves are
+  unchanged.
+- Every file in `t/` is named after the `src/` file it covers
+  (`<source>-test.lisp`, or `<source>-<aspect>-test.lisp`), and the two shared
+  fixtures are `helpers-parser.lisp` and `helpers-e2e.lisp`.
+
+### Fixed
+
+- Stale `packages/php/src/...` paths in seventeen source-file header comments,
+  left over from the extraction out of the cl-cc monorepo.
+
+### Known issues
+
+- `t/runtime-builtins-math-test.lisp` (formerly `t/php-math-tests.lisp`) is not
+  listed in `cl-cc-php.asd`, so its assertions are neither compiled nor run.
+  Wiring it in changes what the suite asserts and is left for its own change.
+
 ## [0.1.0] - 2026-07-26
 
 This section was reconstructed from the commit history: the repository had no
