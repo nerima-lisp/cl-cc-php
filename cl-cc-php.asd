@@ -112,13 +112,7 @@
     (:file "runtime-fibers")
     (:file "unsupported")
     (:file "grammar")
-   (:file "grammar-stmt")
-   ;; Self-registration with cl-cc/backend-protocol. The pipeline used to scan
-   ;; this package for %PHP-* helpers itself, which meant it knew both this
-   ;; package's name and its naming convention -- the coupling that stopped
-   ;; this system moving out of the monorepo. See §5-1 of cl-cc's
-   ;; docs/notes/repo-split-design.md.
-   (:file "backend")))
+   (:file "grammar-stmt")))
 
 ;; A separate system: the e2e suites need to compile and *run* PHP source
 ;; through the full pipeline (cl-cc/compile:compile-string, cl-cc/vm:run-compiled),
