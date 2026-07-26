@@ -14,8 +14,24 @@
 
 (require :asdf)
 
+(defparameter *repo-root*
+  (uiop:pathname-directory-pathname
+   (or *load-truename* *load-pathname* (uiop:getcwd)))
+  "This checkout's root, used to anchor the sibling fallbacks below.")
+
 (defun %env-or (var default)
-  (or (uiop:getenv var) default))
+  "Return VAR's value, or DEFAULT resolved against this checkout.
+
+ASDF's source registry rejects a relative pathname, so the sibling fallbacks
+cannot be handed over as the bare \"../cl-weave\" strings they are written as —
+running this script outside Nix died on \"Invalid pathname #P\\\"../cl-weave/\\\":
+Expected an absolute pathname\" before loading anything. Under Nix every root
+arrives through its env var and this branch is not taken."
+  (or (uiop:getenv var)
+      (namestring
+       (uiop:ensure-absolute-pathname
+        (uiop:ensure-directory-pathname default)
+        *repo-root*))))
 
 (defvar *cl-cc-root*
   (%env-or "CL_CC_PHP_CL_CC_ROOT" "../cl-cc"))
