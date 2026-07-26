@@ -134,7 +134,8 @@ are allowed; trailing junk is ignored."
         ((stringp value)
          (let ((*read-eval* nil))
            (multiple-value-bind (parsed position)
-               (ignore-errors (read-from-string (string-trim '(#\Space #\Tab #\Newline #\Return) value)))
+               (ignore-errors (read-from-string
+                               (string-trim '(#\Space #\Tab #\Newline #\Return) value)))
              (declare (ignore position))
              (if (numberp parsed) (float parsed) 0.0))))
         (t 1.0)))
@@ -236,7 +237,9 @@ are allowed; trailing junk is ignored."
     (when (and (not (zerop (logand flags +php-filter-null-on-failure+)))
                (not (zerop (logand flags +php-filter-throw-on-failure+))))
       (%php-throw 'value-error
-                  "filter_var(): Argument #3 ($options) cannot use both FILTER_NULL_ON_FAILURE and FILTER_THROW_ON_FAILURE"))
+                  (concatenate 'string
+                    "filter_var(): Argument #3 ($options) cannot use both "
+                    "FILTER_NULL_ON_FAILURE and FILTER_THROW_ON_FAILURE")))
     (let ((result
             (case filter
               ((516) value)

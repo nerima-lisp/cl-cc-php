@@ -55,7 +55,9 @@
                              (incf i)
                              (let ((start i))
                                (loop while (and (< i flen) (digit-char-p (char fmt i))) do (incf i))
-                               (setf precision (if (= start i) 0 (parse-integer fmt :start start :end i)))))
+                               (setf precision (if (= start i)
+                                                    0
+                                                    (parse-integer fmt :start start :end i)))))
                            ;; directive
                            (when (< i flen)
                              (let* ((dir (char fmt i))
@@ -64,10 +66,13 @@
                                              (pop remaining)))
                                     (left-align (position #\- flags))
                                     (zero-pad  (and (not left-align) (position #\0 flags)))
-                                    (pad-char (cond (custom-pad custom-pad) (zero-pad #\0) (t #\Space))))
+                                    (pad-char (cond (custom-pad custom-pad)
+                                                    (zero-pad #\0)
+                                                    (t #\Space))))
                                (incf i)
                                (flet ((emit (body &optional (sign ""))
-                                        ;; BODY = formatted magnitude (no sign); SIGN = ""/"+"/"-"/" ".
+                                        ;; BODY = formatted magnitude (no sign);
+                                        ;; SIGN = ""/"+"/"-"/" ".
                                         (let* ((full (concatenate 'string sign body))
                                                (pad (if width (max 0 (- width (length full))) 0)))
                                           (cond
@@ -92,30 +97,37 @@
                                   (write-char #\% stream))
                                  ((char= dir #\s)
                                   (let* ((sv (%php-stringify val))
-                                         (sv (if precision (subseq sv 0 (min precision (length sv))) sv))
+                                         (sv (if precision
+                                                 (subseq sv 0 (min precision (length sv)))
+                                                 sv))
                                          (pad (if width (max 0 (- width (length sv))) 0)))
                                     (if left-align
                                         (progn (write-string sv stream)
                                                (dotimes (k pad) (write-char #\Space stream)))
-                                        (progn (dotimes (k pad) (write-char (or custom-pad #\Space) stream))
+                                        (progn (dotimes (k pad)
+                                                 (write-char (or custom-pad #\Space) stream))
                                                (write-string sv stream)))))
                                  ((member dir '(#\d #\i))
                                   (let ((n (if (numberp val) (truncate val) 0)))
                                     (emit (format nil "~D" (abs n)) (num-sign n))))
                                  ((char= dir #\f)
                                   (let ((x (coerce (or val 0) 'double-float)))
-                                    (emit (format nil "~,vF" (or precision 6) (abs x)) (num-sign x))))
+                                    (emit (format nil "~,vF" (or precision 6) (abs x))
+                                          (num-sign x))))
                                  ((member dir '(#\e #\E))
                                   (let* ((x (coerce (or val 0) 'double-float))
                                          (raw (format nil "~,vE" (or precision 6) (abs x)))
                                          (marker (if (char= dir #\E) #\E #\e))
-                                         ;; CL prints the double-float exponent marker as d/D; PHP uses e/E.
+                                         ;; CL prints the double-float exponent marker as d/D;
+                                         ;; PHP uses e/E.
                                          (sv (substitute marker #\D (substitute marker #\d raw))))
                                     (emit sv (num-sign x))))
                                  ((char= dir #\o)
                                   (write-string (format nil "~O" (truncate (or val 0))) stream))
                                  ((char= dir #\x)
-                                  (write-string (string-downcase (format nil "~X" (truncate (or val 0)))) stream))
+                                  (write-string
+                                   (string-downcase (format nil "~X" (truncate (or val 0))))
+                                   stream))
                                  ((char= dir #\X)
                                   (write-string (format nil "~X" (truncate (or val 0))) stream))
                                  ((char= dir #\b)
@@ -124,7 +136,8 @@
                                   (write-char (code-char (truncate (or val 0))) stream))
                                  ((char= dir #\u)
                                   (let ((n (truncate (or val 0))))
-                                    (write-string (format nil "~D" (if (minusp n) (+ n 4294967296) n)) stream)))
+                                    (write-string
+                                     (format nil "~D" (if (minusp n) (+ n 4294967296) n)) stream)))
                                  (t
                                   (write-char #\% stream)
                                   (write-char dir stream))))))))

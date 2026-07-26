@@ -101,7 +101,8 @@
                            (and (eq kind :method)
                                 (%php-interface-member-present-p parent member-name seen)))
                           ((gethash parent class-registry)
-                           (%php-class-member-present-p class-registry parent member-name kind seen))
+                           (%php-class-member-present-p
+                            class-registry parent member-name kind seen))
                           (t nil)))
                   (ast-defclass-superclasses class-node)))))))
 
@@ -173,7 +174,10 @@
   "Build the user warning message for a discarded #[NoDiscard] KIND-LABEL
 (\"function\" or \"method\") result named by NAME-KEY."
   (let* ((name (string-downcase name-key))
-         (base (format nil "The return value of ~A ~A() should either be used or intentionally ignored by casting it as (void)"
+         (base (format nil
+                       (concatenate 'string
+                                    "The return value of ~A ~A() should either be used or "
+                                    "intentionally ignored by casting it as (void)")
                        kind-label name))
          (message (%php-no-discard-message-argument attribute)))
     (if (and message (plusp (length message)))

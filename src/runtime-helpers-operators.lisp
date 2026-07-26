@@ -196,7 +196,8 @@ the %PHP-SPACESHIP result against 0 with CMP."
   `(defun ,name (a b) ,@(when doc (list doc))
      (and (,cmp (%php-spaceship a b) 0) t)))
 
-(define-php-int-binop %php-modulo     rem "Return A % B using PHP-style integer truncation toward zero.")
+(define-php-int-binop %php-modulo     rem
+                       "Return A % B using PHP-style integer truncation toward zero.")
 
 (define-php-int-binop %php-shift-left ash "Return A shifted left by B bits.")
 
@@ -229,11 +230,13 @@ the %PHP-SPACESHIP result against 0 with CMP."
 
 (define-php-comparison %php-ge >= "PHP a >= b.")
 
-(define-php-int-binop %php-bitwise-and logand "Return PHP bitwise AND for integer-coerced operands.")
+(define-php-int-binop %php-bitwise-and logand
+                       "Return PHP bitwise AND for integer-coerced operands.")
 
 (define-php-int-binop %php-bitwise-or  logior "Return PHP bitwise OR for integer-coerced operands.")
 
-(define-php-int-binop %php-bitwise-xor logxor "Return PHP bitwise XOR for integer-coerced operands.")
+(define-php-int-binop %php-bitwise-xor logxor
+                       "Return PHP bitwise XOR for integer-coerced operands.")
 
 (defun %php-bitwise-not (a)
   "Return PHP bitwise NOT for an integer-coerced operand."

@@ -73,7 +73,8 @@
                       (*php-loop-continue-target* (gensym "FOR-LOOP-"))
                       (*php-loop-break-target* (gensym "FOR-END-"))
                       (*php-break-targets* (cons *php-loop-break-target* *php-break-targets*))
-                      (*php-continue-targets* (cons *php-loop-continue-target* *php-continue-targets*)))
+                      (*php-continue-targets*
+                       (cons *php-loop-continue-target* *php-continue-targets*)))
                 (multiple-value-bind (body-stmts rest _) (%php-parse-statement-body rest kv)
                   (declare (ignore _))
                   ;; The init (e.g. $i = 1) lowers to an empty-bodied ast-let when
@@ -131,7 +132,8 @@
               (let* ((*php-loop-continue-target* (gensym "FOREACH-LOOP-"))
                      (*php-loop-break-target* (gensym "FOREACH-END-"))
                      (*php-break-targets* (cons *php-loop-break-target* *php-break-targets*))
-                     (*php-continue-targets* (cons *php-loop-continue-target* *php-continue-targets*)))
+                     (*php-continue-targets*
+                      (cons *php-loop-continue-target* *php-continue-targets*)))
                 (multiple-value-bind (body-stmts rest8 kv8)
                     (%php-parse-statement-body (%php-consume-expected :T-RPAREN rest6) kv3)
                   (values (if val-by-ref-p
@@ -203,7 +205,8 @@
     (let* ((break-tag (gensym "SWITCH-END-"))
            (*php-loop-break-target* break-tag)
            (*php-break-targets* (cons break-tag *php-break-targets*)))
-      (multiple-value-bind (cases default-body rest3 kv3 warnings) (%php-parse-switch-body rest2 kv2 break-tag)
+      (multiple-value-bind (cases default-body rest3 kv3 warnings)
+          (%php-parse-switch-body rest2 kv2 break-tag)
         (values (php-lower-switch switch-expr cases default-body break-tag warnings) rest3 kv3)))))
 
 (define-php-stmt-parser :try (rest known-vars)

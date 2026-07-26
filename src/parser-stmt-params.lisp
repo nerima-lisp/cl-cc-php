@@ -186,7 +186,8 @@ ordered array (PHP variadics are arrays, not lists). When not variadic, returns
                 (list (make-ast-let
                        :bindings (list (cons variadic-param
                                              (make-ast-call
-                                              :func (make-ast-var :name 'cl-cc/php::%php-list-to-array)
+                                              :func (make-ast-var
+                                                     :name 'cl-cc/php::%php-list-to-array)
                                               :args (list (make-ast-var :name raw)))))
                        :body body-forms))))
       (values nil body-forms)))

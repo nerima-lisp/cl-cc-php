@@ -294,7 +294,8 @@
                                 (let ((qualified-end (qualified-name-tail-end-position i)))
                                   (when qualified-end
                                     (setf i qualified-end)))
-                                (emit-token "T_NAME_FULLY_QUALIFIED" (subseq code start i) token-line))
+                                (emit-token "T_NAME_FULLY_QUALIFIED"
+                                            (subseq code start i) token-line))
                               (emit-token "T_NS_SEPARATOR" "\\" token-line))))
                        ((starts-with-p "(void)" :ignore-case t)
                         (let ((text (subseq code i (+ i 6))))

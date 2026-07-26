@@ -457,7 +457,8 @@ return value."
               (list (make-ast-let
                      :bindings (list (cons gen-sym
                                            (make-ast-call
-                                            :func (make-ast-var :name 'cl-cc/php::%php-generator-enter)
+                                            :func (make-ast-var
+                                                   :name 'cl-cc/php::%php-generator-enter)
                                             :args nil)))
                      :body (list (make-ast-call
                                   :func (make-ast-var :name 'cl-cc/php::%php-generator-exit)

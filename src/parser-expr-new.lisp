@@ -39,7 +39,8 @@ gensym-named class and makes an instance of it."
                        (make-ast-make-instance
                         :class (make-ast-var :name anon-name)
                         :initargs (loop for i from 0 for a in ctor-args
-                                        collect (cons (intern (format nil "ARG~D" i) :keyword) a)))))
+                                        collect (cons
+                                                (intern (format nil "ARG~D" i) :keyword) a)))))
          current kv)))))
 
 (defparameter *php-spl-builtin-classes*
@@ -193,7 +194,8 @@ gensym-named class and makes an instance of it."
                              :cond (make-ast-call
                                     :func (make-ast-var :name 'cl-cc/php::%php-has-method)
                                     :args (list (make-ast-var :name inst-sym)
-                                                (make-ast-quote :value (php-ident-sym "__construct"))))
+                                                (make-ast-quote
+                                                 :value (php-ident-sym "__construct"))))
                              :then (make-ast-call
                                     :func (make-ast-slot-value
                                            :object (make-ast-var :name inst-sym)

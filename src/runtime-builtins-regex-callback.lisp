@@ -42,8 +42,9 @@ stripped the pattern delimiters, so every call raised
                                    (let ((match-arr (%php-make-array)))
                                      (write-string (subseq str pos match-start) out)
                                      (loop for k from 0 to group-count
-                                           do (%php-array-set match-arr k
-                                                              (%php-regex-group-string match-groups k str)))
+                                           do (%php-array-set
+                                               match-arr k
+                                               (%php-regex-group-string match-groups k str)))
                                      (write-string (%php-stringify (funcall cb match-arr)) out)
                                      (incf replacements)
                                      (setf pos (max (1+ match-start) match-end)))

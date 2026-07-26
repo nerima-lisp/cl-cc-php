@@ -137,7 +137,8 @@ i s A a U and \\-escapes."
                                (1- day)))
                (month-names #("January" "February" "March" "April" "May" "June"
                               "July" "August" "September" "October" "November" "December"))
-               (day-names #("Sunday" "Monday" "Tuesday" "Wednesday" "Thursday" "Friday" "Saturday")))
+               (day-names #("Sunday" "Monday" "Tuesday" "Wednesday"
+                            "Thursday" "Friday" "Saturday")))
           (loop for i from 0 below (length fmt)
                 for ch = (char fmt i)
                 do (write-string
@@ -181,7 +182,8 @@ i s A a U and \\-escapes."
 
 (defun %php-date-create (&optional (datetime nil))
   "PHP date_create / DateTime::__construct: return a PHP DateTime-like array."
-  (let* ((ts (if (or (null datetime) (%php-null-p datetime) (string= (%php-stringify datetime) "now"))
+  (let* ((ts (if (or (null datetime) (%php-null-p datetime)
+                     (string= (%php-stringify datetime) "now"))
                  (%php-time)
                  (or (%php-strtotime datetime) (%php-time))))
          (obj (%php-make-array)))

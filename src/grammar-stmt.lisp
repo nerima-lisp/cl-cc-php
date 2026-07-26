@@ -80,7 +80,7 @@
     members))
 
 (defun %parse-php-class-def (ts kw-tok)
-  "Parse `class Name [extends Base] [implements ...] { members }` starting after the 'class' keyword."
+"Parse `class Name [extends Base] [implements ...] { members }` starting after the 'class' keyword."
   (let ((name-tok (php-ts-expect ts :T-IDENT nil "class name"))
         (extends nil))
     (when (and (not (php-ts-at-end-p ts))
@@ -124,7 +124,8 @@
 
 (defun %parse-php-if-stmt (ts)
   (let* ((kw-tok     (prog1 (php-ts-advance ts) (php-ts-expect ts :T-LPAREN nil "if condition")))
-          (cond-expr  (prog1 (php-cst-parse-expr ts) (php-ts-expect ts :T-RPAREN nil "if condition")))
+          (cond-expr  (prog1 (php-cst-parse-expr ts)
+                             (php-ts-expect ts :T-RPAREN nil "if condition")))
           (then-stmts (%php-cst-parse-stmt-body ts))
           (elseif-stmts nil)
           (else-stmts nil))
@@ -151,7 +152,8 @@
 
 (defun %parse-php-while-stmt (ts)
   (let* ((kw-tok     (prog1 (php-ts-advance ts) (php-ts-expect ts :T-LPAREN nil "while condition")))
-         (cond-expr  (prog1 (php-cst-parse-expr ts) (php-ts-expect ts :T-RPAREN nil "while condition")))
+         (cond-expr  (prog1 (php-cst-parse-expr ts)
+                            (php-ts-expect ts :T-RPAREN nil "while condition")))
          (body-stmts (php-cst-parse-block ts)))
     (%php-cst-interior :while (list (%php-tok-to-cst kw-tok) cond-expr
                                     (%php-cst-interior :body body-stmts)))))

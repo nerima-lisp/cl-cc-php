@@ -92,7 +92,8 @@
         (let* ((full-pads (floor deficit (max 1 (length p))))
                (remainder  (mod   deficit (max 1 (length p))))
                (pad-chunk  (concatenate 'string
-                                        (apply #'concatenate 'string (make-list full-pads :initial-element p))
+                                        (apply #'concatenate 'string
+                                               (make-list full-pads :initial-element p))
                                         (subseq p 0 remainder))))
           (cond ((= pad-type 1) (concatenate 'string s pad-chunk))          ; STR_PAD_RIGHT
                 ((= pad-type 0) (concatenate 'string pad-chunk s))          ; STR_PAD_LEFT
@@ -103,7 +104,8 @@
                               (let* ((fp (floor n (max 1 (length p))))
                                      (rm (mod   n (max 1 (length p)))))
                                 (concatenate 'string
-                                             (apply #'concatenate 'string (make-list fp :initial-element p))
+                                             (apply #'concatenate 'string
+                                                    (make-list fp :initial-element p))
                                              (subseq p 0 rm))))))
                    (concatenate 'string (funcall mk left-pad) s (funcall mk right-pad))))
                 (t (concatenate 'string s pad-chunk)))))))

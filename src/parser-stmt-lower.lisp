@@ -45,7 +45,10 @@
                            ((eq (php-peek-type rest) :T-COLON) (cdr rest))
                            ((eq (php-peek-type rest) :T-SEMI)
                             (push (%php-switch-deprecation-warning-ast
-                                   "PHP 8.5 deprecates semicolons after switch case labels; use a colon instead")
+                                   (concatenate
+                                    'string
+                                    "PHP 8.5 deprecates semicolons after switch case labels; "
+                                    "use a colon instead"))
                                   warnings)
                             (cdr rest))
                            (t (php-skip-semis rest)))

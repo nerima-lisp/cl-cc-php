@@ -173,7 +173,8 @@ by the last argument (a user comparison callback)."
          (result (%php-make-array)))
     (dolist (pair (%php-array-pairs array))
       (when (and cb (every (lambda (a)
-                             (%php-callback-equal-p cb (cdr pair) (mapcar #'cdr (%php-array-pairs a))))
+                             (%php-callback-equal-p
+                              cb (cdr pair) (mapcar #'cdr (%php-array-pairs a))))
                            arrays))
         (%php-array-set result (car pair) (cdr pair))))
     result))

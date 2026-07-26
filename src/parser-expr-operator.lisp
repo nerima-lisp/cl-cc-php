@@ -267,7 +267,10 @@ to simple variables and avoids reading an unbound variable on first use."
                       (if (%php-reference-marker-p val)
                           (let ((source (%php-reference-marker-expr val)))
                             (unless (ast-var-p source)
-                              (error "PHP parse error: reference assignment only supports variable sources"))
+                              (error
+                               (concatenate 'string
+                                            "PHP parse error: reference assignment only supports "
+                                            "variable sources")))
                             (%php-reference-assignment-marker var-sym (ast-var-name source)))
                           (if already-known
                               (make-ast-setq :var var-sym :value val)

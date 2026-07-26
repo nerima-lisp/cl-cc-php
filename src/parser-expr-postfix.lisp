@@ -168,30 +168,43 @@ ordering only applies to user-visible parameters."
                                    ((and (%php-closure-class-ast-p obj)
                                          (string= (symbol-name member) "GETCURRENT"))
                                     (when args
-                                      (error "PHP parse error: Closure::getCurrent() expects no arguments"))
+                                      (error
+                                       (concatenate 'string
+                                                    "PHP parse error: Closure::getCurrent() "
+                                                    "expects no arguments")))
                                     (%php-call 'cl-cc/php::%php-current-closure))
                                    ((and (%php-locale-class-ast-p obj)
                                          (string= (symbol-name member) "ISRIGHTTOLEFT"))
                                     (unless (= (length args) 1)
-                                      (error "PHP parse error: Locale::isRightToLeft() expects exactly 1 argument"))
+                                      (error
+                                       (concatenate 'string
+                                                    "PHP parse error: Locale::isRightToLeft() "
+                                                    "expects exactly 1 argument")))
                                     (%php-call 'cl-cc/php::%php-locale-is-right-to-left
                                                (first args)))
                                    ((and (%php-locale-class-ast-p obj)
                                          (string= (symbol-name member) "ADDLIKELYSUBTAGS"))
                                     (unless (= (length args) 1)
-                                      (error "PHP parse error: Locale::addLikelySubtags() expects exactly 1 argument"))
+                                      (error
+                                       (concatenate 'string
+                                                    "PHP parse error: Locale::addLikelySubtags() "
+                                                    "expects exactly 1 argument")))
                                     (%php-call 'cl-cc/php::%php-locale-add-likely-subtags
                                                (first args)))
                                    ((and (%php-locale-class-ast-p obj)
                                          (string= (symbol-name member) "MINIMIZESUBTAGS"))
                                     (unless (= (length args) 1)
-                                      (error "PHP parse error: Locale::minimizeSubtags() expects exactly 1 argument"))
+                                      (error
+                                       (concatenate 'string
+                                                    "PHP parse error: Locale::minimizeSubtags() "
+                                                    "expects exactly 1 argument")))
                                     (%php-call 'cl-cc/php::%php-locale-minimize-subtags
                                                (first args)))
                                    ((and (%php-uri-class-ast-kind obj)
                                          (string= (symbol-name member) "PARSE"))
                                     (when (null args)
-                                      (error "PHP parse error: Uri::parse() expects at least 1 argument"))
+                                      (error
+                                       "PHP parse error: Uri::parse() expects at least 1 argument"))
                                     (%php-uri-parse-ast (%php-uri-class-ast-kind obj) args))
                                    ((and (%php-fiber-class-ast-p obj)
                                          (string= (symbol-name member) "SUSPEND"))
@@ -205,7 +218,8 @@ ordering only applies to user-visible parameters."
                              kv kv4))
                      (setf obj (if (%php-predefined-class-constant-class-ast-p obj)
                                    (%php-call 'cl-cc/php::%php-predefined-class-constant
-                                              (make-ast-quote :value (symbol-name (ast-var-name obj)))
+                                              (make-ast-quote
+                                               :value (symbol-name (ast-var-name obj)))
                                               (make-ast-quote :value (symbol-name member)))
                                    (make-ast-slot-value :object obj :slot member))
                            rest rest3))))))

@@ -91,7 +91,9 @@
                      (%php-array-set result key val)
                      ;; String-key collision: combine both sides as arrays and
                      ;; merge recursively (a scalar is first wrapped in [x]).
-                     (let ((ex (if (hash-table-p existing) existing (%php-list-to-array (list existing))))
+                     (let ((ex (if (hash-table-p existing)
+                                   existing
+                                   (%php-list-to-array (list existing))))
                            (nw (if (hash-table-p val) val (%php-list-to-array (list val)))))
                        (%php-array-set result key (%php-array-merge-recursive ex nw)))))))))))
     result))

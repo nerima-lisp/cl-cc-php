@@ -67,7 +67,8 @@
 
 (defun php-lower-foreach (arr-expr var-sym body-stmts)
   "Lower a PHP foreach($arr as $v){body} to a while-loop over the list.
-   Equivalent to: (let ((#:list arr)) (while #:list (let ((v (car #:list))) body (setq #:list (cdr #:list)))))"
+   Equivalent to: (let ((#:list arr)) (while #:list (let ((v (car #:list)))
+   body (setq #:list (cdr #:list)))))"
   (let ((list-sym (gensym "FOREACH-LIST-")))
     (make-ast-let
      :bindings (list (cons list-sym arr-expr))
@@ -83,7 +84,8 @@
                                               :var list-sym
                                               :value (make-ast-call
                                                       :func (make-ast-var :name 'cdr)
-                                                      :args (list (make-ast-var :name list-sym)))))))))))))
+                                                      :args (list
+                                                           (make-ast-var :name list-sym)))))))))))))
 
 ;;; ─── Token Stream Helpers ───────────────────────────────────────────────────
 

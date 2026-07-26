@@ -269,7 +269,8 @@
       (c "STDOUT" '%php-stdout)
       (c "STDERR" '%php-stderr))
     h)
-  "Name (case-sensitive string) → zero-arg runtime helper symbol for dynamic PHP predefined constants.")
+  "Name (case-sensitive string) → zero-arg runtime helper symbol for dynamic
+PHP predefined constants.")
 
 (defun %php-lookup-dynamic-constant (name)
   "Return (values HELPER T) when NAME is a dynamic predefined PHP constant,

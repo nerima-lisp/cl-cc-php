@@ -108,7 +108,8 @@
                                 (:pass (funcall accessor node))
                                 (:walk (funcall walk-fn (funcall accessor node) refs))
                                 (:walk-list (funcall walk-list-fn (funcall accessor node) refs))
-                                (:walk-initargs (funcall walk-initargs-fn (funcall accessor node) refs))))))))
+                                (:walk-initargs (funcall walk-initargs-fn
+                                                         (funcall accessor node) refs))))))))
 
 (defun %php-rewrite-ref-vars (node-or-list ref-vars)
   "Rewrite reads/writes of REF-VARS so PHP by-reference locals use ref boxes."
@@ -213,11 +214,14 @@
                ((ast-handler-case-p node)
                 (make-ast-handler-case :form (walk (ast-handler-case-form node) refs)
                                        :clauses (mapcar (lambda (clause)
-                                                          (destructuring-bind (types var body) clause
+                                                          (destructuring-bind (types var body)
+                                                              clause
                                                             (list types var
                                                                   (walk-list body
-                                                                             (%php-shadow-ref-vars refs
-                                                                                                    (when var (list var)))))))
+                                                                             (%php-shadow-ref-vars
+                                                                              refs
+                                                                              (when var
+                                                                                (list var)))))))
                                                         (ast-handler-case-clauses node))))
                (t (let ((spec (%php-find-simple-node-spec node)))
                     (if spec

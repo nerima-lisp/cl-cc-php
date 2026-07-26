@@ -10,13 +10,17 @@
     (values (make-ast-call :func (make-ast-var :name name) :args (list expr))
             (php-skip-semis rest2) kv2)))
 
-(define-php-stmt-parser :include (rest known-vars) (%php-parse-include-like rest known-vars 'include))
+(define-php-stmt-parser :include (rest known-vars)
+  (%php-parse-include-like rest known-vars 'include))
 
-(define-php-stmt-parser :require (rest known-vars) (%php-parse-include-like rest known-vars 'require))
+(define-php-stmt-parser :require (rest known-vars)
+  (%php-parse-include-like rest known-vars 'require))
 
-(define-php-stmt-parser :include-once (rest known-vars) (%php-parse-include-like rest known-vars 'include-once))
+(define-php-stmt-parser :include-once (rest known-vars)
+  (%php-parse-include-like rest known-vars 'include-once))
 
-(define-php-stmt-parser :require-once (rest known-vars) (%php-parse-include-like rest known-vars 'require-once))
+(define-php-stmt-parser :require-once (rest known-vars)
+  (%php-parse-include-like rest known-vars 'require-once))
 
 (define-php-stmt-parser :declare (rest known-vars)
   (let ((after-directives (%php-skip-declare-directives rest)))
@@ -103,9 +107,11 @@
 (define-php-stmt-parser :const (rest known-vars)
   (%php-parse-top-level-const rest known-vars))
 
-(define-php-stmt-parser :trait (rest known-vars) (%php-parse-classlike rest known-vars :kind :trait))
+(define-php-stmt-parser :trait (rest known-vars)
+  (%php-parse-classlike rest known-vars :kind :trait))
 
-(define-php-stmt-parser :interface (rest known-vars) (%php-parse-classlike rest known-vars :kind :interface))
+(define-php-stmt-parser :interface (rest known-vars)
+  (%php-parse-classlike rest known-vars :kind :interface))
 
 (define-php-stmt-parser :enum (rest known-vars) (%php-parse-classlike rest known-vars :enum-p t))
 
@@ -159,7 +165,8 @@
                                              :optional-params optionals
                                              :rest-param rest-param
                                              :declarations (%php-function-declarations
-                                                            param-types return-type param-attributes nil
+                                                            param-types return-type param-attributes
+                                                            nil
                                                             :function returns-by-ref)
                                              :body wrapped-body)
                             rest known-vars))))))))))))

@@ -4,8 +4,8 @@
 ;;; ─── Interface Registry ──────────────────────────────────────────────────────
 
 (defvar *php-interface-registry* (make-hash-table :test #'equal)
-  "Maps interface name symbols to their compile-time descriptors.
-Each entry is a plist: (:parents parent-name-list :methods method-sig-list :constants constant-list).")
+  "Maps interface name symbols to their compile-time descriptors. Each entry is a plist: (:parents
+parent-name-list :methods method-sig-list :constants constant-list).")
 
 ;;; ─── Interface Registration ──────────────────────────────────────────────────
 

@@ -102,7 +102,8 @@
       (unless (and current (eq (php-peek-type current) :T-COMMA))
         (return))
       (when attributes
-        (error "PHP parse error: attributes on grouped const declarations require exactly one constant"))
+        (error
+         "PHP parse error: attributes on grouped const declarations require exactly one constant"))
       (setf current (cdr current)))
     (let ((ordered-slots (nreverse slots)))
       (values (first ordered-slots)
@@ -332,7 +333,8 @@ Returns (values superclass-list remaining-stream)."
             (setf current (php-skip-semis current))
             (when (or (php-at-eof-p current) (eq (php-peek-type current) :T-RBRACE))
               (return))
-            (multiple-value-bind (slot rest2 extra-slots) (%php-parse-class-body-member current known-vars class-name)
+            (multiple-value-bind (slot rest2 extra-slots)
+                (%php-parse-class-body-member current known-vars class-name)
               (when slot (push slot slots))
               (dolist (es extra-slots) (push es slots))
               (setf current rest2)))
@@ -397,7 +399,10 @@ to %php-parse-expr-stmt for expression statements."
                   (when (and attributes
                              (eq (php-tok-value _) :const)
                              (ast-progn-p stmt))
-                    (error "PHP parse error: attributes on grouped const declarations require exactly one constant"))
+                    (error
+                     (concatenate 'string
+                                  "PHP parse error: attributes on grouped const "
+                                  "declarations require exactly one constant")))
                   (values (%php-attach-attributes-to-node
                            stmt attributes target-type)
                           rest2 kv2))))

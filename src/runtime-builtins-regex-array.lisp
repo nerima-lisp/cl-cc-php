@@ -30,8 +30,10 @@ skipped, as PHP does."
          (la (length a)) (lb (length b))
          (i 0) (j 0))
     (loop
-      (loop while (and (< i la) (member (char a i) '(#\Space #\Tab #\Newline #\Return))) do (incf i))
-      (loop while (and (< j lb) (member (char b j) '(#\Space #\Tab #\Newline #\Return))) do (incf j))
+      (loop while (and (< i la) (member (char a i) '(#\Space #\Tab #\Newline #\Return)))
+            do (incf i))
+      (loop while (and (< j lb) (member (char b j) '(#\Space #\Tab #\Newline #\Return)))
+            do (incf j))
       (cond
         ((and (>= i la) (>= j lb)) (return 0))
         ((>= i la) (return -1))

@@ -54,7 +54,10 @@
         (if warn
             (%php-trigger-error
              (if (stringp key)
-                 (format nil "~A(): Argument #1 ($lifetime_or_options) contains an unrecognized key \"~A\""
+                 (format nil
+                         (concatenate 'string
+                                      "~A(): Argument #1 ($lifetime_or_options) contains "
+                                      "an unrecognized key \"~A\"")
                          function-name
                          key)
                  (format nil "~A(): Argument #1 ($lifetime_or_options) cannot contain numeric keys"
@@ -92,7 +95,8 @@
                (not (member samesite '("None" "Lax" "Strict")
                             :test #'string-equal)))
       (%php-throw 'value-error
-                  (format nil "~A(): \"samesite\" option must be \"Strict\", \"Lax\", \"None\", or \"\""
+                  (format nil
+                          "~A(): \"samesite\" option must be \"Strict\", \"Lax\", \"None\", or \"\""
                           function-name)))
     samesite))
 
@@ -269,7 +273,9 @@
 
 (defun %php-session-warn-partitioned-without-secure ()
   (%php-trigger-error
-   "session_start(): Partitioned session cookie cannot be used without also configuring it as secure"
+   (concatenate 'string
+                "session_start(): Partitioned session cookie cannot be used without also "
+                "configuring it as secure")
    2))
 
 (defun %php-session-name (&optional name)
@@ -308,7 +314,9 @@
                         +php-session-cookie-option-keys+))
             (%php-throw
              'value-error
-             "session_set_cookie_params(): Argument #1 ($lifetime_or_options) must contain at least 1 valid key"))
+             (concatenate 'string
+                           "session_set_cookie_params(): Argument #1 ($lifetime_or_options) must "
+                           "contain at least 1 valid key")))
           (%php-array-set params "lifetime"
                           (%php-cookie-integer
                            (%php-cookie-option lifetime-or-options

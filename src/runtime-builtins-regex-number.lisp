@@ -13,7 +13,9 @@ gave 1,234 instead of PHP's 3 and 1,235."
   "PHP number_format — format a number with decimal and thousands separators."
   (let* ((n (coerce (if (numberp num) num 0) 'double-float))
          (dp (if (and dec-point (not (%php-null-p dec-point))) (%php-stringify dec-point) "."))
-         (ts (if (and thousands-sep (not (%php-null-p thousands-sep))) (%php-stringify thousands-sep) ","))
+         (ts (if (and thousands-sep (not (%php-null-p thousands-sep)))
+                 (%php-stringify thousands-sep)
+                 ","))
          (abs-n (abs n))
          (rounded (if (> decimals 0)
                       (/ (%php-round-half-up (* abs-n (expt 10 decimals))) (expt 10 decimals))

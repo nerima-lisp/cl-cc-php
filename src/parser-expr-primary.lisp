@@ -181,7 +181,8 @@ T-TYPE.  Returns (values name-string rest)."
                 (multiple-value-bind (call rest2 kv2)
                     (%php-parse-function-call qualified-name
                                               (php-ident-sym
-                                               (php-resolve-qualified-name qualified-name :function))
+                                               (php-resolve-qualified-name qualified-name
+                                                            :function))
                                               rest known-vars)
                   (values call rest2 kv2))
                 ;; Bare identifier: dynamic predefined constants lower to their

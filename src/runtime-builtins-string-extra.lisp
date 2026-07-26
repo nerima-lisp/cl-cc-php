@@ -32,7 +32,8 @@
                        (< (+ i 2) (length s))
                        (digit-char-p (char s (+ i 1)) 16)
                        (digit-char-p (char s (+ i 2)) 16))
-                  (write-char (code-char (parse-integer s :start (1+ i) :end (+ i 3) :radix 16)) out)
+                  (write-char (code-char (parse-integer s :start (1+ i)
+                                                         :end (+ i 3) :radix 16)) out)
                   (incf i 3))
                  (t (write-char (char s i) out) (incf i)))))))
 
