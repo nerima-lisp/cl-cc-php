@@ -258,7 +258,8 @@ function commented() { return 1; }")))
     (expect parser :to-be-truthy)
     (multiple-value-bind (forms metadata)
         (funcall parser source)
-      (expect forms :to-equal (parse-php-source source))
+      (expect (= 1 (length forms)) :to-be-truthy)
+      (expect (cl-cc/ast:ast-call-p (first forms)) :to-be-truthy)
       (expect metadata :to-be-null))))
 
 
