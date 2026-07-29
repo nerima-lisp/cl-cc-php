@@ -170,6 +170,7 @@
   (:import-from #:cl-cc/bootstrap
                 ;; Backend self-registration, needed at load time by
                 ;; runtime-bridge-provider.lisp.
+                #:register-backend-parser
                 #:register-backend-bridge-provider
                 ;; Hooks the runtime installs itself into so that PHP callables
                 ;; become callable from compiled VM code.

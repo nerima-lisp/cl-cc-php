@@ -252,6 +252,15 @@ function commented() { return 1; }")))
               "<?php $o = new class(5) extends Base { public function __construct(public int $n) {} };")))
     (expect ast :to-be-truthy)))
 
+(it-sequential "php-parser-registers-bootstrap-backend"
+  (let ((parser (cl-cc/bootstrap:find-backend-parser :php))
+        (source "<?php echo 1;"))
+    (expect parser :to-be-truthy)
+    (multiple-value-bind (forms metadata)
+        (funcall parser source)
+      (expect forms :to-equal (parse-php-source source))
+      (expect metadata :to-be-null))))
+
 
 
   )

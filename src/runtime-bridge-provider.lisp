@@ -43,3 +43,6 @@ prevent."
     (nreverse entries)))
 
 (register-backend-bridge-provider #'%php-host-bridge-entries)
+
+(register-backend-parser
+ :php (lambda (source) (values (parse-php-source source) nil)))
