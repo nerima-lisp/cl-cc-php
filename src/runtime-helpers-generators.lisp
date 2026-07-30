@@ -153,17 +153,9 @@ VM state), returns a (:yield VALUE) marker for inspection."
      +php-null+)
     (t (pop (php-gen-values gen)))))
 
-(defun %php-generator-send (gen value)
-  "In eager model, send is equivalent to next (values are pre-computed)."
-  (%php-generator-next gen value))
-
 (defun %php-generator-valid (gen)
   "True if generator GEN has more values."
   (and (not (php-gen-done-p gen)) (not (null (php-gen-values gen)))))
-
-(defun %php-generator-current (gen)
-  "Return the next value without consuming it."
-  (car (php-gen-values gen)))
 
 (defun %php-generator-get-return (gen)
   "Return the generator's final return value."

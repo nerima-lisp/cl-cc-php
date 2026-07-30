@@ -93,3 +93,36 @@
     (expect (cl-cc/php::%php-boolval "0") :to-be nil)
     (expect (cl-cc/php::%php-boolval 1) :to-be-truthy)
     (expect (cl-cc/php::%php-boolval "0.0") :to-be-truthy)))
+
+(describe
+  "PHP is_numeric / %php-string-numeric-p / filter_var(FILTER_VALIDATE_FLOAT): PHP's own
+numeric-string grammar, not Common Lisp's reader grammar"
+  ;; %PHP-STRING-NUMERIC-P and %PHP-FILTER-FLOAT-VALUE both used to delegate straight to
+  ;; READ-FROM-STRING, which accepts Common Lisp syntax PHP's own numeric-string grammar does
+  ;; not: a ratio like "1/2" reads as the CL ratio 1/2 (a NUMBERP), and a double-float exponent
+  ;; marker like "1.0d0" reads as a valid CL float literal — so both silently treated non-numeric
+  ;; PHP strings as numeric. %PHP-NUMERIC-GRAMMAR-P now validates the string against PHP's actual
+  ;; grammar first.
+  (it-sequential-each
+    (("1/2" nil)
+      ("1.0d0" nil)
+      ("0x1A" nil)
+      ("3.14" t)
+      ("1e5" t)
+      ("-.5" t)
+      ("007" t)
+      ("+5" t)
+      ("5." t)
+      ("5.5.5" nil)
+      ("1e" nil)
+      ("" nil)
+      ("   " nil)
+      ("  42  " t))
+    "is_numeric(~S) => ~A"
+    (input expected)
+    (expect (cl-cc/php::%php-is-numeric input) :to-be expected))
+  (it-sequential
+    "filter_var(..., FILTER_VALIDATE_FLOAT) rejects the same CL-reader-only syntax"
+    (expect (cl-cc/php::%php-filter-var "1/2" 259) :to-be nil)
+    (expect (cl-cc/php::%php-filter-var "1.0d0" 259) :to-be nil)
+    (expect (cl-cc/php::%php-filter-var "3.14" 259) :to-equal 3.14)))

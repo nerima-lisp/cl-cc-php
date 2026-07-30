@@ -7,6 +7,8 @@
 - Nix, if you want the reproducible path.
 - A checkout of [cl-cc](https://github.com/nerima-lisp/cl-cc), which supplies
   `cl-cc-ast`, `cl-cc-bootstrap`, `cl-cc-parse`, and `cl-cc-vm`.
+- A checkout of [cl-json-kit](https://github.com/nerima-lisp/cl-json-kit),
+  which `json_validate` calls directly.
 
 cl-cc-php cannot load without cl-cc on the ASDF source registry. That is a
 property of the system rather than a packaging oversight — see
@@ -56,6 +58,7 @@ parent/
   cl-weave/
   cl-prolog/
   cl-parser-kit/
+  cl-json-kit/
 ```
 
 With that layout, `run-tests.lisp` finds everything with no configuration.
@@ -71,7 +74,7 @@ this documentation site with `--strict`.
 
 ## Dependencies
 
-The main system depends on four cl-cc subsystems:
+The main system depends on four cl-cc subsystems, plus one standalone package:
 
 | Dependency | Why |
 |---|---|
@@ -79,6 +82,7 @@ The main system depends on four cl-cc subsystems:
 | `cl-cc-bootstrap` | Compiler self-hosting core |
 | `cl-cc-parse` | Shared parsing infrastructure |
 | `cl-cc-vm` | Bytecode VM |
+| [`cl-json-kit`](https://github.com/nerima-lisp/cl-json-kit) | RFC 8259 JSON reader backing `json_validate` |
 
 The test system additionally depends on `cl-cc-pipeline`, for the end-to-end
 suites that compile and run PHP source, and on

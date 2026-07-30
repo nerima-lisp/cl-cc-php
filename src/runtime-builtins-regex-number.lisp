@@ -1,4 +1,4 @@
-;;;; packages/php/src/runtime-builtins-regex-number.lisp -- PHP numeric formatting builtins
+;;;; runtime-builtins-regex-number.lisp -- PHP numeric formatting builtins
 
 (in-package :cl-cc/php)
 

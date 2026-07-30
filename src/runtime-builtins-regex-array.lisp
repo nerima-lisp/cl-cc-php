@@ -1,4 +1,4 @@
-;;;; packages/php/src/runtime-builtins-regex-array.lisp -- PHP array and natural-sort extra builtins
+;;;; runtime-builtins-regex-array.lisp -- PHP array and natural-sort extra builtins
 
 (in-package :cl-cc/php)
 
@@ -15,10 +15,6 @@
                            (funcall fn (cdr pair) (car pair)))))))
         (walk array))))
   t)
-
-(defun %php-array-splice-in-place (array offset &optional length replacement)
-  "PHP array_splice modifying the original array."
-  (%php-array-splice array offset length replacement))
 
 (defun %php-strnatcmp (s1 s2 &optional case-insensitive)
   "Natural-order comparison of S1 and S2 (PHP strnatcmp/strnatcasecmp).  Returns
@@ -75,16 +71,3 @@ skipped, as PHP does."
   "PHP natcasesort: case-insensitive natural-order sort, preserving keys."
   (%php-natural-sort-in-place array t))
 
-(defun %php-array-map-null (array1 &rest arrays)
-  "PHP array_map with null callback: zip arrays into array-of-arrays."
-  (let ((result (%php-make-array))
-        (lists (mapcar #'%php-array-values-list (cons array1 arrays)))
-        (i 0))
-    (loop while (every #'consp lists)
-          do (let ((row (%php-make-array)))
-               (loop for lst in lists for j from 0
-                     do (%php-array-set row j (car lst)))
-               (%php-array-set result i row)
-               (incf i)
-               (setf lists (mapcar #'cdr lists))))
-    result))

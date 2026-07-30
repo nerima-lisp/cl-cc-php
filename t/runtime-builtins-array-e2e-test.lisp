@@ -334,4 +334,26 @@
         "{\"a\":[1,2,3]}"))
       "php-e2e-array-merge-recursive: ~S"
       (source expected)
-    (expect (%php-run-capture source) :to-equal expected)))
+    (expect (%php-run-capture source) :to-equal expected))
+  (it-sequential
+    "php-e2e-array-walk-invokes-the-callback-with-value-and-key"
+    (expect (%php-run-capture
+             "<?php array_walk(['a'=>1,'b'=>2], function($v,$k){ echo $k,$v; });")
+            :to-equal "a1b2"))
+  (it-sequential
+    "array_walk/array_walk_recursive's by-ref callback parameter does not
+mutate the array — the callback is invoked with the plain value, not a PHP
+reference box, so any assignment inside a `function(&$value)` callback is
+lost"
+    ;; PHP's real array_walk/array_walk_recursive pass $value BY REFERENCE
+    ;; (the callback signature is `function(&$value, $key)`), so a callback
+    ;; that reassigns $value is documented to mutate the array in place.
+    ;; %PHP-ARRAY-WALK/-RECURSIVE call the callback with the bare value
+    ;; (`(funcall fn (cdr pair) (car pair))`, no %PHP-MAKE-REF box and no
+    ;; writeback afterward), so this runtime's array is left unchanged.
+    (expect (%php-run-capture
+             "<?php $a=[1,2,3]; array_walk($a, function(&$v){ $v = $v * 10; }); echo implode(',', $a);")
+            :to-equal "1,2,3")
+    (expect (%php-run-capture
+             "<?php $a=['x'=>[1,2]]; array_walk_recursive($a, function(&$v){ $v = $v * 10; }); echo implode(',', $a['x']);")
+            :to-equal "1,2")))

@@ -82,6 +82,12 @@ objects; $d->k does not.)  Returns null on malformed input."
         do (incf pos))
   pos)
 
+(declaim (inline %php-json-at-p))
+(defun %php-json-at-p (s pos ch)
+  "True if S has CH at POS (bounds-checked). The recurring guard both JSON
+parsers below use before consuming a delimiter."
+  (and (< pos (length s)) (char= (char s pos) ch)))
+
 ;;; The JSON parser threads the cursor: every %php-json-parse-* returns
 ;;; (values value next-pos).  (The previous version returned only the value and
 ;;; faked the cursor with (+ pos 1) — correct only for single-character values,
@@ -146,20 +152,20 @@ objects; $d->k does not.)  Returns null on malformed input."
   "POS is just after the opening brace. Return (values php-array next-pos)."
   (let ((result (%php-make-array)))
     (setf pos (%php-json-skip-ws s pos))
-    (when (and (< pos (length s)) (char= (char s pos) #\}))
+    (when (%php-json-at-p s pos #\})
       (return-from %php-json-parse-object (values result (1+ pos))))
     (loop
       (setf pos (%php-json-skip-ws s pos))
-      (unless (and (< pos (length s)) (char= (char s pos) #\"))
+      (unless (%php-json-at-p s pos #\")
         (return (values result pos)))
       (multiple-value-bind (key kpos) (%php-json-parse-string s (1+ pos))
         (setf pos (%php-json-skip-ws s kpos))
-        (when (and (< pos (length s)) (char= (char s pos) #\:)) (incf pos))
+        (when (%php-json-at-p s pos #\:) (incf pos))
         (multiple-value-bind (val vpos) (%php-json-parse-value s pos)
           (%php-array-set result key val)
           (setf pos (%php-json-skip-ws s vpos))
-          (cond ((and (< pos (length s)) (char= (char s pos) #\,)) (incf pos))
-                ((and (< pos (length s)) (char= (char s pos) #\}))
+          (cond ((%php-json-at-p s pos #\,) (incf pos))
+                ((%php-json-at-p s pos #\})
                  (return (values result (1+ pos))))
                 (t (return (values result pos)))))))))
 
@@ -167,22 +173,31 @@ objects; $d->k does not.)  Returns null on malformed input."
   "POS is just after the opening bracket. Return (values php-array next-pos)."
   (let ((result (%php-make-array)))
     (setf pos (%php-json-skip-ws s pos))
-    (when (and (< pos (length s)) (char= (char s pos) #\]))
+    (when (%php-json-at-p s pos #\])
       (return-from %php-json-parse-array (values result (1+ pos))))
     (loop for i from 0
           do (multiple-value-bind (val vpos) (%php-json-parse-value s pos)
                (%php-array-set result i val)
                (setf pos (%php-json-skip-ws s vpos))
-               (cond ((and (< pos (length s)) (char= (char s pos) #\,)) (incf pos))
-                     ((and (< pos (length s)) (char= (char s pos) #\]))
+               (cond ((%php-json-at-p s pos #\,) (incf pos))
+                     ((%php-json-at-p s pos #\])
                       (return (values result (1+ pos))))
                      (t (return (values result pos))))))))
 
 ;;; ─── JSON validation (PHP 8.3) ───────────────────────────────────────────────
+;;;
+;;; %PHP-JSON-PARSE-VALUE above is deliberately lenient: every malformed input
+;;; falls through to a catch-all branch that returns null instead of signalling,
+;;; so %PHP-JSON-DECODE never raises and a validator built on top of it could
+;;; never observe failure. json_validate instead delegates to cl-json-kit's
+;;; JSON-KIT:PARSE, a dependency-free, RFC 8259-conformance-tested reader (the
+;;; full JSONTestSuite corpus: 95/95 must-accept, 188/188 must-reject) that
+;;; already rejects trailing data after the value — writing and maintaining an
+;;; equivalent strict parser by hand here would just be a worse copy of it.
 
 (defun %php-json-validate (json &optional (depth 512) (flags 0))
   "PHP 8.3 json_validate: check if string is valid JSON."
-  (declare (ignore depth flags))
+  (declare (ignore flags))
   (handler-case
-      (progn (%php-json-decode json) t)
-    (error () nil)))
+      (progn (json-kit:parse (%php-stringify json) :max-depth depth) t)
+    (json-kit:json-parse-error () nil)))

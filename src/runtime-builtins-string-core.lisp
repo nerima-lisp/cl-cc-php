@@ -1,4 +1,4 @@
-;;;; packages/php/src/runtime-builtins-string-core.lisp -- Core PHP string operations
+;;;; runtime-builtins-string-core.lisp -- Core PHP string operations
 
 (in-package :cl-cc/php)
 

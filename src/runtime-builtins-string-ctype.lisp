@@ -1,4 +1,4 @@
-;;;; packages/php/src/runtime-builtins-string-ctype.lisp -- ctype PHP string predicates
+;;;; runtime-builtins-string-ctype.lisp -- ctype PHP string predicates
 
 (in-package :cl-cc/php)
 

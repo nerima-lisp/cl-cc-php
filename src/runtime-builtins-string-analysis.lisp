@@ -113,22 +113,54 @@
   (%php-edit-distance (%php-grapheme-clusters s1)
                       (%php-grapheme-clusters s2)))
 
+(defun %php-similar-text-lcs (s1 s2)
+  "Return (values pos1 pos2 length) of the first-found longest common
+substring of S1 and S2 — PHP's own algorithm scans (i, j) in that order and
+keeps the first match of the longest length it finds, not just any longest
+match, so a different scan order can return a different, still-correct-length
+answer for a tied input."
+  (let ((best-len 0) (best-i 0) (best-j 0))
+    (loop for i from 0 below (length s1) do
+      (loop for j from 0 below (length s2) do
+        (let ((k 0))
+          (loop while (and (< (+ i k) (length s1))
+                           (< (+ j k) (length s2))
+                           (char= (char s1 (+ i k)) (char s2 (+ j k))))
+                do (incf k))
+          (when (> k best-len)
+            (setf best-len k best-i i best-j j)))))
+    (values best-i best-j best-len)))
+
+(defun %php-similar-text-count (s1 s2)
+  "Recursive char count PHP's similar_text is built on: the longest common
+substring's length, plus the same count recursed over the parts of S1/S2
+before and after that match."
+  (if (or (zerop (length s1)) (zerop (length s2)))
+      0
+      (multiple-value-bind (pos1 pos2 len) (%php-similar-text-lcs s1 s2)
+        (if (zerop len)
+            0
+            (+ len
+               (%php-similar-text-count (subseq s1 0 pos1) (subseq s2 0 pos2))
+               (%php-similar-text-count (subseq s1 (+ pos1 len)) (subseq s2 (+ pos2 len))))))))
+
 (defun %php-similar-text (s1 s2 &optional percent-var)
-  "PHP similar_text: compute similarity between S1 and S2."
-  (declare (ignore percent-var))
+  "PHP similar_text: compute similarity between S1 and S2 via PHP's own
+longest-common-substring recursion (%PHP-SIMILAR-TEXT-COUNT above) — not a
+naive greedy per-character scan, which silently overcounts for many inputs
+(e.g. it returned 2, not PHP's real 1, for (\"ab\", \"ba\")). PERCENT-VAR, if a
+PHP reference, receives the percentage PHP defines as
+common*2/(len1+len2)*100."
   (let* ((a (%php-stringify s1))
          (b (%php-stringify s2))
-         (alen (length a))
-         (blen (length b)))
-    (if (or (= alen 0) (= blen 0))
-        0
-        (let ((common 0))
-          (loop for i from 0 below alen do
-            (loop for j from 0 below blen do
-              (when (char= (char a i) (char b j))
-                (incf common)
-                (return))))
-          common))))
+         (common (%php-similar-text-count a b)))
+    (when (%php-ref-p percent-var)
+      (%php-ref-set! percent-var
+                     (let ((total (+ (length a) (length b))))
+                       (if (zerop total)
+                           0.0d0
+                           (/ (* common 2.0d0 100) total)))))
+    common))
 
 (defun %php-soundex (string)
   "PHP soundex: Soundex phonetic encoding of STRING."

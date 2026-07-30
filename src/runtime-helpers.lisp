@@ -17,6 +17,9 @@
   (setf (gethash (symbol-name '%php-settype) registry) '(0))
   (setf (gethash "settype" registry) '(0))
   (setf (gethash "SETTYPE" registry) '(0))
+  (setf (gethash (symbol-name '%php-similar-text) registry) '(2))
+  (setf (gethash "similar_text" registry) '(2))
+  (setf (gethash "SIMILAR_TEXT" registry) '(2))
   registry)
 
 (defparameter *php-by-ref-param-registry*

@@ -63,15 +63,38 @@ another %php-is-* builtin (for the is_integer/is_long/is_double/is_real aliases)
                     (funcall (symbol-function '%php-lookup-builtin) value))
                (fboundp (intern (string-upcase value) :cl-cc/php))))))
 
+(defun %php-numeric-grammar-p (text)
+  "True when TEXT (already whitespace-trimmed) matches PHP's numeric-string
+grammar: an optional sign, then digits with an optional fractional part or a
+fractional part with no leading digit, then an optional e/E exponent — and
+nothing else. Written as an explicit character scan rather than delegating to
+Common Lisp's reader: the reader accepts syntax PHP's grammar does not (ratios
+like \"1/2\", radix markers, double-float exponent markers like \"1.0d0\"), so
+using it directly as a validator silently passes strings PHP itself rejects."
+  (let ((pos 0) (len (length text)))
+    (labels ((peek () (and (< pos len) (char text pos)))
+             (advance () (incf pos))
+             (digits ()
+               (let ((start pos))
+                 (loop while (and (< pos len) (digit-char-p (char text pos)))
+                       do (advance))
+                 (> pos start))))
+      (when (member (peek) '(#\+ #\-)) (advance))
+      (let ((int-digits (digits)) (frac-digits nil))
+        (when (eql (peek) #\.)
+          (advance)
+          (setf frac-digits (digits)))
+        (and (or int-digits frac-digits)
+             (progn
+               (when (member (peek) '(#\e #\E))
+                 (advance)
+                 (when (member (peek) '(#\+ #\-)) (advance))
+                 (unless (digits) (return-from %php-numeric-grammar-p nil)))
+               (= pos len)))))))
+
 (defun %php-string-numeric-p (string)
   "Return true when STRING is a simple PHP numeric string."
-  (let ((text (string-trim '(#\Space #\Tab #\Newline #\Return) string)))
-    (and (> (length text) 0)
-         (multiple-value-bind (value position)
-             (let ((*read-eval* nil))
-               (ignore-errors (read-from-string text)))
-           (and (numberp value)
-                (= position (length text)))))))
+  (%php-numeric-grammar-p (string-trim '(#\Space #\Tab #\Newline #\Return) string)))
 
 (defun %php-is-numeric (value)
   "Return true when VALUE is a number or numeric string."
@@ -193,7 +216,11 @@ are allowed; trailing junk is ignored."
     ((stringp value)
      (let* ((text (string-trim '(#\Space #\Tab #\Newline #\Return) value))
             (*read-eval* nil))
-       (and (> (length text) 0)
+       ;; %PHP-NUMERIC-GRAMMAR-P validates PHP's own float grammar first, so
+       ;; READ-FROM-STRING below only ever runs on a string already confirmed
+       ;; not to be one of the CL-reader-only forms (ratios, radix markers,
+       ;; double-float exponent markers) that grammar excludes.
+       (and (%php-numeric-grammar-p text)
             (multiple-value-bind (parsed position)
                 (ignore-errors (read-from-string text))
               (and (numberp parsed) (= position (length text)) (float parsed))))))
@@ -241,14 +268,14 @@ are allowed; trailing junk is ignored."
                     "filter_var(): Argument #3 ($options) cannot use both "
                     "FILTER_NULL_ON_FAILURE and FILTER_THROW_ON_FAILURE")))
     (let ((result
-            (case filter
-              ((516) value)
-              ((257) (%php-filter-int-value value))
-              ((258) (%php-filter-boolean-value value))
-              ((259) (%php-filter-float-value value))
-              ((273) (%php-filter-url-value value))
-              ((274) (%php-filter-email-value value))
-              (otherwise value))))
+            (cond
+              ((= filter +php-filter-unsafe-raw+) value)
+              ((= filter +php-filter-validate-int+) (%php-filter-int-value value))
+              ((= filter +php-filter-validate-boolean+) (%php-filter-boolean-value value))
+              ((= filter +php-filter-validate-float+) (%php-filter-float-value value))
+              ((= filter +php-filter-validate-url+) (%php-filter-url-value value))
+              ((= filter +php-filter-validate-email+) (%php-filter-email-value value))
+              (t value))))
       (cond
         ((eq result :php-filter-failure)
          (%php-filter-failure flags))

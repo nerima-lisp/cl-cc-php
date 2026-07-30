@@ -194,7 +194,6 @@
    #:%php-parse-attributes
    #:%php-parse-attribute-group
    #:%php-parse-attribute
-   #:%php-skip-attributes
    #:+php-null+
    #:%php-array
    #:%php-array-empty-p
@@ -243,7 +242,6 @@
    #:php-exception
    #:php-check-supported-forms
    #:*php-trait-registry*
-   #:%php-parse-trait-decl
    #:%php-parse-use-trait-stmt
    #:*php-interface-registry*
    #:%php-parse-interface-decl
@@ -285,13 +283,11 @@
    #:*php-named-param-registry*
    ;; foreach by-reference
    #:%php-foreach-by-ref
-   ;; Generator (yield/yield-from/send
+   ;; Generator (yield/yield-from)
    #:php-generator-p
    #:%php-generator-p
    #:%php-make-generator
    #:%php-generator-next
-   #:%php-generator-send
    #:%php-generator-valid
-   #:%php-generator-current
    #:%php-generator-get-return
    #:*current-generator*))

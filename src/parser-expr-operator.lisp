@@ -109,8 +109,7 @@ to simple variables and avoids reading an unbound variable on first use."
        (%php-lower-compound-assign cop operand (make-ast-int :value 1) :property))
       (t
        (%php-unsupported
-        (format nil "PHP prefix ~A is only supported on a $variable, array element, or property" op)
-        operand)))))
+        (format nil "PHP prefix ~A is only supported on a $variable, array element, or property" op))))))
 
 (defun %php-lower-error-suppression (expr)
   "Lower PHP @EXPR by temporarily setting error_reporting to 0."

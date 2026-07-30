@@ -110,62 +110,6 @@
               (php-skip-semis current)
               (rest ordered-slots)))))
 
-(defun %php-parse-trait-use-member (stream)
-  "Parse use TraitName[, OtherTrait]; as class/enum metadata slots."
-  (let ((current (cdr stream))
-        (slots nil))
-    (loop
-      (multiple-value-bind (trait-name rest) (php-parse-qualified-name current)
-        (let ((trait-sym (php-ident-sym (php-resolve-qualified-name trait-name :class))))
-          (push (make-ast-slot-def :name trait-sym
-                                   :allocation :class
-                                   :imports (list :php-trait-use t))
-                slots))
-        (setf current rest))
-      (unless (eq (php-peek-type current) :T-COMMA)
-        (return))
-      (setf current (cdr current)))
-    (values (make-ast-slot-def :name (gensym "PHP-TRAIT-USE-")
-                               :allocation :class
-                               :imports (list :php-trait-uses (nreverse slots)))
-            (php-skip-semis current))))
-
-(defun %php-parse-property-slot (stream modifiers attributes)
-  "Parse an untyped or typed PHP property into an AST slot definition."
-  (multiple-value-bind (property-type after-type) (php-parse-type-annotation stream)
-    (let ((current (if (and property-type (eq (php-peek-type after-type) :T-VAR))
-                       after-type
-                       stream))
-          (slot-type (when (and property-type (eq (php-peek-type after-type) :T-VAR))
-                       property-type)))
-      (multiple-value-bind (var-tok rest) (php-consume current)
-        ;; Use the SAME symbol convention as member access ($o->x): strip the
-        ;; leading $ and intern via php-ident-sym (upcased). php-var-sym did not
-        ;; upcase, so `public $x' declared slot |x| while $o->x looked up X, giving
-        ;; "slot X is missing from the object".
-        (let* ((raw  (php-tok-value var-tok))
-               (bare (if (and (stringp raw) (plusp (length raw)) (char= (char raw 0) #\$))
-                         (subseq raw 1) raw))
-               ;; An untyped property with no initializer defaults to PHP null —
-               ;; NOT the unbound-slot-marker. Without this, $o->x on `public $x;'
-               ;; read as the marker, so is_null($o->x) was false and $o->x ?? d
-               ;; never coalesced.
-               (initform (make-ast-quote :value +php-null+)))
-          ;; Default value: parse it into the slot initform (was discarded).
-          (when (and rest (eq (php-peek-type rest) :T-OP)
-                     (equal "=" (php-peek-value rest)))
-            (multiple-value-bind (default-ast rest2) (php-parse-expr (cdr rest) nil)
-              (setf initform default-ast
-                    rest rest2)))
-          (let ((slot (make-ast-slot-def :name (php-ident-sym bare)
-                                         :type slot-type
-                                         :initform initform
-                                         :allocation (%php-member-slot-allocation modifiers)
-                                         :imports (%php-slot-metadata modifiers
-                                                                      :attributes attributes
-                                                                      :target-type :property))))
-            (values slot (php-skip-semis rest))))))))
-
 (defun %php-promoted-param-assignments (param-attributes)
   "Build (ast-set-slot-value $this->prop $param) nodes for each promoted param.
 PARAM-ATTRIBUTES is the :php-param-attributes plist value from an ast-defun."
@@ -360,6 +304,34 @@ Returns (values superclass-list remaining-stream)."
            (php-peek rest)))
   (%php-parse-class-decl (cdr rest) known-vars :readonly-p t))
 
+(define-php-stmt-parser :abstract (rest known-vars)
+  ;; `abstract class Foo { abstract function m(): T; ... }' — the leading `abstract'
+  ;; here is the CLASS-level modifier and has no registered top-level statement
+  ;; parser of its own, unlike :READONLY above. Member-level `abstract function ...;'
+  ;; inside a class BODY is already handled by %PHP-PARSE-VISIBILITY-MODIFIERS
+  ;; (called from %PHP-PARSE-CLASS-BODY-MEMBER); this is specifically for the
+  ;; keyword appearing before `class' itself.
+  (unless (and rest
+               (eq (php-peek-type rest) :T-KEYWORD)
+               (eq (php-peek-value rest) :class))
+    (error "PHP abstract modifier is only supported before class declarations near token ~S"
+           (php-peek rest)))
+  (%php-parse-class-decl (cdr rest) known-vars))
+
+(define-php-stmt-parser :final (rest known-vars)
+  ;; `final class Foo { ... }' — same gap as :ABSTRACT above and fixed the same way: the
+  ;; leading `final' is the CLASS-level modifier and had no registered top-level statement
+  ;; parser of its own. As with :ABSTRACT, this only makes the class parse; nothing tracks
+  ;; "is this class final" past parsing, so extending a final class is not rejected either
+  ;; — the same class of enforcement gap as :ABSTRACT's un-rejected instantiation and
+  ;; `readonly`'s un-rejected reassignment (see CHANGELOG.md), not attempted here.
+  (unless (and rest
+               (eq (php-peek-type rest) :T-KEYWORD)
+               (eq (php-peek-value rest) :class))
+    (error "PHP final modifier is only supported before class declarations near token ~S"
+           (php-peek rest)))
+  (%php-parse-class-decl (cdr rest) known-vars))
+
 ;;; ─── Interface Statement Parser (overrides parser-stmt entry) ───────────────
 
 (define-php-stmt-parser :interface (rest known-vars)
@@ -384,6 +356,18 @@ to %php-parse-expr-stmt for expression statements."
                             (make-ast-quote :value (php-tok-value tok)))
                  attributes)
                 rest known-vars)))
+    ((and (eq (php-peek-type stream) :T-IDENT)
+          (let ((next (second stream)))
+            (and next (eq (php-tok-type next) :T-COLON))))
+      ;; A bare identifier immediately followed by `:' is a labeled statement — goto's jump
+      ;; target. There is no label-statement AST representation or TAGBODY-aware block
+      ;; lowering for it yet (see CHANGELOG), so this reports a clear, honest diagnostic
+      ;; instead of falling through to %PHP-PARSE-EXPR-STMT, where the same input produces a
+      ;; confusing "unexpected token T-COLON in expression" error with no indication of what
+      ;; PHP construct was actually being attempted.
+      (%php-unsupported
+       (format nil "labeled statement `~A:` (goto's jump target) is not yet supported"
+               (php-peek-value stream))))
     (t
       (let ((handler (when (eq (php-peek-type stream) :T-KEYWORD)
                        (gethash (php-peek-value stream) *php-stmt-parsers*))))
@@ -458,5 +442,5 @@ Analogous to parse-all-forms for CL."
     (php-finish-let-bindings
      (%php-lower-reference-assignments
       (%php-validate-override-tree
-       (%php-apply-no-discard-warnings (nreverse stmts)))
+       (%php-apply-no-discard-warnings (%php-merge-all-trait-members (nreverse stmts))))
       nil))))

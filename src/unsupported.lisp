@@ -1,4 +1,4 @@
-;;;; packages/php/src/unsupported.lisp — PHP unsupported-form validation
+;;;; unsupported.lisp — PHP unsupported-form validation
 
 (in-package :cl-cc/php)
 

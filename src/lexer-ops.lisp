@@ -1,4 +1,4 @@
-;;;; packages/php/src/lexer-ops.lisp — PHP Lexer: Operator Dispatch + Main Tokenizer
+;;;; lexer-ops.lisp — PHP Lexer: Operator Dispatch + Main Tokenizer
 ;;;;
 ;;;; Contains the operator/punctuation lexer, the PHP opening-tag skipper,
 ;;;; and the main tokenize-php-source entry point.

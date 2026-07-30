@@ -12,7 +12,8 @@
   :depends-on (:cl-cc-ast        ; AST node definitions the parser emits
                :cl-cc-bootstrap  ; compiler self-hosting core
                :cl-cc-parse      ; shared parsing infrastructure
-               :cl-cc-vm)        ; bytecode VM
+               :cl-cc-vm         ; bytecode VM
+               :cl-json-kit)     ; RFC 8259 JSON reader, used by json_validate
   :in-order-to ((test-op (test-op "cl-cc-php/test")))
   :pathname "src"
   :serial t
@@ -160,25 +161,38 @@
    (:file "runtime-builtins-string-ctype-test")
    (:file "runtime-builtins-string-core-test")
    (:file "runtime-builtins-array-test")
+   (:file "runtime-builtins-array-transform-test")
    (:file "runtime-builtins-regex-preg-test")
+   (:file "runtime-builtins-regex-date-test")
    (:file "runtime-builtins-string-multibyte-test")
    (:file "runtime-builtins-string-extra-test")
    (:file "runtime-builtins-string-transform-test")
    (:file "runtime-builtins-string-encoding-test")
+   (:file "runtime-builtins-string-analysis-test")
+   (:file "runtime-builtins-string-json-test")
    (:file "runtime-builtins-io-files-test")
    (:file "runtime-builtins-io-test")
    (:file "runtime-builtins-io-objects-test")
    (:file "runtime-builtins-io-image-test")
+   (:file "runtime-builtins-math-test")
+   (:file "runtime-constants-test")
    (:file "runtime-builtins-types-test")
    (:file "parser-property-hooks-e2e-test")
    (:file "runtime-helpers-operators-case-property-test")
+   (:file "runtime-helpers-generators-test")
    (:file "parser-php84-features-test")
    (:file "parser-php85-language-test")
    (:file "runtime-helpers-php85-behavior-test")
    (:file "runtime-builtins-io-objects-php85-test")
+   (:file "runtime-builtins-io-dom-php85-test")
+   (:file "runtime-builtins-io-uri-php85-test")
    (:file "runtime-builtins-io-tokenizer-php85-test")
+   (:file "runtime-builtins-io-cookie-session-test")
+   (:file "runtime-builtins-io-cookie-session-php85-test")
    (:file "runtime-builtins-array-e2e-test")
    (:file "runtime-builtins-register-e2e-test")
+   (:file "runtime-builtins-register-e2e-formatting-test")
+   (:file "runtime-bridge-provider-test")
    (:file "parser-e2e-test")
    (:file "parser-class-e2e-test")
    (:file "runtime-helpers-e2e-test")))

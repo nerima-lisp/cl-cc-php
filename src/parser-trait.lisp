@@ -1,21 +1,27 @@
-;;;; packages/php/src/parser-trait.lisp — PHP Trait declaration and use-trait parser
+;;;; parser-trait.lisp — PHP Trait declaration and use-trait parser
 ;;;;
 ;;;; Implements:
 ;;;;   trait Greetable { method-list }
 ;;;;   use TraitA, TraitB [{ insteadof/as block }] ;
 ;;;;
-;;;; AST mapping:
+;;;; AST mapping, at parse time:
 ;;;;   trait Foo { ... }  → ast-defclass with :php-kind :trait, methods as slot-defs
 ;;;;   use A, B { ... }   → ast-slot-def with :php-trait-use t / :php-trait-uses list
 ;;;;                         conflict resolution stored in :php-trait-insteadof / :php-trait-alias
+;;;;
+;;;; PARSE-PHP-SOURCE then runs %PHP-MERGE-ALL-TRAIT-MEMBERS as a whole-program pass:
+;;;; every class's trait-use marker is replaced with the actual member slot-defs of the
+;;;; traits it names (with insteadof-resolved conflicts, and a clear error for conflicts
+;;;; it does not resolve), so the marker itself never reaches codegen.
 
 (in-package :cl-cc/php)
 
 ;;; ─── Trait Registry ─────────────────────────────────────────────────────────
 
 (defvar *php-trait-registry* (make-hash-table :test #'equal)
-  "Maps trait name strings to their method slot-def lists.
-Used for compile-time trait application and conflict detection.")
+  "Maps trait name strings to their member slot-def lists.
+Read by %PHP-MERGE-TRAIT-MEMBERS to copy each used trait's members into the
+classes that use it.")
 
 ;;; ─── Trait Application Runtime Record ──────────────────────────────────────
 
@@ -28,24 +34,15 @@ Each plist has :trait-names, :insteadof, :alias entries.")
 TRAIT-NAMES  — list of trait name symbols being used.
 INSTEADOF-LIST — list of (method-sym trait-sym insteadof-sym ...) plists.
 ALIAS-LIST   — list of (original-sym alias-sym) plists.
-Stores into *php-trait-applications* and copies method slot-defs from
-*php-trait-registry* for each trait."
+Stores into *php-trait-applications*, consulted by reflection
+(%php-reflection-class-trait-symbols) for class_uses()/getTraits()."
   (let ((class-key (if (symbolp class-name)
                        (symbol-name class-name)
                        class-name)))
     (push (list :trait-names trait-names
                 :insteadof  insteadof-list
                 :alias      alias-list)
-          (gethash class-key *php-trait-applications* nil))
-    ;; Copy method definitions into a per-class merged slot list (advisory).
-    (dolist (trait-sym trait-names)
-      (let* ((trait-key (symbol-name trait-sym))
-             (methods   (gethash trait-key *php-trait-registry*)))
-        (when methods
-          (let* ((existing (gethash class-key *php-trait-applications* nil))
-                 (record   (car existing)))
-            (setf (getf record :methods)
-                  (append (getf record :methods) methods))))))))
+          (gethash class-key *php-trait-applications* nil))))
 
 (defun %php-record-class-trait-uses (class-name slots)
   "Record every trait-use metadata slot found in SLOTS for CLASS-NAME."
@@ -57,6 +54,145 @@ Stores into *php-trait-applications* and copies method slot-defs from
                              (getf imports :php-trait-names)
                              (getf imports :php-insteadof)
                              (getf imports :php-alias)))))))
+
+(defun %php-merge-all-trait-members (stmts)
+  "Walk top-level PHP AST nodes STMTS and replace each class's trait-use
+marker slot-defs with the actual members of the traits it names — see
+%PHP-MERGE-TRAIT-MEMBERS for the merge/conflict-resolution rules. Runs as a
+whole-program pass, not inline during class parsing, for two reasons: classes
+using a trait declared later in the same source are still resolved correctly
+(*PHP-TRAIT-REGISTRY* is fully populated by the time any pass over STMTS
+runs), and t/parser-trait-test.lisp's parser-level tests — which check that
+`use ... { insteadof/as }' syntax parses into the correct raw metadata — keep
+seeing that raw, pre-merge marker, unaffected by what a later pass does with
+it.
+
+Trait declarations composing other traits (a trait's own `use' clause) are
+not handled; :CLASS- and :ENUM-kind AST-DEFCLASS nodes are merged into (PHP
+enums may `use' a trait exactly like a class can — an enum's own methods are
+themselves stored the same way, as slot-defs on an AST-DEFCLASS). An enum
+declaration's AST-DEFCLASS is not a bare top-level form the way a class's
+is — %PHP-PARSE-CLASSLIKE wraps it in an AST-PROGN alongside a
+%PHP-ENUM-FINALIZE call, so each top-level statement is checked for a
+directly-nested AST-DEFCLASS, not just for being one itself. A merged-in
+trait method also needs its :ALLOCATION forced to :CLASS when the target is
+an enum, mirroring %PHP-PARSE-CLASSLIKE's own fixup for methods declared
+directly in the enum body — enum methods dispatch through the shared enum
+class object, not per-instance, so a trait method copied in with its
+original :INSTANCE allocation (correct for a class, wrong for an enum) left
+$case->method() unable to find it."
+  (flet ((merge-into (defclass)
+           (when (member (ast-defclass-php-kind defclass) '(:class :enum))
+             (let ((members (%php-merge-trait-members (ast-defclass-slots defclass))))
+               (when (eq (ast-defclass-php-kind defclass) :enum)
+                 (dolist (member members)
+                   (when (and (ast-slot-def-p member) (ast-defun-p (ast-slot-initform member)))
+                     (setf (ast-slot-allocation member) :class))))
+               (setf (ast-defclass-slots defclass) members)))))
+    (dolist (stmt stmts)
+      (cond
+        ((ast-defclass-p stmt) (merge-into stmt))
+        ((ast-progn-p stmt) (mapc (lambda (form)
+                                    (when (ast-defclass-p form) (merge-into form)))
+                                  (ast-progn-forms stmt))))))
+  stmts)
+
+(defun %php-trait-use-marker-p (slot)
+  "True when SLOT is the internal marker %PHP-PARSE-USE-TRAIT-STMT emits for a
+`use TraitA, TraitB;' clause in a class body — not a real property or method."
+  (and (ast-slot-def-p slot) (getf (ast-imports slot) :php-trait-use)))
+
+(defun %php-slot-renamed (slot new-name)
+  "Return a copy of member SLOT with its name changed to NEW-NAME."
+  (let ((copy (copy-structure slot)))
+    (setf (ast-slot-name copy) new-name)
+    copy))
+
+(defun %php-slot-with-visibility (slot vis)
+  "Return a copy of member SLOT with its :PHP-MODIFIERS visibility keyword
+(one of :public/:protected/:private) replaced by VIS."
+  (let* ((copy (copy-structure slot))
+         (imports (ast-imports copy))
+         (modifiers (remove-if (lambda (m) (member m '(:public :protected :private)))
+                               (getf imports :php-modifiers))))
+    (setf (ast-imports copy)
+          (list* :php-modifiers (cons vis modifiers)
+                 (loop for (key value) on imports by #'cddr
+                       unless (eq key :php-modifiers)
+                         append (list key value))))
+    copy))
+
+(defun %php-apply-trait-aliases (members alias-list)
+  "Apply ALIAS-LIST's `as' clauses against MEMBERS, a member-name -> slot-def
+hash table built by %PHP-MERGE-TRAIT-MEMBERS (mutated in place). Returns the
+list of newly-created alias names, so the caller can append them to its
+member order — MEMBERS already has the right slot-def for every name that
+was already there.
+
+A clause with an :ALIAS creates an additional, renamed copy of the source
+member (also visibility-adjusted, if :VIS is also given) under the new name;
+the original name is untouched and stays callable. A clause with only :VIS
+changes the existing member's visibility in place. A clause naming a member
+no used trait actually defines is silently ignored."
+  (let ((new-names nil))
+    (dolist (entry alias-list)
+      (let* ((name (getf entry :method))
+             (source (gethash name members))
+             (vis (getf entry :vis))
+             (alias (getf entry :alias)))
+        (when source
+          (cond
+            (alias
+             (setf (gethash alias members)
+                   (if vis
+                       (%php-slot-with-visibility (%php-slot-renamed source alias) vis)
+                       (%php-slot-renamed source alias)))
+             (push alias new-names))
+            (vis
+             (setf (gethash name members) (%php-slot-with-visibility source vis)))))))
+    (nreverse new-names)))
+
+(defun %php-merge-trait-members (slots)
+  "Replace each trait-use marker in SLOTS with the actual member slot-defs of
+the traits it names, looked up from *PHP-TRAIT-REGISTRY*.
+
+A member name defined by only one used trait is copied in as-is. A member
+name defined by more than one used trait is resolved by any matching
+INSTEADOF clause (`TraitA::member insteadof TraitB;' keeps TraitA's version,
+drops TraitB's); a collision INSTEADOF does not resolve signals a clear
+error, matching real PHP's fatal \"has not been applied, because there are
+collisions\" instead of silently picking one trait's version. Each ALIAS
+(`as') clause is then applied by %PHP-APPLY-TRAIT-ALIASES — see its
+docstring for what a rename vs. a visibility-only change does."
+  (loop for slot in slots
+        append
+        (if (%php-trait-use-marker-p slot)
+            (let* ((imports (ast-imports slot))
+                   (insteadof (getf imports :php-insteadof))
+                   (members (make-hash-table :test #'eq))
+                   (order nil))
+              (dolist (trait-sym (getf imports :php-trait-names))
+                (dolist (member (gethash (string-upcase (symbol-name trait-sym))
+                                         *php-trait-registry*))
+                  (let* ((name (ast-slot-name member))
+                         (resolution (find name insteadof :key (lambda (e) (getf e :method)))))
+                    (cond
+                      (resolution
+                       (when (eq trait-sym (getf resolution :from))
+                         (unless (gethash name members) (push name order))
+                         (setf (gethash name members) member)))
+                      ((gethash name members)
+                       (%php-unsupported
+                        (format nil "~A is defined by more than one used trait; add an ~
+                                     `insteadof' clause to resolve the conflict"
+                                name)))
+                      (t
+                       (push name order)
+                       (setf (gethash name members) member))))))
+              (let ((new-names (%php-apply-trait-aliases members (getf imports :php-alias))))
+                (mapcar (lambda (name) (gethash name members))
+                        (append (nreverse order) new-names))))
+            (list slot))))
 
 ;;; ─── Conflict Resolution Block Parser ───────────────────────────────────────
 ;;;
@@ -229,39 +365,3 @@ The returned ast-slot-def carries:
                                     :php-insteadof    insteadof
                                     :php-alias        alias))))
           (values slot rest2 nil))))))
-
-;;; ─── Trait Declaration Parser ───────────────────────────────────────────────
-
-(defun %php-parse-trait-decl (stream known-vars)
-  "Parse `trait Name { method-list }`.
-STREAM starts after the `trait` keyword has been consumed.
-Stores methods in *php-trait-registry* under the trait name string.
-Returns (values ast-defclass rest-stream known-vars).
-
-The returned ast-defclass has :php-kind :trait and methods as slot-defs
-with method bodies in their initform (same convention as class methods)."
-  (multiple-value-bind (name-tok rest) (php-expect :T-IDENT stream)
-    (let* ((trait-name-str (php-tok-value name-tok))
-           (trait-sym      (php-ident-sym
-                            (php-resolve-qualified-name trait-name-str :class)))
-           (current        (%php-consume-expected :T-LBRACE rest))
-           (slots          nil))
-      (loop
-        (setf current (php-skip-semis current))
-        (when (or (php-at-eof-p current)
-                  (eq (php-peek-type current) :T-RBRACE))
-          (return))
-        (multiple-value-bind (slot rest2)
-            (%php-parse-class-body-member current known-vars)
-          (when slot (push slot slots))
-          (setf current rest2)))
-      (let ((method-slots (nreverse slots)))
-        ;; Register methods in the trait registry for compile-time application.
-        (setf (gethash (string-upcase trait-name-str) *php-trait-registry*)
-              method-slots)
-        (values (make-ast-defclass :name       trait-sym
-                                    :superclasses nil
-                                    :slots      method-slots
-                                    :php-kind   :trait)
-                (%php-consume-expected :T-RBRACE current)
-                known-vars)))))

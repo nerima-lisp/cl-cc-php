@@ -92,6 +92,3 @@
                      current rest)))
     (values attributes current)))
 
-(defun %php-skip-attributes (stream)
-  "Skip PHP 8 attributes from STREAM and return the remaining stream."
-  (nth-value 1 (%php-parse-attributes stream)))

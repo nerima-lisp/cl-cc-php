@@ -7,8 +7,8 @@ nix develop
 ```
 
 This gives you SBCL with the dependency roots already exported as environment
-variables, so `run-tests.lisp` finds cl-cc, cl-weave, cl-prolog, and
-cl-parser-kit without further setup.
+variables, so `run-tests.lisp` finds cl-cc, cl-weave, cl-prolog, cl-parser-kit,
+and cl-json-kit without further setup.
 
 ## Running the full check
 
@@ -41,9 +41,26 @@ sbcl --script run-tests.lisp
 ```
 
 That falls back to sibling checkouts (`../cl-cc`, `../cl-weave`, `../cl-prolog`,
-`../cl-parser-kit`). Override any root with `CL_CC_PHP_CL_CC_ROOT`,
-`CL_CC_PHP_CL_WEAVE_ROOT`, `CL_CC_PHP_CL_PROLOG_ROOT`, or
-`CL_CC_PHP_CL_PARSER_KIT_ROOT`.
+`../cl-parser-kit`, `../cl-json-kit`). Override any root with
+`CL_CC_PHP_CL_CC_ROOT`, `CL_CC_PHP_CL_WEAVE_ROOT`, `CL_CC_PHP_CL_PROLOG_ROOT`,
+`CL_CC_PHP_CL_PARSER_KIT_ROOT`, or `CL_CC_PHP_CL_JSON_KIT_ROOT`.
+
+## Coverage
+
+```sh
+nix build .#coverage
+open result/cover-index.html   # or xdg-open on Linux
+```
+
+An `sb-cover` HTML report over `src/`'s own code — the dependency systems
+(`cl-cc`, `cl-weave`, `cl-cc-pipeline`, `cl-json-kit`) and the test suite
+itself are loaded uninstrumented, so the report answers "how much of cl-cc-php's implementation
+do the tests reach", not "how much of the test suite runs". This is a
+package, not a check: it exists to make the number visible and trending, not
+to gate `nix flake check` on a percentage nobody has agreed to yet. Without
+Nix: `sbcl --script coverage.lisp`, with the same environment variables as
+`run-tests.lisp`; the report lands in `coverage-report/` by default, or
+`$CL_CC_PHP_COVERAGE_OUT` if set.
 
 ## Iterating in a REPL
 

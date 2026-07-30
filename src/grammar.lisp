@@ -61,14 +61,22 @@
              (php-token-stream-diagnostics ts))
        nil))))
 
+(defun php-ts-at-type-p (ts type)
+  "True if TS's current token has TYPE."
+  (eq (php-ts-peek-type ts) type))
+
+(defun php-ts-at-value-p (ts value)
+  "True if TS's current token's value is VALUE."
+  (eq (php-ts-peek-value ts) value))
+
 (defun php-ts-at-end-p (ts)
   (or (null (php-token-stream-tokens ts))
-      (eq (php-ts-peek-type ts) :T-EOF)))
+      (php-ts-at-type-p ts :T-EOF)))
 
 (defun php-ts-skip-semis (ts)
   "Skip zero or more semicolons."
   (loop while (and (not (php-ts-at-end-p ts))
-                   (eq (php-ts-peek-type ts) :T-SEMI))
+                   (php-ts-at-type-p ts :T-SEMI))
         do (php-ts-advance ts)))
 
 ;;; ─── CST Node Builders ──────────────────────────────────────────────────────
@@ -122,7 +130,7 @@
          inner))
       (:T-IDENT
        (let ((tok (php-ts-advance ts)))
-         (if (eq (php-ts-peek-type ts) :T-LPAREN)
+         (if (php-ts-at-type-p ts :T-LPAREN)
              ;; Function call
              (let ((args (php-cst-parse-arglist ts)))
                (%php-cst-interior :call (cons (%php-tok-to-cst tok) args)))
@@ -133,7 +141,7 @@
   "Parse 'new ClassName(args...)'."
   (let ((new-tok (php-ts-advance ts)))
     (let ((class-tok (php-ts-expect ts :T-IDENT nil "new")))
-      (let ((args (if (eq (php-ts-peek-type ts) :T-LPAREN)
+      (let ((args (if (php-ts-at-type-p ts :T-LPAREN)
                       (php-cst-parse-arglist ts)
                       nil)))
         (%php-cst-interior :new
@@ -144,13 +152,13 @@
 (defun php-cst-parse-arglist (ts)
   "Parse (arg1, arg2, ...). Returns list of CST nodes."
   (php-ts-expect ts :T-LPAREN nil "arglist")
-  (if (eq (php-ts-peek-type ts) :T-RPAREN)
+  (if (php-ts-at-type-p ts :T-RPAREN)
       (progn (php-ts-advance ts) nil)
       (let ((args nil))
         (loop
           (let ((arg (php-cst-parse-expr ts)))
             (when arg (push arg args)))
-          (if (eq (php-ts-peek-type ts) :T-COMMA)
+          (if (php-ts-at-type-p ts :T-COMMA)
               (php-ts-advance ts)
               (return)))
         (php-ts-expect ts :T-RPAREN nil "arglist")
@@ -166,7 +174,7 @@
           ((eq type :T-ARROW)
            (php-ts-advance ts)
            (let ((name-tok (php-ts-expect ts :T-IDENT nil "member access")))
-             (if (eq (php-ts-peek-type ts) :T-LPAREN)
+             (if (php-ts-at-type-p ts :T-LPAREN)
                  (let ((args (php-cst-parse-arglist ts)))
                    (setf obj (%php-cst-interior :method-call
                               (append (list obj)
@@ -178,7 +186,7 @@
           ((eq type :T-NULLSAFE-ARROW)
            (php-ts-advance ts)
            (let ((name-tok (php-ts-expect ts :T-IDENT nil "nullsafe access")))
-             (if (eq (php-ts-peek-type ts) :T-LPAREN)
+             (if (php-ts-at-type-p ts :T-LPAREN)
                  (let ((args (php-cst-parse-arglist ts)))
                    (setf obj (%php-cst-interior :nullsafe-method-call
                               (append (list obj)
@@ -198,7 +206,7 @@
 
 (defun php-cst-parse-unary (ts)
   "Parse unary: !, -, +."
-  (if (and (eq (php-ts-peek-type ts) :T-OP)
+  (if (and (php-ts-at-type-p ts :T-OP)
            (member (php-ts-peek-value ts) '("!" "-" "+") :test #'equal))
       (let ((op-tok (php-ts-advance ts))
             (operand (php-cst-parse-postfix ts)))
@@ -208,7 +216,7 @@
 (defun php-cst-parse-binop (ts ops next-parser)
   "Left-associative binary operator parsing."
   (let ((lhs (funcall next-parser ts)))
-    (loop while (and (eq (php-ts-peek-type ts) :T-OP)
+    (loop while (and (php-ts-at-type-p ts :T-OP)
                      (member (php-ts-peek-value ts) ops :test #'equal))
           do (let ((op-tok (php-ts-advance ts))
                    (rhs (funcall next-parser ts)))
@@ -228,7 +236,7 @@ OPS (a literal list of operator strings) over operands from NEXT-PARSER."
 (defun php-cst-parse-pipe (ts)
   "Parse PHP 8.5 pipe operator."
   (let ((lhs (php-cst-parse-add ts)))
-    (loop while (and (eq (php-ts-peek-type ts) :T-OP)
+    (loop while (and (php-ts-at-type-p ts :T-OP)
                      (equal "|>" (php-ts-peek-value ts)))
           do (let ((op-tok (php-ts-advance ts))
                    (rhs (php-cst-parse-add ts)))
@@ -243,7 +251,7 @@ OPS (a literal list of operator strings) over operands from NEXT-PARSER."
 
 (defun php-cst-parse-expr (ts)
   "Parse an expression, including assignment."
-  (if (and (eq (php-ts-peek-type ts) :T-VAR)
+  (if (and (php-ts-at-type-p ts :T-VAR)
            (let ((rest (cdr (php-token-stream-tokens ts))))
              (and rest (eq (php-tok-type (car rest)) :T-OP)
                   (equal "=" (php-tok-value (car rest))))))
@@ -275,31 +283,31 @@ OPS (a literal list of operator strings) over operands from NEXT-PARSER."
              (subject (php-cst-parse-expr ts))
              (rp (%php-tok-to-cst (php-ts-expect ts :T-RPAREN "match(expr)")))
              (lb (%php-tok-to-cst (php-ts-expect ts :T-LBRACE "match{")))
-             (arms (loop while (not (eq (php-ts-peek-type ts) :T-RBRACE))
+             (arms (loop while (not (php-ts-at-type-p ts :T-RBRACE))
                          for arm = (php-cst-parse-expr ts)
                          when arm collect arm
-                         when (eq (php-ts-peek-type ts) :T-COMMA)
+                         when (php-ts-at-type-p ts :T-COMMA)
                          do (php-ts-advance ts)))
              (rb (%php-tok-to-cst (php-ts-expect ts :T-RBRACE "match}"))))
          (%php-cst-interior :match (list* kw-tok lp subject rp lb (append arms (list rb))))))
       (:array
-       (if (eq (php-ts-peek-type ts) :T-LPAREN)
+       (if (php-ts-at-type-p ts :T-LPAREN)
            (let ((lp (%php-tok-to-cst (php-ts-advance ts)))
-                 (items (loop while (not (eq (php-ts-peek-type ts) :T-RPAREN))
+                 (items (loop while (not (php-ts-at-type-p ts :T-RPAREN))
                               for item = (php-cst-parse-expr ts)
                               when item collect item
-                              when (eq (php-ts-peek-type ts) :T-COMMA)
+                              when (php-ts-at-type-p ts :T-COMMA)
                               do (php-ts-advance ts)))
                  (rp (%php-tok-to-cst (php-ts-advance ts))))
              (%php-cst-interior :array (list* kw-tok lp (append items (list rp)))))
            kw-tok))
       (:list
-       (if (eq (php-ts-peek-type ts) :T-LPAREN)
+       (if (php-ts-at-type-p ts :T-LPAREN)
            (let ((lp (%php-tok-to-cst (php-ts-advance ts)))
-                 (vars (loop while (not (eq (php-ts-peek-type ts) :T-RPAREN))
+                 (vars (loop while (not (php-ts-at-type-p ts :T-RPAREN))
                              for var = (php-cst-parse-expr ts)
                              when var collect var
-                             when (eq (php-ts-peek-type ts) :T-COMMA)
+                             when (php-ts-at-type-p ts :T-COMMA)
                              do (php-ts-advance ts)))
                  (rp (%php-tok-to-cst (php-ts-advance ts))))
              (%php-cst-interior :list (list* kw-tok lp (append vars (list rp)))))
@@ -308,10 +316,10 @@ OPS (a literal list of operator strings) over operands from NEXT-PARSER."
 (defun %php-parse-bracket-expr (ts)
   "Parse short array syntax [expr, ...]."
   (let ((lb (%php-tok-to-cst (php-ts-advance ts)))
-        (items (loop while (not (eq (php-ts-peek-type ts) :T-RBRACKET))
+        (items (loop while (not (php-ts-at-type-p ts :T-RBRACKET))
                      for item = (php-cst-parse-expr ts)
                      when item collect item
-                     when (eq (php-ts-peek-type ts) :T-COMMA)
+                     when (php-ts-at-type-p ts :T-COMMA)
                      do (php-ts-advance ts)))
         (rb (%php-tok-to-cst (php-ts-advance ts))))
     (%php-cst-interior :array (list* lb (append items (list rb))))))

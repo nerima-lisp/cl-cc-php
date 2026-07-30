@@ -177,7 +177,10 @@
                            "="
                            (%php-urlencode (%php-stringify (cdr pair))))
               parts)))
-    (format nil "~{~A~^~A~}" (list (car (nreverse parts)) sep))))
+    (with-output-to-string (out)
+      (loop for (part . more) on (nreverse parts)
+            do (write-string part out)
+               (when more (write-string sep out))))))
 ;;; ─── Miscellaneous host services ────────────────────────────────────────────
 
 (defun %php-microtime-float ()

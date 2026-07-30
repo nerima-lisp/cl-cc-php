@@ -1,4 +1,4 @@
-;;;; packages/php/src/runtime-builtins-string-multibyte.lisp -- Multibyte PHP string operations
+;;;; runtime-builtins-string-multibyte.lisp -- Multibyte PHP string operations
 
 (in-package :cl-cc/php)
 

@@ -1,4 +1,4 @@
-;;;; packages/php/src/runtime-builtins-regex.lisp -- PHP regex/date extra builtins anchor
+;;;; runtime-builtins-regex.lisp -- PHP regex/date extra builtins anchor
 
 (in-package :cl-cc/php)
 

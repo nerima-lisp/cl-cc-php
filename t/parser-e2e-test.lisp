@@ -455,4 +455,42 @@
         "3"))
       "php-e2e-first-class-callable: ~S"
       (source expected)
-    (expect (%php-run-capture source) :to-equal expected)))
+    (expect (%php-run-capture source) :to-equal expected))
+  (it-sequential
+    "goto's target label statement is not yet supported, but now reports a
+clear diagnostic instead of a confusing generic parse error"
+    ;; goto/label had zero test coverage of any kind before this. PHP-PARSE-STATEMENT
+    ;; (src/parser-class.lisp) dispatches only on :T-KEYWORD tokens via *PHP-STMT-PARSERS*, so
+    ;; `goto label;` itself parsed fine (:goto IS a registered keyword parser) but the
+    ;; corresponding `label:` statement fell through to the generic expression-statement
+    ;; parser and failed with "unexpected token T-COLON in expression" — technically correct,
+    ;; but gives no indication the user was actually attempting a label statement.
+    ;;
+    ;; A full fix is a real feature, not a bounded one: it needs a label-statement AST
+    ;; representation, block-level lowering that recognizes labels and switches a plain
+    ;; statement block to a CL TAGBODY (today only loops/switches build one internally, for
+    ;; their own generated break/continue tags — see %PHP-MAKE-TAGBODY in
+    ;; parser-stmt-lowering.lisp), and correctly modeling PHP's own goto-scoping restrictions
+    ;; (no jumping into a loop/switch/variable scope from outside it) — rushing that risks a
+    ;; silently-wrong jump target, worse than a clean error. What IS bounded and safe: PHP-
+    ;; PARSE-STATEMENT now recognizes the "T-IDENT immediately followed by T-COLON" shape
+    ;; explicitly and reports it through the existing %PHP-UNSUPPORTED mechanism (the same one
+    ;; every other not-yet-supported parse form in this codebase uses), so the error at least
+    ;; names what construct triggered it.
+    (let ((condition
+            (handler-case
+                (progn (%php-run-capture "<?php echo 'a'; goto skip; echo 'b'; skip: echo 'c';")
+                       nil)
+              (error (e) e))))
+      (expect condition :to-be-truthy)
+      (expect (search "labeled statement" (princ-to-string condition)) :to-be-truthy)))
+  (it-sequential
+    "prefix ++ on a non-assignable operand reports a clear diagnostic, not an
+internal arity error"
+    ;; %PHP-UNSUPPORTED takes exactly one argument (MESSAGE), but this call site passed an
+    ;; extra, unused OPERAND argument — so instead of the intended "Unsupported PHP parse
+    ;; form: PHP prefix ++ is only supported on a $variable, array element, or property"
+    ;; message, every prefix ++/-- on a non-assignable operand raised a confusing internal
+    ;; SB-INT:SIMPLE-PROGRAM-ERROR "invalid number of arguments: 2" instead.
+    (signals simple-error
+      (%php-run-capture "<?php ++(1+1);"))))

@@ -158,6 +158,16 @@
     (let ((result (cl-cc/php::%php-parse-str "name=John%20Doe")))
       (expect (cl-cc/php::%php-array-ref result "name") :to-equal "John Doe")))
   (it-sequential
+    "http_build_query joins every pair, not just one — (format nil \"~{~A~^~A~}\"
+(list (car parts) sep)) only ever consumes two list elements, silently
+dropping every pair after the first (the same bug class as %php-fputcsv's
+field-joining bug elsewhere in this file's sibling test files)"
+    (let ((arr (cl-cc/php::%php-make-array)))
+      (cl-cc/php::%php-array-set arr "a" 1)
+      (cl-cc/php::%php-array-set arr "b" 2)
+      (cl-cc/php::%php-array-set arr "c" 3)
+      (expect (cl-cc/php::%php-http-build-query arr) :to-equal "a=1&b=2&c=3")))
+  (it-sequential
     "array_map with a null callback zips each key/value into a two-element row"
     (let ((arr (cl-cc/php::%php-make-array)))
       (cl-cc/php::%php-array-set arr "x" 10)

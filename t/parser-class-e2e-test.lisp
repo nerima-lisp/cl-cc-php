@@ -329,4 +329,202 @@
       (source expected)
     (expect (%php-run-capture source) :to-equal expected))
 
+  (it-sequential
+    "php-e2e-trait-method-is-actually-callable"
+    ;; Every existing trait e2e test before this used EMPTY traits and only checked
+    ;; class_uses() reflection (which does work — trait NAMES are tracked). None ever
+    ;; called an actual trait method, which is the entire point of a trait — and the most
+    ;; basic possible case (one trait, one method, no conflicts) previously failed outright
+    ;; with a CLOS "slot is missing" error: `use Greetable;` produced only an internal
+    ;; :PHP-TRAIT-USE marker slot-def that class lowering never acted on. Fixed by
+    ;; %PHP-MERGE-TRAIT-MEMBERS (src/parser-trait.lisp), which replaces that marker with
+    ;; the used traits' actual member slot-defs before the class's AST-DEFCLASS is built.
+    (expect (%php-run-capture
+             "<?php trait Greetable { function greet() { return 'hi'; } } class C { use Greetable; } $o = new C(); echo $o->greet();")
+            :to-equal "hi"))
+
+  (it-sequential
+    "php-e2e-trait-method-instead-of-property-still-works-when-mixed"
+    ;; A trait can also declare properties, not just methods — %PHP-MERGE-TRAIT-MEMBERS
+    ;; copies every member uniformly, not just method-shaped slot-defs.
+    (expect (%php-run-capture
+             "<?php trait HasName { public $name = 'anon'; function label() { return 'name:'.$this->name; } }
+class P { use HasName; }
+$p = new P(); echo $p->label();")
+            :to-equal "name:anon"))
+
+  (it-sequential
+    "php-e2e-two-non-conflicting-traits-both-merge-in"
+    (expect (%php-run-capture
+             "<?php trait A { function a() { return 'a'; } } trait B { function b() { return 'b'; } }
+class C { use A, B; }
+$c = new C(); echo $c->a().$c->b();")
+            :to-equal "ab"))
+
+  (it-sequential
+    "php-e2e-conflicting-trait-methods-resolved-by-insteadof"
+    (expect (%php-run-capture
+             "<?php trait A { function hello() { return 'A'; } } trait B { function hello() { return 'B'; } }
+class C { use A, B { A::hello insteadof B; } }
+$c = new C(); echo $c->hello();")
+            :to-equal "A"))
+
+  (it-sequential
+    "conflicting trait methods with no insteadof clause report a clear error
+instead of silently picking one trait's version"
+    ;; Real PHP treats this as a fatal "has not been applied, because there are
+    ;; collisions" compile error — %PHP-MERGE-TRAIT-MEMBERS matches that rather than
+    ;; letting whichever trait happens to be listed first silently win.
+    (let ((condition
+            (handler-case
+                (progn (%php-run-capture
+                        "<?php trait A { function hello() { return 'A'; } } trait B { function hello() { return 'B'; } }
+class C { use A, B; }
+$c = new C(); echo $c->hello();")
+                       nil)
+              (error (e) e))))
+      (expect condition :to-be-truthy)
+      (expect (search "more than one" (princ-to-string condition)) :to-be-truthy)))
+
+  (it-sequential
+    "php-e2e-trait-as-alias-adds-a-new-name-without-removing-the-original"
+    ;; `TraitA::method as alias;' is purely additive in real PHP: the alias becomes an
+    ;; extra name for the same method body, and the original name stays callable too.
+    (expect (%php-run-capture
+             "<?php trait A { function hello() { return 'A'; } } class C { use A { A::hello as hi; } }
+$c = new C(); echo $c->hello().'-'.$c->hi();")
+            :to-equal "A-A"))
+
+  (it-sequential
+    "php-e2e-trait-as-visibility-only-change-does-not-break-the-method"
+    ;; `method as protected;' (no rename) changes only the merged member's visibility —
+    ;; not tested here is whether that visibility is actually enforced against external
+    ;; callers, since this runtime's PHP visibility enforcement is a separate mechanism
+    ;; this investigation did not verify; what this confirms is that the alias
+    ;; visibility-only path does not corrupt or remove the member itself.
+    (expect (%php-run-capture
+             "<?php trait A { function hello() { return 'A'; } } class C { use A { hello as protected; } function call() { return $this->hello(); } }
+$c = new C(); echo $c->call();")
+            :to-equal "A"))
+
+  (it-sequential
+    "php-e2e-interface-constant-is-accessible-through-an-implementing-class"
+    ;; t/parser-interface-test.lisp's interface-constant tests only check the parser's raw
+    ;; AST shape (zero %php-run-capture calls in that whole file) — this is the first check
+    ;; that a class implementing an interface can actually read a constant it declares.
+    (expect (%php-run-capture
+             "<?php interface HasVersion { const VERSION = '1.0'; } class Impl implements HasVersion {} echo Impl::VERSION;")
+            :to-equal "1.0"))
+
+  (it-sequential
+    "php-e2e-abstract-class-basics"
+    ;; No test anywhere in this suite exercised the class-level `abstract' modifier before
+    ;; this (only abstract METHODS inside interfaces/traits). Confirms the modifier at
+    ;; least parses and a concrete subclass still works; does NOT assert that directly
+    ;; instantiating the abstract class itself is rejected — see the next test for that,
+    ;; kept separate since it may reveal an actual gap rather than just missing coverage.
+    (expect (%php-run-capture
+             "<?php abstract class Shape { abstract function area(): float; function describe(): string { return 'area='.$this->area(); } }
+class Square extends Shape { function __construct(private float $side) {} function area(): float { return $this->side * $this->side; } }
+$s = new Square(4); echo $s->describe();")
+            :to-equal "area=16"))
+
+  (it-sequential
+    "instantiating an abstract class directly is currently NOT rejected —
+unlike real PHP's fatal \"Cannot instantiate abstract class\" error"
+    ;; The `abstract class Foo {...}' PARSING gap fixed just above this test made this
+    ;; visible: an earlier version of this same test passed for the wrong reason — the
+    ;; parse error the missing :ABSTRACT statement parser caused masked the fact that,
+    ;; once parsing succeeds, `new Shape()' on an abstract class is not actually
+    ;; rejected at all. Nothing currently tracks "is this class abstract" as class
+    ;; metadata past parsing, and no instantiation-time check exists to consult it —
+    ;; a real, separately-scoped gap from the parsing fix, left undone here.
+    (expect (%php-run-capture
+             "<?php abstract class Shape { abstract function area(): float; } new Shape(); echo 'no error';")
+            :to-equal "no error"))
+
+  (it-sequential
+    "does an enum using a trait actually get the trait's methods?"
+    ;; t/parser-class-test.lisp's "php-parser-enum-implements-methods-traits-and-constants"
+    ;; combines `enum ... { use HasLabels; ... }' but only checks the raw parsed AST shape via
+    ;; %PHP-FIRST, never compiles or runs anything — the exact same "looks tested, never
+    ;; exercised end-to-end" pattern that hid the class-trait bug fixed earlier in this file.
+    ;; %PHP-MERGE-ALL-TRAIT-MEMBERS only merges into :PHP-KIND :CLASS AST-DEFCLASS nodes (see
+    ;; its docstring), not :ENUM ones — this checks whether that gap is real.
+    (expect (%php-run-capture
+             "<?php trait Greetable { function greet() { return 'hi'; } } enum S { use Greetable; case A; } echo S::A->greet();")
+            :to-equal "hi"))
+
+  (it-sequential
+    "an abstract class using a trait, and a concrete subclass of it, both get
+the trait's methods"
+    ;; Checking a plausible combination of two things fixed independently this session
+    ;; (abstract-class parsing, trait-method merging) for the same kind of interaction bug
+    ;; the enum+trait case had.
+    (expect (%php-run-capture
+             "<?php trait Greetable { function greet() { return 'hi'; } }
+abstract class Base { use Greetable; abstract function extra(): string; }
+class Impl extends Base { function extra(): string { return 'x'; } }
+$o = new Impl(); echo $o->greet().$o->extra();")
+            :to-equal "hix"))
+
+  (it-sequential
+    "php-e2e-readonly-property-can-be-set-once-during-construction"
+    ;; No e2e test anywhere in this suite exercised `readonly' at all before this —
+    ;; only parser-level AST-shape tests confirming the modifier is captured.
+    (expect (%php-run-capture
+             "<?php class Point { public function __construct(public readonly int $x) {} }
+$p = new Point(5); echo $p->x;")
+            :to-equal "5"))
+
+  (it-sequential
+    "reassigning a readonly property after construction is currently NOT
+rejected — unlike real PHP's fatal \"Cannot modify readonly property\" error"
+    ;; Same class of gap as abstract-class instantiation above: the modifier parses and is
+    ;; captured as AST metadata (see t/parser-class-test.lisp), but nothing enforces it at
+    ;; property-write time. Documented via a test asserting the current, unenforced
+    ;; behavior rather than implemented — enforcing this needs the property-write lowering
+    ;; to check readonly-ness and the object's own already-initialized-or-not state, which
+    ;; this investigation did not trace.
+    (expect (%php-run-capture
+             "<?php class Point { public function __construct(public readonly int $x) {} }
+$p = new Point(5); $p->x = 99; echo $p->x;")
+            :to-equal "99"))
+
+  (it-sequential
+    "php-e2e-final-class-basics"
+    ;; `final class Foo {...}' had no registered top-level statement parser at all before
+    ;; this — the same gap `abstract class` had, fixed the same way. No test anywhere
+    ;; exercised the class-level `final' modifier before this.
+    (expect (%php-run-capture
+             "<?php final class Sealed { function greet() { return 'hi'; } } $o = new Sealed(); echo $o->greet();")
+            :to-equal "hi"))
+
+  (it-sequential
+    "extending a final class is currently NOT rejected — unlike real PHP's
+fatal \"Cannot extend final class\" error"
+    ;; Same class of gap as abstract-class instantiation and readonly reassignment
+    ;; elsewhere in this file: the modifier now parses, but nothing tracks "is this class
+    ;; final" past parsing to reject an extends of it.
+    (expect (%php-run-capture
+             "<?php final class Sealed { function greet() { return 'hi'; } } class Broken extends Sealed {} $o = new Broken(); echo $o->greet();")
+            :to-equal "hi"))
+
+  (it-sequential "final method: parses and runs like an ordinary method"
+    ;; :final is already in %php-parse-visibility-modifiers's accepted modifier list
+    ;; alongside :abstract/:readonly, so a member-level `final function` is consumed as
+    ;; an ordinary modifier before the :function dispatch -- no separate grammar entry
+    ;; needed (unlike `final class`, which required its own statement-level parser).
+    (expect (%php-run-capture
+             "<?php class Base { final function seal() { return 'sealed'; } } $o = new Base(); echo $o->seal();")
+            :to-equal "sealed"))
+
+  (it-sequential "final method: overriding in a subclass is not rejected"
+    ;; Same class of gap as final-class extension and abstract-instantiation elsewhere
+    ;; in this file: the modifier parses and is discarded, but nothing tracks "is this
+    ;; method final" past parsing to reject an override in a subclass.
+    (expect (%php-run-capture
+             "<?php class Base { final function seal() { return 'A'; } } class Sub extends Base { function seal() { return 'B'; } } $o = new Sub(); echo $o->seal();")
+            :to-equal "B"))
+
   )

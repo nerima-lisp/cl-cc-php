@@ -17,9 +17,10 @@
     # Pinned to a commit, not a tag, unlike every other sibling below. cl-cc's
     # only tag is v0.1.0, which predates the packages/ split this repository
     # loads from, and it cannot cut a new one yet: its own `nix flake check`
-    # fails with 55 failures and 31 errors. Those are not new — its pre-
-    # migration check only ran the cl-cc-prolog-tools sub-suite, so the main
-    # suite had never been wired to the gate at all.
+    # is still red on `main` and getting worse, not better, as development
+    # continues there — 83 failed, 229 errored as of the "Merge FR-371 CPS
+    # catch and throw" run (2026-07-30), up from 55 failed/31 errored
+    # earlier in that same month. Re-check before ever bumping this pin.
     #
     # A commit is as immutable as a tag, which is what the pinning rule is
     # actually for; a bare `github:nerima-lisp/cl-cc` follows the default
@@ -41,15 +42,25 @@
     # follows that repo's default branch, so an upstream push to main would
     # break this repo's CI without warning.
     cl-weave = {
-      url = "github:nerima-lisp/cl-weave/v1.0.0";
+      url = "github:nerima-lisp/cl-weave/v1.1.0";
       flake = false;
     };
     cl-prolog = {
-      url = "github:nerima-lisp/cl-prolog/v1.0.1";
+      url = "github:nerima-lisp/cl-prolog/v1.1.0";
       flake = false;
     };
     cl-parser-kit = {
-      url = "github:nerima-lisp/cl-parser-kit/v1.0.0";
+      url = "github:nerima-lisp/cl-parser-kit/v1.0.1";
+      flake = false;
+    };
+
+    # Unlike the three above, this is a real dependency of the shipped
+    # `cl-cc-php` system (src/runtime-builtins-string-json.lisp's
+    # `%php-json-validate` calls into it directly), not a test-only input —
+    # see cl-cc-php.asd's `:depends-on`. Pinned to a release tag for the same
+    # reason as the other siblings.
+    cl-json-kit = {
+      url = "github:nerima-lisp/cl-json-kit/v1.0.1";
       flake = false;
     };
 
@@ -72,6 +83,7 @@
       cl-weave,
       cl-prolog,
       cl-parser-kit,
+      cl-json-kit,
       treefmt-nix,
     }:
     let
@@ -107,6 +119,7 @@
         CL_CC_PHP_CL_WEAVE_ROOT = "${cl-weave}";
         CL_CC_PHP_CL_PROLOG_ROOT = "${cl-prolog}";
         CL_CC_PHP_CL_PARSER_KIT_ROOT = "${cl-parser-kit}";
+        CL_CC_PHP_CL_JSON_KIT_ROOT = "${cl-json-kit}";
       };
 
       # treefmt drives `nix fmt` and the `checks.<system>.formatting` gate.
@@ -150,6 +163,41 @@
             };
           };
           default = cl-cc-php;
+
+          # sb-cover HTML report over cl-cc-php's own source only (see
+          # coverage.lisp's header for why the dependency/test-suite code is
+          # loaded uninstrumented). This exists to make the number visible and
+          # trending, not to gate CI on a percentage nobody has agreed to yet —
+          # it is a package, not a check.
+          coverage =
+            pkgs.runCommand "cl-cc-php-coverage"
+              (
+                testEnv
+                // {
+                  nativeBuildInputs = [
+                    pkgs.sbcl
+                    pkgs.coreutils
+                  ];
+                }
+              )
+              ''
+                export HOME="$TMPDIR/home"
+                mkdir -p "$HOME" "$out"
+                cp -R ${self} "$TMPDIR/src"
+                chmod -R u+w "$TMPDIR/src"
+                cd "$TMPDIR/src"
+                # $out only exists once the builder runs, so it has to be
+                # exported here rather than set as a derivation attribute
+                # (which Nix would take as the literal two-character string
+                # "$out", not a shell expansion of the real output path).
+                export CL_CC_PHP_COVERAGE_OUT="$out"
+                # Same hang-must-fail-loudly reasoning as checks.default, with a
+                # longer budget: this force-recompiles cl-cc-php under
+                # instrumentation before running the suite, which is slower than
+                # a plain test run.
+                timeout 900 sbcl --script coverage.lisp
+                test -s "$out/cover-index.html"
+              '';
 
           # Rendered documentation site (Material for MkDocs).
           # Build fully offline: Material for MkDocs bundles all of its assets,
@@ -224,7 +272,13 @@
                 cp -R ${self} "$TMPDIR/src"
                 chmod -R u+w "$TMPDIR/src"
                 cd "$TMPDIR/src"
-                sbcl --script run-tests.lisp
+                # A hung test (an infinite loop introduced by a bug, a deadlock
+                # between the VM and a fiber/generator, ...) must fail the build
+                # loudly rather than hang the CI runner indefinitely. 600s is
+                # generous relative to a normal run so it only ever fires on a
+                # genuine hang, matching the timeoutSeconds convention other
+                # nerima-lisp repos' cl-nix-forge-based checks use.
+                timeout 600 sbcl --script run-tests.lisp
                 touch "$out/passed"
               '';
 
@@ -256,6 +310,7 @@
               export CL_CC_PHP_CL_WEAVE_ROOT="${cl-weave}"
               export CL_CC_PHP_CL_PROLOG_ROOT="${cl-prolog}"
               export CL_CC_PHP_CL_PARSER_KIT_ROOT="${cl-parser-kit}"
+              export CL_CC_PHP_CL_JSON_KIT_ROOT="${cl-json-kit}"
               # Same reason as checks.default: the suite writes .cache/ relative
               # to the working directory, so it needs a writable tree rather
               # than the read-only store path.
@@ -264,7 +319,8 @@
               cp -R ${self}/. "$workdir"
               chmod -R u+w "$workdir"
               cd "$workdir"
-              exec sbcl --script run-tests.lisp
+              # Same hang-must-fail-loudly reasoning as checks.default's timeout.
+              exec timeout 600 sbcl --script run-tests.lisp
             '';
           };
         in

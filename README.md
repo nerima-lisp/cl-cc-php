@@ -42,7 +42,8 @@ Then depend on it from your `.asd`:
 
 cl-cc-php is not standalone. It needs `cl-cc-ast`, `cl-cc-bootstrap`,
 `cl-cc-parse`, and `cl-cc-vm`, which live inside a checkout of the cl-cc
-monorepo rather than in split-out repositories. See
+monorepo rather than in split-out repositories, plus a checkout of
+[cl-json-kit](https://github.com/nerima-lisp/cl-json-kit). See
 [Installation](https://nerima-lisp.github.io/cl-cc-php/installation/).
 
 ## Documentation
@@ -63,7 +64,8 @@ nix fmt                              # nixfmt via treefmt
 ```
 
 Without Nix, `run-tests.lisp` falls back to sibling checkouts of `cl-cc`,
-`cl-weave`, `cl-prolog`, and `cl-parser-kit` next to this repository:
+`cl-weave`, `cl-prolog`, `cl-parser-kit`, and `cl-json-kit` next to this
+repository:
 
 ```sh
 sbcl --script run-tests.lisp

@@ -45,6 +45,9 @@ arrives through its env var and this branch is not taken."
 (defvar *cl-parser-kit-root*
   (%env-or "CL_CC_PHP_CL_PARSER_KIT_ROOT" "../cl-parser-kit"))
 
+(defvar *cl-json-kit-root*
+  (%env-or "CL_CC_PHP_CL_JSON_KIT_ROOT" "../cl-json-kit"))
+
 (defparameter *cl-cc-package-subdirs*
   ;; Every packages/<name>/ under the cl-cc checkout that :cl-cc-php/test
   ;; needs, transitively, to load: cl-cc-php's own four dependencies
@@ -65,6 +68,7 @@ arrives through its env var and this branch is not taken."
   (%tree (uiop:ensure-directory-pathname *cl-weave-root*))
   (%tree (uiop:ensure-directory-pathname *cl-prolog-root*))
   (%tree (uiop:ensure-directory-pathname *cl-parser-kit-root*))
+  (%tree (uiop:ensure-directory-pathname *cl-json-kit-root*))
   (%tree (uiop:getcwd))
   (append
    (mapcar (lambda (subdir)

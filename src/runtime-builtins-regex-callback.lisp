@@ -1,4 +1,4 @@
-;;;; packages/php/src/runtime-builtins-regex-callback.lisp -- PHP preg_replace_callback builtins
+;;;; runtime-builtins-regex-callback.lisp -- PHP preg_replace_callback builtins
 
 (in-package :cl-cc/php)
 

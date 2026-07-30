@@ -68,5 +68,8 @@ known to work together if `flake.lock` says so.** Bumping the cl-cc input is a
 change that needs its own test run. The existing `v0.1.0` tag on cl-cc predates
 the `packages/` layout this repository expects, so it is not a usable pin.
 
-The other three inputs — cl-weave, cl-prolog, cl-parser-kit — are pinned to
-release tags and behave normally.
+The other inputs — cl-weave, cl-prolog, cl-parser-kit, cl-json-kit — are
+pinned to release tags and behave normally. Unlike the first three, which are
+test-only, cl-json-kit is a real dependency of the shipped `cl-cc-php` system
+(`json_validate` calls into it directly) — see `cl-cc-php.asd`'s
+`:depends-on`.
