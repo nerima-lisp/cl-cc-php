@@ -170,5 +170,32 @@
     (expect (ast-quote-p ast) :to-be-truthy)
     (expect (ast-quote-value ast) :to-equal "hello")))
 
+;;; ─── Fuzzing: malformed input must lex-error or parse-error, never crash ────
+;;;
+;;; Both the lexer and the parser report malformed input via plain (ERROR
+;;; "..." ) calls, which signal SIMPLE-ERROR — there is no dedicated condition
+;;; type separating "expected diagnostic" from "implementation bug" (the only
+;;; DEFINE-CONDITION in src/ is PHP-EXCEPTION, for runtime-level PHP
+;;; exceptions, not lex/parse diagnostics). A SIMPLE-ERROR is therefore an
+;;; accepted outcome here; anything else (a TYPE-ERROR, an unhandled
+;;; CL:ERROR from a bounds check, ...) is a real bug and fails the trial.
+
+(it-fuzz "tokenize-php-source never crashes on malformed input"
+    ((garbage (gen-string
+               :min-length 0 :max-length 40
+               :alphabet "<?php $;{}()[]\"'.,+-*/=<>!&|\\0123456789abcxyz
+")))
+    (:trials 200 :timeout-per-trial 2)
+  (handler-case (cl-cc/php:tokenize-php-source (concatenate 'string "<?php " garbage))
+    (simple-error () nil)))
+
+(it-fuzz "parse-php-source never crashes on malformed input"
+    ((garbage (gen-string
+               :min-length 0 :max-length 40
+               :alphabet "<?php $;{}()[]\"'.,+-*/=<>!&|\\0123456789abcxyz
+")))
+    (:trials 200 :timeout-per-trial 2)
+  (handler-case (cl-cc/php:parse-php-source (concatenate 'string "<?php " garbage))
+    (simple-error () nil)))
 
   )

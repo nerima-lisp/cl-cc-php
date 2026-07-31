@@ -265,7 +265,17 @@
                                              enc)
                                 s)))
                         (%php-array-values-list fields)))
-         (line (concatenate 'string (format nil "~{~A~^~A~}" (list (car parts) sep))
-                            (string #\Newline))))
+         ;; ~{~A~^~A~} over PARTS looked like a join, but ~^ only tests "is
+         ;; there a next iteration", not "print the next argument" — with a
+         ;; runtime SEP string rather than a literal separator baked into the
+         ;; format string, this consumed exactly two list elements (the first
+         ;; field, then SEP itself misread as a second field) and silently
+         ;; dropped every field after the first.
+         (line (concatenate 'string
+                             (with-output-to-string (o)
+                               (loop for (part . more) on parts
+                                     do (write-string part o)
+                                        (when more (write-string sep o))))
+                             (string #\Newline))))
     (%php-fwrite handle line)
     (length line)))

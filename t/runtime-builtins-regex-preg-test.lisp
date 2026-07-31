@@ -21,6 +21,25 @@
     (expect (cl-cc/php::%php-preg-match "/hello/" "hello world") :to-be 1)
     (expect (cl-cc/php::%php-preg-match "/xyz/" "hello world") :to-be 0))
   (it-sequential
+    "a greedy quantifier backtracks to let the rest of the pattern match"
+    ;; a* alone would consume all three a's; a*a only matches if a* gives one
+    ;; back to the trailing literal a. A matcher that cannot backtrack (a plain
+    ;; greedy scan with no way to undo) fails this case.
+    (expect (cl-cc/php::%php-preg-match "/a*a/" "aaa") :to-be 1)
+    (expect (cl-cc/php::%php-preg-match "/a+a/" "aaa") :to-be 1)
+    (expect (cl-cc/php::%php-preg-match "/a*aaaa/" "aaaa") :to-be 1)
+    (expect (cl-cc/php::%php-preg-match "/a*b/" "aaa") :to-be 0))
+  (it-sequential
+    "a capturing group inside a backtracking quantifier records the backed-off span"
+    ;; (a*) greedily captures all of "aaa" first; when the trailing a then fails
+    ;; to find anything left, the quantifier backs off by one and (a*) must
+    ;; give up its recorded span for "aaa" in favor of "aa" — group capture has
+    ;; to be undone on backtrack, not just recorded once and left alone.
+    (multiple-value-bind (fn group-count) (cl-cc/php::%php-compile-regex "(a*)a")
+      (multiple-value-bind (end groups) (cl-cc/php::%php-regex-match-at fn group-count "aaa" 0)
+        (expect end :to-equal 3)
+        (expect (cl-cc/php::%php-regex-group-string groups 1 "aaa") :to-equal "aa"))))
+  (it-sequential
     "preg_match honors the case-insensitive flag"
     (expect (cl-cc/php::%php-preg-match "/HELLO/i" "hello") :to-be 1)
     (expect (cl-cc/php::%php-preg-match "/HELLO/" "hello") :to-be 0))

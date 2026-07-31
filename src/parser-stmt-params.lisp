@@ -86,10 +86,6 @@ intersection, and PHP 8.2 DNF type syntax as metadata only."
                (setf current rest)))
     (values (apply #'concatenate 'string (nreverse parts)) current)))
 
-(defun %php-skip-type-annotation (stream)
-  "Consume an optional type annotation from STREAM."
-  (nth-value 1 (php-parse-type-annotation stream)))
-
 (defun %php-parse-single-param (stream)
   "Parse one PHP parameter entry: attribute* visibility? readonly? type? &? ..? $var [= default].
 Returns (values param-sym rest param-type param-attr-plist by-ref-p variadic-p)."

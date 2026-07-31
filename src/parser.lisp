@@ -49,44 +49,6 @@
 ;;; for pre-built PHP AST nodes, so macro names would be unresolvable at
 ;;; compile time.
 
-(defun php-lower-while (cond-expr body-stmts)
-  "Lower a PHP while(cond){body} to CL block/tagbody/go loop AST.
-   Equivalent to: (block nil (tagbody LOOP (unless cond (return nil)) body... (go LOOP)))"
-  (let ((loop-tag (gensym "WHILE-LOOP-")))
-    (make-ast-block :name nil
-      :body (list (make-ast-tagbody
-                   :tags (list* loop-tag
-                                ;; Unless condition is true, return nil
-                                (make-ast-if
-                                 :cond cond-expr
-                                 :then (make-ast-quote :value nil)
-                                 :else (make-ast-return-from :name nil
-                                                            :value (make-ast-quote :value nil)))
-                                (append body-stmts
-                                        (list (make-ast-go :tag loop-tag)))))))))
-
-(defun php-lower-foreach (arr-expr var-sym body-stmts)
-  "Lower a PHP foreach($arr as $v){body} to a while-loop over the list.
-   Equivalent to: (let ((#:list arr)) (while #:list (let ((v (car #:list)))
-   body (setq #:list (cdr #:list)))))"
-  (let ((list-sym (gensym "FOREACH-LIST-")))
-    (make-ast-let
-     :bindings (list (cons list-sym arr-expr))
-     :body (list (php-lower-while
-                  (make-ast-var :name list-sym)
-                  (list (make-ast-let
-                         :bindings (list (cons var-sym
-                                              (make-ast-call
-                                               :func (make-ast-var :name 'car)
-                                               :args (list (make-ast-var :name list-sym)))))
-                         :body (append body-stmts
-                                       (list (make-ast-setq
-                                              :var list-sym
-                                              :value (make-ast-call
-                                                      :func (make-ast-var :name 'cdr)
-                                                      :args (list
-                                                           (make-ast-var :name list-sym)))))))))))))
-
 ;;; ─── Token Stream Helpers ───────────────────────────────────────────────────
 
 (defun php-tok-type  (tok) (getf tok :type))

@@ -22,7 +22,3 @@
              (cl-cc/ast:ast-var-p (cl-cc/ast:ast-call-func ast)))
     (symbol-name (cl-cc/ast:ast-var-name (cl-cc/ast:ast-call-func ast)))))
 
-(defun %php-assert-full-source-unsupported (src)
-  "Assert that checking every parsed form in SRC rejects unsupported PHP."
-  (signals error (cl-cc/php:php-check-supported-forms
-     (cl-cc/php:parse-php-source src))))

@@ -2,13 +2,6 @@
 
 (in-package :cl-cc/php)
 
-(defun %php-parse-label-stmt (stream known-vars)
-  "Parse `label:` into a tagbody label marker."
-  (multiple-value-bind (label-tok rest) (php-expect :T-IDENT stream)
-    (values (make-ast-tagbody :tags (list (cons (php-ident-sym (php-tok-value label-tok)) nil)))
-            (%php-consume-expected :T-COLON rest)
-            known-vars)))
-
 (defun %php-parse-if-tail (stream known-vars)
   "Parse the then/body plus elseif/else tail after an if condition."
   (multiple-value-bind (then-stmts rest kv) (%php-parse-statement-body stream known-vars)

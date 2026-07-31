@@ -8,6 +8,7 @@
                 #:it-sequential
                 #:it-sequential-each
                 #:it-property
+                #:it-fuzz
                 #:signals
                 #:run-all
                 #:gen-string)

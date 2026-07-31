@@ -166,4 +166,104 @@
   (it-sequential
     "sys_get_temp_dir reports /tmp and is_link is always false in the CLI model"
     (expect (cl-cc/php::%php-sys-get-temp-dir) :to-equal "/tmp")
-    (expect (cl-cc/php::%php-is-link "/anything") :to-be nil)))
+    (expect (cl-cc/php::%php-is-link "/anything") :to-be nil))
+  (it-sequential
+    "STDIN/STDOUT/STDERR are handles over the dynamically bound CL standard streams"
+    (let ((in (cl-cc/php::%php-stdin))
+          (out (cl-cc/php::%php-stdout))
+          (err (cl-cc/php::%php-stderr)))
+      (expect (cl-cc/php::%php-array-ref in "__stream__") :to-be *standard-input*)
+      (expect (cl-cc/php::%php-array-ref in "__standard__") :to-be-truthy)
+      (expect (cl-cc/php::%php-array-ref out "__stream__") :to-be *standard-output*)
+      (expect (cl-cc/php::%php-array-ref err "__stream__") :to-be *error-output*)))
+  (it-sequential
+    "flock acquires a shared or exclusive lock, and LOCK_UN releases it"
+    (let ((path (%io-test-path "lock")))
+      (cl-cc/php::%php-file-put-contents path "x")
+      (unwind-protect
+          (let ((h1 (cl-cc/php::%php-fopen path "r"))
+                (h2 (cl-cc/php::%php-fopen path "r")))
+            (unwind-protect
+                (progn
+                  ;; Two readers can share a lock (LOCK_SH = 1).
+                  (expect (cl-cc/php::%php-flock h1 1) :to-be-truthy)
+                  (expect (cl-cc/php::%php-flock h2 1) :to-be-truthy)
+                  ;; A third handle cannot take an exclusive lock (LOCK_EX = 2)
+                  ;; while shared locks are held.
+                  (expect (cl-cc/php::%php-flock h1 2) :to-be nil)
+                  ;; LOCK_UN (3) releases; once both shared locks are gone, an
+                  ;; exclusive lock becomes available.
+                  (expect (cl-cc/php::%php-flock h1 3) :to-be-truthy)
+                  (expect (cl-cc/php::%php-flock h2 3) :to-be-truthy)
+                  (expect (cl-cc/php::%php-flock h1 2) :to-be-truthy))
+              (cl-cc/php::%php-fclose h1)
+              (cl-cc/php::%php-fclose h2)))
+        (cl-cc/php::%php-unlink path))))
+  (it-sequential
+    "fgetc reads one character at a time and sets eof at the end"
+    (let ((path (%io-test-path "getc")))
+      (cl-cc/php::%php-file-put-contents path "ab")
+      (unwind-protect
+          (let ((h (cl-cc/php::%php-fopen path "r")))
+            (unwind-protect
+                (progn
+                  (expect (cl-cc/php::%php-fgetc h) :to-equal "a")
+                  (expect (cl-cc/php::%php-fgetc h) :to-equal "b")
+                  (expect (cl-cc/php::%php-fgetc h) :to-be nil)
+                  (expect (cl-cc/php::%php-feof h) :to-be-truthy))
+              (cl-cc/php::%php-fclose h)))
+        (cl-cc/php::%php-unlink path))))
+  (it-sequential
+    "fseek/ftell/rewind move and report the stream position"
+    (let ((path (%io-test-path "seek")))
+      (cl-cc/php::%php-file-put-contents path "0123456789")
+      (unwind-protect
+          (let ((h (cl-cc/php::%php-fopen path "r")))
+            (unwind-protect
+                (progn
+                  (expect (cl-cc/php::%php-fseek h 5) :to-be 0)
+                  (expect (cl-cc/php::%php-ftell h) :to-be 5)
+                  (expect (cl-cc/php::%php-fgetc h) :to-equal "5")
+                  (expect (cl-cc/php::%php-rewind h) :to-be 0)
+                  (expect (cl-cc/php::%php-ftell h) :to-be 0))
+              (cl-cc/php::%php-fclose h)))
+        (cl-cc/php::%php-unlink path))))
+  (it-sequential
+    "fgetcsv parses a comma-separated line into fields"
+    (let ((path (%io-test-path "csv")))
+      (cl-cc/php::%php-file-put-contents path (format nil "a,b,c~%"))
+      (unwind-protect
+          (let ((h (cl-cc/php::%php-fopen path "r")))
+            (unwind-protect
+                (expect
+                  (cl-cc/php::%php-array-values-list (cl-cc/php::%php-fgetcsv h))
+                  :to-equal
+                  '("a" "b" "c"))
+              (cl-cc/php::%php-fclose h)))
+        (cl-cc/php::%php-unlink path))))
+  (it-sequential
+    "fputcsv writes every field joined by the separator, not just the first"
+    (let ((path (%io-test-path "putcsv")))
+      (unwind-protect
+          (progn
+            (let ((h (cl-cc/php::%php-fopen path "w")))
+              (unwind-protect
+                  (cl-cc/php::%php-fputcsv
+                    h (cl-cc/php::%php-list-to-array '("a" "b" "c")))
+                (cl-cc/php::%php-fclose h)))
+            (expect (cl-cc/php::%php-file-get-contents path)
+                    :to-equal (format nil "a,b,c~%")))
+        (cl-cc/php::%php-unlink path))))
+  (it-sequential
+    "fputcsv encloses a field containing the separator, doubling any embedded quotes"
+    (let ((path (%io-test-path "putcsv-quote")))
+      (unwind-protect
+          (progn
+            (let ((h (cl-cc/php::%php-fopen path "w")))
+              (unwind-protect
+                  (cl-cc/php::%php-fputcsv
+                    h (cl-cc/php::%php-list-to-array (list "a,b" "say \"hi\"")))
+                (cl-cc/php::%php-fclose h)))
+            (expect (cl-cc/php::%php-file-get-contents path)
+                    :to-equal (format nil "\"a,b\",\"say \"\"hi\"\"\"~%")))
+        (cl-cc/php::%php-unlink path)))))

@@ -57,3 +57,5 @@ coverage.dat
 /.claude/
 /.serena/
 *.paredit-tmp-*
+/.paredit/
+/.scratch/

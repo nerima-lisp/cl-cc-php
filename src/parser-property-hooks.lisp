@@ -189,12 +189,6 @@ Only :instance allocation slots are affected; methods and constants are skipped.
 ;;; A readonly property slot is identified by :readonly in the modifiers list;
 ;;; %php-parse-visibility-modifiers already collects it. This reads it back.
 
-(defun %php-slot-readonly-p (slot)
-  "Return true when SLOT metadata contains the :readonly modifier."
-  (and (ast-slot-def-p slot)
-       (let ((imports (ast-imports slot)))
-         (member :readonly (getf imports :php-modifiers) :test #'eq))))
-
 (defun %php-hook-method-slot (method-defun modifiers)
   "Wrap generated property hook METHOD-DEFUN in a method slot."
   (make-ast-slot-def

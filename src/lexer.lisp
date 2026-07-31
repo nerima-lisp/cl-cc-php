@@ -73,11 +73,6 @@
 
 ;;; String character reader helpers
 
-(defun php-lex-peek (source pos)
-  "Return character at POS, or NIL if out of bounds."
-  (when (< pos (length source))
-    (char source pos)))
-
 (defun php-lex-peek2 (source pos)
   "Return character at POS+1, or NIL."
   (when (< (1+ pos) (length source))

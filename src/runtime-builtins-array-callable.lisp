@@ -107,11 +107,6 @@ for one array and row arrays for multiple arrays."
                           (%php-array-set row (%php-array-next-auto-index row) arg))
                         (%php-array-set result (%php-array-next-auto-index result) row))))
          result)))))
-(defun %php-array-map-multi (callback &rest arrays)
-  "PHP array_map with multiple arrays: maps CALLBACK over parallel elements."
-  (if arrays
-      (apply #'%php-array-map callback arrays)
-      (%php-array)))
 (defun %php-array-filter (array &optional callback (mode 0))
   "Filter ARRAY values by CALLBACK or PHP truthiness.
 

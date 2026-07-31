@@ -30,7 +30,15 @@
                   params :test #'eq))
 
 (defun %php-parse-arrow-function (stream known-vars)
-  "Parse fn(params) => expr and lower it to captured ast-lambda."
+  "Parse fn(params) => expr and lower it to captured ast-lambda.
+
+Reads as one straight-line pipeline, each MULTIPLE-VALUE-BIND threading the
+remaining token stream to the next parse step; the phases, in order, are:
+params -> return-type annotation (parsed, then discarded — arrow functions
+don't declare one CL cares about) -> the `=>' token -> the single body
+expression -> splitting PARAMS into required/optional by their defaults ->
+wrapping the body for by-reference params -> peeling off a variadic
+parameter -> building the AST-LAMBDA -> wrapping it to snapshot captures."
   (multiple-value-bind (params rest param-types _param-attrs by-ref-indices
                         param-defaults variadic-param)
       (php-parse-param-list stream)
@@ -92,7 +100,15 @@ Captures is a list of variable symbols; by-ref-set is a hash-table of the by-ref
 
 (defun %php-parse-anonymous-function (stream known-vars)
   "Parse function(params) use($x, &$y) { body } as an ast-lambda with captures.
-By-reference captures (&$var) are wrapped in ref boxes so mutations propagate."
+By-reference captures (&$var) are wrapped in ref boxes so mutations propagate.
+
+Same one-pipeline shape as %PHP-PARSE-ARROW-FUNCTION (see its docstring for
+the general pattern), with three phases arrow functions don't have: an
+optional leading `&' marking a by-reference return, an explicit `use (...)'
+capture list in place of free-variable inference, and a `{ ... }' statement
+BLOCK in place of a single expression — which is why the ref-box wrapping
+below has two sources to reconcile (BY-REF-PARAMS from the parameter list,
+REF-CAPTURES from the use-list) instead of the arrow function's one."
   (let* ((returns-by-ref (%php-reference-token-p stream))
          (stream (if returns-by-ref (cdr stream) stream)))
   (multiple-value-bind (params rest param-types _param-attrs by-ref-indices

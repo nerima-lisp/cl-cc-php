@@ -19,13 +19,6 @@ fractional part (3.0 -> \"3\"), others in full."
       (format nil "~D" (floor val))
       (format nil "~F" val)))
 
-(defun %php-object-visible-pair-by-name (object name)
-  "Return OBJECT's visible property pair named NAME, or NIL."
-  (let ((name-string (%php-stringify name)))
-    (find name-string (%php-object-visible-pairs object)
-          :key (lambda (pair) (%php-stringify (car pair)))
-          :test #'string=)))
-
 (defun %php-object-sleep-property-names (value)
   "Normalize __sleep() VALUE to a Common Lisp list of property names."
   (cond

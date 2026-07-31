@@ -105,6 +105,17 @@ DST transitions are not modelled by this compact runtime table.")
           (t nil))
       (error () nil))))
 
+(defun %php-leap-year-p (year)
+  "True when YEAR is a Gregorian leap year."
+  (and (zerop (mod year 4))
+       (or (plusp (mod year 100)) (zerop (mod year 400)))))
+
+(defun %php-days-in-month (month year)
+  "Return the number of days in MONTH (1-12) of YEAR."
+  (let ((month-lengths
+          (vector 31 (if (%php-leap-year-p year) 29 28) 31 30 31 30 31 31 30 31 30 31)))
+    (aref month-lengths (1- month))))
+
 (defun %php-date-ordinal-suffix (day)
   "PHP date S: the English ordinal suffix for DAY (st/nd/rd/th)."
   (if (<= 11 (mod day 100) 13)
@@ -128,8 +139,7 @@ i s A a U and \\-escapes."
         (let* ((fmt (%php-stringify format))
                (php-w (mod (1+ dow) 7))      ; PHP w: 0=Sunday
                (php-n (1+ dow))              ; PHP N: 1=Monday..7=Sunday
-               (leap-p (and (zerop (mod year 4))
-                            (or (plusp (mod year 100)) (zerop (mod year 400)))))
+               (leap-p (%php-leap-year-p year))
                (month-lengths (vector 31 (if leap-p 29 28) 31 30 31 30 31 31 30 31 30 31))
                (days-in-month (aref month-lengths (1- month)))
                (day-of-year (+ (loop for m from 1 below month
@@ -177,7 +187,13 @@ i s A a U and \\-escapes."
 (defun %php-checkdate (month day year)
   "PHP checkdate — validate a date."
   (handler-case
-      (progn (encode-universal-time 0 0 0 day month year 0) t)
+      (and (<= 1 month 12)
+           ;; ENCODE-UNIVERSAL-TIME only range-checks DAY against 1-31, not
+           ;; against the actual length of MONTH, so it accepted a nonsense
+           ;; date like February 30th as valid; check the real month length
+           ;; too before trusting it to signal on anything else out of range.
+           (<= 1 day (%php-days-in-month month year))
+           (progn (encode-universal-time 0 0 0 day month year 0) t))
     (error () nil)))
 
 (defun %php-date-create (&optional (datetime nil))

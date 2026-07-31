@@ -71,11 +71,26 @@
 (defun %php-compile-regex (pat &key ic ml)
   "Compile PHP regex pattern PAT to a matcher (str pos g) -> end-pos or nil.
 
-Returns (values matcher group-count).  When the matcher is called with a
-hash-table G, each capturing group records its matched span as
-(start . end) under its 1-based group number — the greedy non-backtracking
-engine never has to undo a recorded span, so capture stays simple.  Callers
-that don't need groups pass NIL for G."
+Returns (values matcher group-count). Internally, every compiled piece is
+continuation-passing: it takes a success continuation K and calls it with
+the position just past what it matched, returning K's result -- NIL means
+\"this path did not lead to an overall match\", which is what lets a
+greedy quantifier back off one repetition at a time (retrying the rest of
+the pattern, via K, at each shallower position) instead of committing to
+its longest match with no way to give characters back. That is what makes
+a pattern like \"a*a\" against \"aaa\" match correctly: a plain greedy scan
+consumes all three a's for a*, and a*a needs a* to be able to give one
+back to the trailing literal a. The returned matcher hides this: it wraps
+the CPS-compiled pattern in #'IDENTITY as the top-level continuation, so
+it keeps the original (str pos g) -> end-pos-or-nil shape and every
+caller of this function is unchanged.
+
+When the matcher is called with a hash-table G, each capturing group
+records its matched span as (start . end) under its 1-based group number.
+Because a recorded span can now be visited and later abandoned on
+backtrack, it is restored to its prior value (or removed, if it had none)
+whenever the continuation recorded for it goes on to fail. Callers that
+don't need groups pass NIL for G."
   (let ((compile-atom nil)
         (compile-seq  nil)
         (compile-alt  nil)
@@ -89,43 +104,51 @@ that don't need groups pass NIL for G."
                 ((or (char= ch #\|) (char= ch #\))) (values nil pos))
                 ((char= ch #\[)
                  (multiple-value-bind (fn end) (%php-compile-char-class pat (1+ pos))
-                   (values (lambda (s i g) (declare (ignore g))
-                              (when (and (< i (length s))
-                                         (funcall fn (if ic (char-downcase (char s i)) (char s i))))
-                                (1+ i)))
+                   (values (lambda (s i g k) (declare (ignore g))
+                              (and (< i (length s))
+                                   (funcall fn (if ic (char-downcase (char s i)) (char s i)))
+                                   (funcall k (1+ i))))
                            end)))
                 ((and (char= ch #\() (< (1+ pos) (length pat))
                       (char= (char pat (1+ pos)) #\?) (< (+ pos 2) (length pat))
                       (char= (char pat (+ pos 2)) #\:))
                  (multiple-value-bind (f e) (funcall compile-alt (+ pos 3))
-                   (values f (if (and (< e (length pat)) (char= (char pat e) #\))) (1+ e) e))))
+                   (values (lambda (s i g k) (funcall f s i g k))
+                           (if (and (< e (length pat)) (char= (char pat e) #\))) (1+ e) e))))
                 ((char= ch #\()
-                 ;; Capturing group — allocate its 1-based number BEFORE
-                 ;; compiling the inner pattern so nested groups number
-                 ;; left-to-right by opening paren, as PHP does.
                  (let ((gnum (incf group-count)))
                    (multiple-value-bind (f e) (funcall compile-alt (1+ pos))
-                     (values (lambda (s i g)
-                               (let ((end (funcall f s i g)))
-                                 (when end
-                                   (when g (setf (gethash gnum g) (cons i end)))
-                                   end)))
+                     (values (lambda (s i g k)
+                               (funcall f s i g
+                                        (lambda (end)
+                                          (if g
+                                              (multiple-value-bind (old-val old-p) (gethash gnum g)
+                                                (setf (gethash gnum g) (cons i end))
+                                                (or (funcall k end)
+                                                    (progn
+                                                      (if old-p
+                                                          (setf (gethash gnum g) old-val)
+                                                          (remhash gnum g))
+                                                      nil)))
+                                              (funcall k end)))))
                              (if (and (< e (length pat)) (char= (char pat e) #\))) (1+ e) e)))))
                 ((char= ch #\.)
-                 (values (lambda (s i g) (declare (ignore g))
-                            (when (and (< i (length s))
-                                       (or (not ml) (not (char= (char s i) #\Newline))))
-                              (1+ i)))
+                 (values (lambda (s i g k) (declare (ignore g))
+                            (and (< i (length s))
+                                 (or (not ml) (not (char= (char s i) #\Newline)))
+                                 (funcall k (1+ i))))
                          (1+ pos)))
                 ((char= ch #\^)
-                 (values (lambda (s i g) (declare (ignore g))
-                            (when (if ml (or (= i 0) (char= (char s (1- i)) #\Newline))
-                                       (= i 0)) i))
+                 (values (lambda (s i g k) (declare (ignore g))
+                            (and (if ml (or (= i 0) (char= (char s (1- i)) #\Newline))
+                                      (= i 0))
+                                 (funcall k i)))
                          (1+ pos)))
                 ((char= ch #\$)
-                 (values (lambda (s i g) (declare (ignore g))
-                            (when (if ml (or (= i (length s)) (char= (char s i) #\Newline))
-                                       (= i (length s))) i))
+                 (values (lambda (s i g k) (declare (ignore g))
+                            (and (if ml (or (= i (length s)) (char= (char s i) #\Newline))
+                                      (= i (length s)))
+                                 (funcall k i)))
                          (1+ pos)))
                 ((char= ch #\\)
                  (let* ((esc (char pat (1+ pos)))
@@ -144,19 +167,18 @@ that don't need groups pass NIL for G."
                                     ((char= esc #\t) (lambda (c) (char= c #\Tab)))
                                     ((char= esc #\r) (lambda (c) (char= c #\Return)))
                                     (t (let ((lit esc)) (lambda (c) (char= c lit)))))))
-                   (values (lambda (s i g) (declare (ignore g))
-                              (when (and (< i (length s))
-                                         (funcall pred (if ic
-                                                           (char-downcase (char s i))
-                                                           (char s i))))
-                                (1+ i)))
+                   (values (lambda (s i g k) (declare (ignore g))
+                              (and (< i (length s))
+                                   (funcall pred (if ic
+                                                     (char-downcase (char s i))
+                                                     (char s i)))
+                                   (funcall k (1+ i))))
                            (+ pos 2))))
                 (t (let ((lit (if ic (char-downcase ch) ch)))
-                     (values (lambda (s i g) (declare (ignore g))
-                                (when (and (< i (length s))
-                                           (char= (if ic (char-downcase (char s i)) (char s i))
-                                                  lit))
-                                  (1+ i)))
+                     (values (lambda (s i g k) (declare (ignore g))
+                                (and (< i (length s))
+                                     (char= (if ic (char-downcase (char s i)) (char s i)) lit)
+                                     (funcall k (1+ i))))
                              (1+ pos)))))))))
     (setf compile-seq
           (lambda (pos)
@@ -172,43 +194,21 @@ that don't need groups pass NIL for G."
                          (incf pos)
                          (when (and (< pos (length pat)) (char= (char pat pos) #\?)) (incf pos))
                          (let ((fn af))
-                           (setf af (lambda (s i g)
-                                      (loop for j = (funcall fn s i g) then (funcall fn s j g)
-                                            while j do (setf i j) finally (return i))))))
+                           (setf af (lambda (s i g k) (labels ((try (p) (or (funcall fn s p g (lambda (next) (and (> next p) (try next)))) (funcall k p)))) (try i))))))
                         ((char= q #\+)
                          (incf pos)
                          (when (and (< pos (length pat)) (char= (char pat pos) #\?)) (incf pos))
                          (let ((fn af))
-                           (setf af (lambda (s i g)
-                                      (let ((j (funcall fn s i g)))
-                                        (when j
-                                          (loop for k = (funcall fn s j g) then (funcall fn s k g)
-                                                while k do (setf j k) finally (return j))))))))
+                           (setf af (lambda (s i g k) (funcall fn s i g (lambda (p1) (labels ((try (p) (or (funcall fn s p g (lambda (next) (and (> next p) (try next)))) (funcall k p)))) (try p1))))))))
                         ((char= q #\?)
                          (incf pos)
                          (when (and (< pos (length pat)) (char= (char pat pos) #\?)) (incf pos))
                          (let ((fn af))
-                           (setf af (lambda (s i g) (or (funcall fn s i g) i))))))))
+                           (setf af (lambda (s i g k) (or (funcall fn s i g k) (funcall k i)))))))))
                   (push af fns)))
-              (let ((fs (nreverse fns)))
-                (values (lambda (s i g)
-                          (let ((p i))
-                            (dolist (fn fs p)
-                              (let ((r (funcall fn s p g)))
-                                (if r (setf p r) (return nil))))))
-                        pos)))))
-    (setf compile-alt
-          (lambda (pos)
-            (multiple-value-bind (ff np) (funcall compile-seq pos)
-              (setf pos np)
-              (if (and (< pos (length pat)) (char= (char pat pos) #\|))
-                  (multiple-value-bind (rf rp) (funcall compile-alt (1+ pos))
-                    (let ((f ff) (r rf))
-                      (values (lambda (s i g) (or (funcall f s i g) (funcall r s i g))) rp)))
-                  (values ff pos)))))
-    (multiple-value-bind (fn _) (funcall compile-alt 0)
-      (declare (ignore _))
-      (values fn group-count))))
+              (let ((fs (nreverse fns))) (values (lambda (s i g k) (labels ((run (chain pos) (if (null chain) (funcall k pos) (funcall (car chain) s pos g (lambda (next) (run (cdr chain) next)))))) (run fs i))) pos)))))
+    (setf compile-alt (lambda (pos) (multiple-value-bind (ff np) (funcall compile-seq pos) (setf pos np) (if (and (< pos (length pat)) (char= (char pat pos) #\|)) (multiple-value-bind (rf rp) (funcall compile-alt (1+ pos)) (let ((f ff) (r rf)) (values (lambda (s i g k) (or (funcall f s i g k) (funcall r s i g k))) rp))) (values ff pos)))))
+    (multiple-value-bind (fn _) (funcall compile-alt 0) (declare (ignore _)) (values (lambda (s i g) (funcall fn s i g (function identity))) group-count))))
 
 (defun %php-regex-match-at (fn group-count s i)
   "Run matcher FN (from %php-compile-regex) at position I of S with capture.

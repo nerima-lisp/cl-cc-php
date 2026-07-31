@@ -311,11 +311,3 @@ etc. work). The previous CL list broke count()/array builtins."
 
 ;;; ─── Enum case accessors ────────────────────────────────────────────────────
 
-(defun %php-enum-name (enum-case)
-  "Return the symbolic name of a PHP enum case."
-  (check-type enum-case hash-table)
-  (gethash 'name enum-case +php-null+))
-
-(defun %php-enum-p (value)
-  "Return true when VALUE is a PHP enum case (backed or unit)."
-  (%php-enum-case-p value))
