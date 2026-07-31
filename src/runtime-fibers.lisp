@@ -173,9 +173,8 @@ Must be called from within a running Fiber body."
 
 (eval-when (:load-toplevel :execute)
   ;; PHP 8.1 Fiber builtins.
-  (when (fboundp '%php-register-builtin)
-    (%php-register-builtin "fiber_create"     '%php-fiber-make)
-    (%php-register-builtin "fiber_start"      '%php-fiber-start)
-    (%php-register-builtin "fiber_resume"     '%php-fiber-resume)
-    (%php-register-builtin "fiber_suspend"    '%php-fiber-suspend)
-    (%php-register-builtin "fiber_get_return" '%php-fiber-get-return)))
+  (%php-register-builtin "fiber_create"     '%php-fiber-make)
+  (%php-register-builtin "fiber_start"      '%php-fiber-start)
+  (%php-register-builtin "fiber_resume"     '%php-fiber-resume)
+  (%php-register-builtin "fiber_suspend"    '%php-fiber-suspend)
+  (%php-register-builtin "fiber_get_return" '%php-fiber-get-return))

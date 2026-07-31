@@ -690,6 +690,24 @@ Added / Changed / Deprecated / Removed / Fixed / Security
   correctly populated, just as unread at the time this was found — is
   now genuinely read: it is exactly the data (trait name → member
   slot-defs) `%php-merge-trait-members` needed for the real fix.
+- A dead `(when (fboundp '%php-register-builtin) ...)` guard around
+  `runtime-fibers.lisp`'s Fiber builtin registrations, flagged by a
+  peer session's independent backward-compat audit. `%php-register-
+  builtin` is defined in `runtime-builtins-register.lisp`, loaded at
+  position 79 of `cl-cc-php.asd`'s component list; `runtime-fibers.lisp`
+  loads at position 113 — strictly after — so the guard could never
+  actually be false. Cross-checked the same audit's other two findings
+  (`%php-ref-p`/`%php-generator-p`, both flagged as possibly-unreachable
+  thin wrappers around their defstruct's own predicate) against this
+  session's current code and the sibling `cl-cc*` checkouts before acting
+  on them: `%php-ref-p` turned out to have a live call site this same
+  session's `similar_text` fix added
+  (`runtime-builtins-string-analysis.lisp`), and `%php-generator-p` has
+  direct, deliberate unit-test coverage in
+  `t/runtime-helpers-generators-test.lisp` — unlike `%php-generator-send`/
+  `-current` above, which had zero references anywhere before their
+  removal. Both left in place; only the confirmed always-true guard was
+  removed.
 
 ### Fixed
 
