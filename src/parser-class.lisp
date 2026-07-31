@@ -324,7 +324,7 @@ Returns (values superclass-list remaining-stream)."
   ;; parser of its own. As with :ABSTRACT, this only makes the class parse; nothing tracks
   ;; "is this class final" past parsing, so extending a final class is not rejected either
   ;; — the same class of enforcement gap as :ABSTRACT's un-rejected instantiation and
-  ;; `readonly`'s un-rejected reassignment (see CHANGELOG.md), not attempted here.
+  ;; `readonly`'s un-rejected reassignment (see the release notes), not attempted here.
   (unless (and rest
                (eq (php-peek-type rest) :T-KEYWORD)
                (eq (php-peek-value rest) :class))
@@ -361,7 +361,7 @@ to %php-parse-expr-stmt for expression statements."
             (and next (eq (php-tok-type next) :T-COLON))))
       ;; A bare identifier immediately followed by `:' is a labeled statement — goto's jump
       ;; target. There is no label-statement AST representation or TAGBODY-aware block
-      ;; lowering for it yet (see CHANGELOG), so this reports a clear, honest diagnostic
+      ;; lowering for it yet (see the release notes), so this reports a clear, honest diagnostic
       ;; instead of falling through to %PHP-PARSE-EXPR-STMT, where the same input produces a
       ;; confusing "unexpected token T-COLON in expression" error with no indication of what
       ;; PHP construct was actually being attempted.

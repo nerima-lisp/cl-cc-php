@@ -95,9 +95,8 @@ The site builds with `--strict`, so a broken link or a page missing from the
 `nav` in `docs/mkdocs.yml` fails the build. That is deliberate: it means the nav
 cannot silently fall behind the pages.
 
-Because `pymdownx.snippets` is configured with `base_path: ["."]`, mkdocs is
-invoked from the repository root. This is what lets `docs/src/changelog.md`
-include the root `CHANGELOG.md` rather than duplicating it.
+mkdocs is invoked from the repository root, so the config path is always
+`docs/mkdocs.yml` whether you build by hand or through Nix.
 
 ## Adding a runtime builtin
 
@@ -130,8 +129,14 @@ at evaluation time, so no Nix-side number can drift from it. A release edits the
 
 Pushing a `v*.*.*` tag triggers `release.yml`, which refuses to publish unless
 the tag matches the `.asd` version and the tagged tree passes `nix flake check`.
-The release body is the matching `## [X.Y.Z]` section of `CHANGELOG.md`, so that
-heading format is load-bearing.
+It then creates an empty *draft* release. The
+[GitHub Release description](https://github.com/nerima-lisp/cl-cc-php/releases)
+is the org's only canonical changelog, so the maintainer writes the notes into
+the draft and publishes it:
+
+```sh
+gh release edit vX.Y.Z --notes-file notes.md --draft=false
+```
 
 ## Contributing
 

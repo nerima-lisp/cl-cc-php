@@ -43,11 +43,9 @@ jobs:
       # Runs the SBCL test suite (checks.default), the treefmt formatting gate
       # (checks.formatting), and the mkdocs --strict build (checks.docs).
       #
-      # Deliberately no `--all-systems` (ADR-0078). The flake declares
-      # x86_64-linux and aarch64-darwin; this runner verifies the former, and a
-      # maintainer's `nix flake check` on a Darwin arm64 machine verifies the
-      # latter. `--all-systems` here would only force this Linux runner to
-      # evaluate Darwin attributes it cannot build.
+      # Deliberately no `--all-systems`. The flake declares exactly one system,
+      # x86_64-linux, which is what this runner builds, so the flag would not
+      # widen what is checked.
       - name: Check flake
         run: nix flake check --print-build-logs
 

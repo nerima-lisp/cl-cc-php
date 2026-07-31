@@ -1,4 +1,11 @@
 ;;;; cl-cc-php.asd — PHP frontend: lexer, parser, grammar
+;;;;
+;;;; This form comes FIRST, before any defsystem. ASDF binds *package* to
+;;;; ASDF-USER only for a file it loads itself; read any other way — a REPL
+;;;; `load`, an editor evaluating the buffer, flake.nix parsing :version — the
+;;;; file is read in whatever package happens to be current.
+
+(in-package #:asdf-user)
 
 (asdf:defsystem "cl-cc-php"
   :description "CL-CC PHP frontend: lexer, parser, and grammar"
@@ -14,7 +21,6 @@
                :cl-cc-parse      ; shared parsing infrastructure
                :cl-cc-vm         ; bytecode VM
                :cl-json-kit)     ; RFC 8259 JSON reader, used by json_validate
-  :in-order-to ((test-op (test-op "cl-cc-php/test")))
   :pathname "src"
   :serial t
   :components
@@ -116,7 +122,8 @@
    (:file "grammar-stmt")
    ;; Must load last, after every %PHP-* function is defined: the provider
    ;; thunk is called later, but the file registers it at load time.
-   (:file "runtime-bridge-provider")))
+   (:file "runtime-bridge-provider"))
+  :in-order-to ((test-op (test-op "cl-cc-php/test"))))
 
 ;; A separate system: the e2e suites need to compile and *run* PHP source
 ;; through the full pipeline (cl-cc/compile:compile-string, cl-cc/vm:run-compiled),

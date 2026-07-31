@@ -87,13 +87,19 @@
       treefmt-nix,
     }:
     let
-      # x86_64-linux is verified by CI; aarch64-darwin is verified by every
-      # maintainer `nix flake check` on the development machine. aarch64-linux
-      # and x86_64-darwin are deliberately not declared because nothing
-      # verifies them (ADR-0078).
+      # CI builds and tests only x86_64-linux, so that is the sole declared
+      # system: the flake never advertises a platform it does not verify.
+      # `nix flake check --all-systems` fails with a platform mismatch on a
+      # platform no runner can build, rather than skipping it.
+      #
+      # Consequence, accepted deliberately on 2026-08-01: `forAllSystems`
+      # below generates EVERY per-system output from this one list -- packages,
+      # checks, apps and devShells alike -- so dropping aarch64-darwin also
+      # drops devShells.aarch64-darwin. `nix develop` and `nix build` therefore
+      # do not work on macOS; development happens on Linux. See
+      # PACKAGE_STANDARD.md, section "systems".
       systems = [
         "x86_64-linux"
-        "aarch64-darwin"
       ];
       forAllSystems = nixpkgs.lib.genAttrs systems;
 
@@ -206,23 +212,17 @@
           docs = pkgs.stdenvNoCC.mkDerivation {
             pname = "cl-cc-php-docs";
             inherit version;
-            # Rooted at the repository, not at ./docs, and CHANGELOG.md is part
-            # of the fileset: docs/src/changelog.md is a one-line
-            # `--8<-- "CHANGELOG.md"` snippet include rather than a duplicate of
-            # the changelog, and pymdownx.snippets resolves it against
-            # base_path ["."] — the directory mkdocs is invoked from.
+            # Rooted at the repository, not at ./docs, so the config path passed
+            # to mkdocs below is the same `docs/mkdocs.yml` a contributor types.
             src = pkgs.lib.fileset.toSource {
               root = ./.;
               fileset = pkgs.lib.fileset.unions [
                 ./docs/mkdocs.yml
                 ./docs/src
-                ./CHANGELOG.md
               ];
             };
             nativeBuildInputs = [ pkgs.python3Packages.mkdocs-material ];
             # Invoked from the repository root, hence `-f docs/mkdocs.yml`.
-            # Running `cd docs && mkdocs ...` instead would put base_path at
-            # docs/, and the CHANGELOG include would fail under check_paths.
             buildPhase = ''
               runHook preBuild
               mkdocs build --strict -f docs/mkdocs.yml --site-dir "$out"
