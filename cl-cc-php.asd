@@ -5,7 +5,7 @@
   :author "takeokunn <bararararatty@gmail.com>"
   :maintainer "takeokunn <bararararatty@gmail.com>"
   :license "MIT"
-  :version "0.1.0"
+  :version "0.1.1"
   :homepage "https://github.com/nerima-lisp/cl-cc-php"
   :bug-tracker "https://github.com/nerima-lisp/cl-cc-php/issues"
   :source-control (:git "https://github.com/nerima-lisp/cl-cc-php.git")
@@ -129,7 +129,7 @@
   :author "takeokunn <bararararatty@gmail.com>"
   :maintainer "takeokunn <bararararatty@gmail.com>"
   :license "MIT"
-  :version "0.1.0"
+  :version "0.1.1"
   :homepage "https://github.com/nerima-lisp/cl-cc-php"
   :bug-tracker "https://github.com/nerima-lisp/cl-cc-php/issues"
   :source-control (:git "https://github.com/nerima-lisp/cl-cc-php.git")

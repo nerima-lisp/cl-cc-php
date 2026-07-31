@@ -21,6 +21,8 @@ Added / Changed / Deprecated / Removed / Fixed / Security
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-07-31
+
 ### Changed
 
 - `t/runtime-builtins-io-objects-php85-test.lisp` grew back over the
