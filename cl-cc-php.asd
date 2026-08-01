@@ -20,6 +20,7 @@
                :cl-cc-bootstrap  ; compiler self-hosting core
                :cl-cc-parse      ; shared parsing infrastructure
                :cl-cc-vm         ; bytecode VM
+               :cl-host-kit      ; host operations: is_dir, FILTER_VALIDATE_URL
                :cl-json-kit)     ; RFC 8259 JSON reader, used by json_validate
   :pathname "src"
   :serial t

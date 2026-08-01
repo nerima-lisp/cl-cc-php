@@ -78,9 +78,9 @@
 Appending a trailing slash before PROBE-FILE (the traditional CL idiom for
 this check) doesn't reliably distinguish a directory from a regular file on
 every SBCL/platform combination — PROBE-FILE can still resolve a
-slash-suffixed path to a regular file. UIOP:DIRECTORY-EXISTS-P is written
-specifically to make this determination portably."
-  (and (uiop:directory-exists-p (%php-path-string path)) t))
+slash-suffixed path to a regular file. HOST-KIT:DIRECTORY-EXISTS-P is written
+specifically to make this determination reliably."
+  (and (host-kit:directory-exists-p (%php-path-string path)) t))
 
 (defun %php-is-readable (filename)
   "PHP is_readable: check if file is readable."

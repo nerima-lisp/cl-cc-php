@@ -239,8 +239,8 @@ are allowed; trailing junk is ignored."
 (defun %php-filter-url-value (value)
   (when (stringp value)
     (let ((lower (string-downcase value)))
-      (and (or (uiop:string-prefix-p "http://" lower)
-               (uiop:string-prefix-p "https://" lower))
+      (and (or (host-kit:string-prefix-p "http://" lower)
+               (host-kit:string-prefix-p "https://" lower))
            (> (length value) (length "https://"))
            value))))
 

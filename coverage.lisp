@@ -41,6 +41,7 @@
 (defvar *cl-prolog-root* (%env-or "CL_CC_PHP_CL_PROLOG_ROOT" "../cl-prolog"))
 (defvar *cl-parser-kit-root* (%env-or "CL_CC_PHP_CL_PARSER_KIT_ROOT" "../cl-parser-kit"))
 (defvar *cl-json-kit-root* (%env-or "CL_CC_PHP_CL_JSON_KIT_ROOT" "../cl-json-kit"))
+(defvar *cl-host-kit-root* (%env-or "CL_CC_PHP_CL_HOST_KIT_ROOT" "../cl-host-kit"))
 
 (defparameter *cl-cc-package-subdirs*
   '("bootstrap" "ast" "parse" "vm" "runtime" "type" "mir" "optimize" "emit"
@@ -57,6 +58,7 @@
   (%tree (uiop:ensure-directory-pathname *cl-prolog-root*))
   (%tree (uiop:ensure-directory-pathname *cl-parser-kit-root*))
   (%tree (uiop:ensure-directory-pathname *cl-json-kit-root*))
+  (%tree (uiop:ensure-directory-pathname *cl-host-kit-root*))
   (%tree (uiop:getcwd))
   (append
    (mapcar (lambda (subdir)

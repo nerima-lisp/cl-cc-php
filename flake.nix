@@ -64,6 +64,18 @@
       flake = false;
     };
 
+    # Also a real dependency of the shipped system, added by the 2026-08-01
+    # org-wide uiop -> cl-host-kit migration: src/runtime-builtins-io-files.lisp
+    # (is_dir) and src/runtime-builtins-types.lisp (FILTER_VALIDATE_URL) call
+    # into it. Declared `flake = false` and registered as a plain source tree
+    # like every sibling above, rather than consumed as a flake package the way
+    # cl-nix-forge-based repos in the org do it — this flake has no
+    # `lispDependencies`; run-tests.lisp resolves dependencies itself.
+    cl-host-kit = {
+      url = "github:nerima-lisp/cl-host-kit/v0.2.1";
+      flake = false;
+    };
+
     # `inputs.nixpkgs.follows` is mandatory on every input that is itself a
     # flake: without it each one drags in its own nixpkgs, inflating flake.lock
     # and rebuilding the same derivations. The sibling inputs above are all
@@ -84,6 +96,7 @@
       cl-prolog,
       cl-parser-kit,
       cl-json-kit,
+      cl-host-kit,
       treefmt-nix,
     }:
     let
@@ -126,6 +139,7 @@
         CL_CC_PHP_CL_PROLOG_ROOT = "${cl-prolog}";
         CL_CC_PHP_CL_PARSER_KIT_ROOT = "${cl-parser-kit}";
         CL_CC_PHP_CL_JSON_KIT_ROOT = "${cl-json-kit}";
+        CL_CC_PHP_CL_HOST_KIT_ROOT = "${cl-host-kit}";
       };
 
       # treefmt drives `nix fmt` and the `checks.<system>.formatting` gate.
@@ -311,6 +325,7 @@
               export CL_CC_PHP_CL_PROLOG_ROOT="${cl-prolog}"
               export CL_CC_PHP_CL_PARSER_KIT_ROOT="${cl-parser-kit}"
               export CL_CC_PHP_CL_JSON_KIT_ROOT="${cl-json-kit}"
+              export CL_CC_PHP_CL_HOST_KIT_ROOT="${cl-host-kit}"
               # Same reason as checks.default: the suite writes .cache/ relative
               # to the working directory, so it needs a writable tree rather
               # than the read-only store path.
