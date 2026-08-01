@@ -40,7 +40,7 @@ tracking length.
 ;;     (:type :T-EOF :value nil))
 ```
 
-See also: [Quick Start](quick-start.md#look-at-the-tokens)
+See also: [Getting Started](../getting-started.md#look-at-the-tokens)
 
 ### `parse-php-source`
 
@@ -65,7 +65,7 @@ string.
 (cl-cc/php:parse-php-source "<?php $x = 1 + 2;")
 ```
 
-See also: [Core Concepts](core-concepts.md#the-three-stages)
+See also: [Core Concepts](../guide/core-concepts.md#the-three-stages)
 
 ### `parse-php-source-to-cst`
 
@@ -95,7 +95,7 @@ list of diagnostics collected during the parse.
 ;; => (values (#<php-cst-if ...>) nil)
 ```
 
-See also: [Recipes](recipes.md#keep-surface-syntax-with-the-cst)
+See also: [Recipes](../guide/recipes.md#keep-surface-syntax-with-the-cst)
 
 ### `php-check-supported-forms`
 
@@ -225,4 +225,4 @@ call works directly as a script-level exit gate.
 ;; => t
 ```
 
-See also: [Development](development.md#iterating-in-a-repl)
+See also: [Development](../project/development.md#iterating-in-a-repl)

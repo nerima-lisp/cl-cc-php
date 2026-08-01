@@ -1,4 +1,4 @@
-# Installation
+# Getting Started
 
 ## Requirements
 
@@ -12,7 +12,7 @@
 
 cl-cc-php cannot load without cl-cc on the ASDF source registry. That is a
 property of the system rather than a packaging oversight — see
-[Architecture](architecture.md).
+[Architecture](reference/architecture.md).
 
 ## As a flake input
 
@@ -63,17 +63,6 @@ parent/
 
 With that layout, `run-tests.lisp` finds everything with no configuration.
 
-## Verifying the install
-
-```sh
-nix flake check --print-build-logs
-```
-
-This builds the source, runs the test suite, checks Nix formatting, and builds
-this documentation site with `--strict`.
-
-## Dependencies
-
 The main system depends on four cl-cc subsystems, plus one standalone package:
 
 | Dependency | Why |
@@ -88,3 +77,72 @@ The test system additionally depends on `cl-cc-pipeline`, for the end-to-end
 suites that compile and run PHP source, and on
 [cl-weave](https://github.com/nerima-lisp/cl-weave) as the test framework.
 Neither is a dependency of the shipped system.
+
+## Verifying the install
+
+```sh
+nix flake check --print-build-logs
+```
+
+This builds the source, runs the test suite, checks Nix formatting, and builds
+this documentation site with `--strict`.
+
+## Parse PHP into an AST
+
+The rest of this page carries one task through to completion: turning a PHP
+source string into a cl-cc AST, and seeing what the lexer did along the way.
+
+```lisp
+(asdf:load-system "cl-cc-php")
+
+(cl-cc/php:parse-php-source "<?php $x = 1 + 2;")
+```
+
+`parse-php-source` takes a source string and returns a list of top-level AST
+nodes, the same shape `parse-all-forms` returns for Common Lisp. Those nodes are
+cl-cc AST nodes, so the rest of the compiler can consume them directly.
+
+## Look at the tokens
+
+When a parse does something surprising, check the token stream first. It tells
+you whether the lexer or the parser is at fault:
+
+```lisp
+(cl-cc/php:tokenize-php-source "<?php $x = 1 <=> 2;")
+```
+
+Tokens are plists of the form `(:type :T-XXX :value val)`, and the list always
+ends with `(:type :T-EOF :value nil)`.
+
+## Keep the surface syntax
+
+The AST discards detail that a formatter or linter needs. Parse to a concrete
+syntax tree instead when that detail matters:
+
+```lisp
+(cl-cc/php:parse-php-source-to-cst "<?php if ($a) { b(); }")
+;; => (values cst-list diagnostics)
+```
+
+Note that this returns two values: the CST nodes and any diagnostics collected
+during the parse.
+
+## Reject unsupported constructs early
+
+`php-check-supported-forms` walks an AST and signals an error on any construct
+the frontend does not handle, rather than letting it fail deeper in the
+pipeline:
+
+```lisp
+(let ((ast (cl-cc/php:parse-php-source source)))
+  (cl-cc/php:php-check-supported-forms ast)
+  ast)
+```
+
+## Next steps
+
+- [Core Concepts](guide/core-concepts.md) explains the lexer/parser/grammar split
+  and why the `%php-` runtime builtins exist.
+- [Recipes](guide/recipes.md) covers PHP value semantics, arrays, enums, and
+  adding a builtin.
+- [API Reference](reference/api.md) specifies the entry points.

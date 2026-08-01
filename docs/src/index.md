@@ -20,18 +20,19 @@ core it plugs into lives in cl-cc.
 ## Where to go next
 
 If you want to get something running, start with
-[Installation](installation.md) and then [Quick Start](quick-start.md).
+[Getting Started](getting-started.md), which covers installation and carries one
+parse through end to end.
 
 If you want to understand the design before using it,
-[Core Concepts](core-concepts.md) explains the three-stage pipeline and the
+[Core Concepts](guide/core-concepts.md) explains the three-stage pipeline and the
 distinction between parse-time code and the runtime builtins — the point that
 most often trips up first readers.
 
 If you are looking up a specific symbol, go to
-[API Reference](api-reference.md).
+[API Reference](reference/api.md).
 
-If you are extending the frontend, [Architecture](architecture.md) covers the
-source layout and the dependency shape, and [Development](development.md)
+If you are extending the frontend, [Architecture](reference/architecture.md) covers the
+source layout and the dependency shape, and [Development](project/development.md)
 covers the build, test, and formatting commands.
 
 ## Before you depend on this
@@ -47,9 +48,9 @@ together if `flake.lock` says so.
 **The `%php-` symbols are a compilation target.** They are exported so that
 generated code can name them, not because they form a comfortable user-facing
 API. The stable surface is the four entry points documented in
-[API Reference](api-reference.md).
+[API Reference](reference/api.md).
 
-See [Compatibility](compatibility.md) for the full picture, including platform
+See [Compatibility](reference/compatibility.md) for the full picture, including platform
 support and PHP language coverage.
 
 ## Project policies

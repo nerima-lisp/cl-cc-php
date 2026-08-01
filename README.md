@@ -44,15 +44,15 @@ cl-cc-php is not standalone. It needs `cl-cc-ast`, `cl-cc-bootstrap`,
 `cl-cc-parse`, and `cl-cc-vm`, which live inside a checkout of the cl-cc
 monorepo rather than in split-out repositories, plus a checkout of
 [cl-json-kit](https://github.com/nerima-lisp/cl-json-kit). See
-[Installation](https://nerima-lisp.github.io/cl-cc-php/installation/).
+[Getting Started](https://nerima-lisp.github.io/cl-cc-php/getting-started/).
 
 ## Documentation
 
-- [Quick Start](https://nerima-lisp.github.io/cl-cc-php/quick-start/)
-- [Core Concepts](https://nerima-lisp.github.io/cl-cc-php/core-concepts/)
-- [API Reference](https://nerima-lisp.github.io/cl-cc-php/api-reference/)
-- [Architecture](https://nerima-lisp.github.io/cl-cc-php/architecture/)
-- [Compatibility](https://nerima-lisp.github.io/cl-cc-php/compatibility/)
+- [Getting Started](https://nerima-lisp.github.io/cl-cc-php/getting-started/)
+- [Core Concepts](https://nerima-lisp.github.io/cl-cc-php/guide/core-concepts/)
+- [API Reference](https://nerima-lisp.github.io/cl-cc-php/reference/api/)
+- [Architecture](https://nerima-lisp.github.io/cl-cc-php/reference/architecture/)
+- [Compatibility](https://nerima-lisp.github.io/cl-cc-php/reference/compatibility/)
 
 ## Development
 
@@ -71,7 +71,7 @@ repository:
 sbcl --script run-tests.lisp
 ```
 
-See [Development](https://nerima-lisp.github.io/cl-cc-php/development/).
+See [Development](https://nerima-lisp.github.io/cl-cc-php/project/development/).
 
 ## Contributing
 

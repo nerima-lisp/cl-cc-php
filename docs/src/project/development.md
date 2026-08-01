@@ -106,7 +106,7 @@ mkdocs is invoked from the repository root, so the config path is always
    Do not write a bespoke registration form — keeping registration as data is
    what stops the registry and the implementations from drifting apart.
 3. Add a table-driven test row in `t/<same-name>-test.lisp`.
-4. Update [API Reference](api-reference.md) if the symbol is exported.
+4. Update [API Reference](../reference/api.md) if the symbol is exported.
 
 ## Test layout
 
