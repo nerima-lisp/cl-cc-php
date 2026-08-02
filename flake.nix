@@ -42,15 +42,15 @@
     # follows that repo's default branch, so an upstream push to main would
     # break this repo's CI without warning.
     cl-weave = {
-      url = "github:nerima-lisp/cl-weave/v1.1.0";
+      url = "github:nerima-lisp/cl-weave/v1.1.4";
       flake = false;
     };
     cl-prolog = {
-      url = "github:nerima-lisp/cl-prolog/v1.1.0";
+      url = "github:nerima-lisp/cl-prolog/v1.3.0";
       flake = false;
     };
     cl-parser-kit = {
-      url = "github:nerima-lisp/cl-parser-kit/v1.0.1";
+      url = "github:nerima-lisp/cl-parser-kit/v1.0.3";
       flake = false;
     };
 
@@ -60,7 +60,7 @@
     # see cl-cc-php.asd's `:depends-on`. Pinned to a release tag for the same
     # reason as the other siblings.
     cl-json-kit = {
-      url = "github:nerima-lisp/cl-json-kit/v1.0.1";
+      url = "github:nerima-lisp/cl-json-kit/v1.0.2";
       flake = false;
     };
 
@@ -72,7 +72,7 @@
     # cl-nix-forge-based repos in the org do it — this flake has no
     # `lispDependencies`; run-tests.lisp resolves dependencies itself.
     cl-host-kit = {
-      url = "github:nerima-lisp/cl-host-kit/v0.2.1";
+      url = "github:nerima-lisp/cl-host-kit/v0.2.5";
       flake = false;
     };
 
