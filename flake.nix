@@ -31,7 +31,7 @@
       flake = false;
     };
 
-    # Test-only: cl-weave is the test framework t/ runs on directly. cl-prolog
+    # Test-only: cl-weave is the test framework t/ runs on directly. cl-prolog-kit
     # and cl-parser-kit are, in turn, cl-cc-optimize's own dependencies (part of
     # the transitive closure cl-cc-pipeline pulls in for the e2e suites) —
     # pulled the same way cl-cc's own flake pulls them, as plain source trees
@@ -45,8 +45,8 @@
       url = "github:nerima-lisp/cl-weave/v1.1.4";
       flake = false;
     };
-    cl-prolog = {
-      url = "github:nerima-lisp/cl-prolog/v1.3.0";
+    cl-prolog-kit = {
+      url = "github:nerima-lisp/cl-prolog-kit/v1.5.0";
       flake = false;
     };
     cl-parser-kit = {
@@ -93,7 +93,7 @@
       nixpkgs,
       cl-cc,
       cl-weave,
-      cl-prolog,
+      cl-prolog-kit,
       cl-parser-kit,
       cl-json-kit,
       cl-host-kit,
@@ -134,7 +134,7 @@
       testEnv = {
         CL_CC_PHP_CL_CC_ROOT = "${cl-cc}";
         CL_CC_PHP_CL_WEAVE_ROOT = "${cl-weave}";
-        CL_CC_PHP_CL_PROLOG_ROOT = "${cl-prolog}";
+        CL_CC_PHP_CL_PROLOG_KIT_ROOT = "${cl-prolog-kit}";
         CL_CC_PHP_CL_PARSER_KIT_ROOT = "${cl-parser-kit}";
         CL_CC_PHP_CL_JSON_KIT_ROOT = "${cl-json-kit}";
         CL_CC_PHP_CL_HOST_KIT_ROOT = "${cl-host-kit}";
@@ -320,7 +320,7 @@
             text = ''
               export CL_CC_PHP_CL_CC_ROOT="${cl-cc}"
               export CL_CC_PHP_CL_WEAVE_ROOT="${cl-weave}"
-              export CL_CC_PHP_CL_PROLOG_ROOT="${cl-prolog}"
+              export CL_CC_PHP_CL_PROLOG_KIT_ROOT="${cl-prolog-kit}"
               export CL_CC_PHP_CL_PARSER_KIT_ROOT="${cl-parser-kit}"
               export CL_CC_PHP_CL_JSON_KIT_ROOT="${cl-json-kit}"
               export CL_CC_PHP_CL_HOST_KIT_ROOT="${cl-host-kit}"
