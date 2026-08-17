@@ -43,10 +43,48 @@
 (defvar *cl-json-kit-root* (%env-or "CL_CC_PHP_CL_JSON_KIT_ROOT" "../cl-json-kit"))
 (defvar *cl-host-kit-root* (%env-or "CL_CC_PHP_CL_HOST_KIT_ROOT" "../cl-host-kit"))
 
+;; See run-tests.lisp's comment on the matching block: cl-cc.asd's own
+;; :depends-on needs these 20 systems and the pinned cl-cc checkout no
+;; longer provides them.
+(defvar *cl-cc-ast-root* (%env-or "CL_CC_PHP_CL_CC_AST_ROOT" "../cl-cc-ast"))
+(defvar *cl-cc-bootstrap-root*
+  (%env-or "CL_CC_PHP_CL_CC_BOOTSTRAP_ROOT" "../cl-cc-bootstrap"))
+(defvar *cl-cc-parse-root*
+  (%env-or "CL_CC_PHP_CL_CC_PARSE_ROOT" "../cl-cc-parse"))
+(defvar *cl-cc-vm-root* (%env-or "CL_CC_PHP_CL_CC_VM_ROOT" "../cl-cc-vm"))
+(defvar *cl-cc-type-root*
+  (%env-or "CL_CC_PHP_CL_CC_TYPE_ROOT" "../cl-cc-type"))
+(defvar *cl-cc-binary-root*
+  (%env-or "CL_CC_PHP_CL_CC_BINARY_ROOT" "../cl-cc-binary"))
+(defvar *cl-cc-runtime-root*
+  (%env-or "CL_CC_PHP_CL_CC_RUNTIME_ROOT" "../cl-cc-runtime"))
+(defvar *cl-cc-mir-root* (%env-or "CL_CC_PHP_CL_CC_MIR_ROOT" "../cl-cc-mir"))
+(defvar *cl-cc-codegen-native-root*
+  (%env-or "CL_CC_PHP_CL_CC_CODEGEN_NATIVE_ROOT" "../cl-cc-codegen-native"))
+(defvar *cl-cc-expand-root*
+  (%env-or "CL_CC_PHP_CL_CC_EXPAND_ROOT" "../cl-cc-expand"))
+(defvar *cl-cc-cps-root* (%env-or "CL_CC_PHP_CL_CC_CPS_ROOT" "../cl-cc-cps"))
+(defvar *cl-cc-optimize-root*
+  (%env-or "CL_CC_PHP_CL_CC_OPTIMIZE_ROOT" "../cl-cc-optimize"))
+(defvar *cl-log-kit-root*
+  (%env-or "CL_CC_PHP_CL_LOG_KIT_ROOT" "../cl-log-kit"))
+(defvar *cl-date-kit-root*
+  (%env-or "CL_CC_PHP_CL_DATE_KIT_ROOT" "../cl-date-kit"))
+(defvar *cl-concurrent-kit-root*
+  (%env-or "CL_CC_PHP_CL_CONCURRENT_KIT_ROOT" "../cl-concurrent-kit"))
+(defvar *cl-boundary-kit-root*
+  (%env-or "CL_CC_PHP_CL_BOUNDARY_KIT_ROOT" "../cl-boundary-kit"))
+(defvar *cl-codec-kit-root*
+  (%env-or "CL_CC_PHP_CL_CODEC_KIT_ROOT" "../cl-codec-kit"))
+(defvar *cl-process-kit-root*
+  (%env-or "CL_CC_PHP_CL_PROCESS_KIT_ROOT" "../cl-process-kit"))
+(defvar *cl-regex-kit-root*
+  (%env-or "CL_CC_PHP_CL_REGEX_KIT_ROOT" "../cl-regex-kit"))
+(defvar *cl-tty-kit-root*
+  (%env-or "CL_CC_PHP_CL_TTY_KIT_ROOT" "../cl-tty-kit"))
+
 (defparameter *cl-cc-package-subdirs*
-  '("bootstrap" "ast" "parse" "vm" "runtime" "type" "mir" "optimize" "emit"
-    "expand" "compile" "cps" "codegen" "target" "regalloc" "bytecode" "ir"
-    "binary" "stdlib" "javascript" "pipeline"))
+  '("compile" "pipeline" "stdlib"))
 
 (defun %tree (pathname)
   (list :tree (uiop:ensure-directory-pathname pathname)))
@@ -59,6 +97,26 @@
   (%tree (uiop:ensure-directory-pathname *cl-parser-kit-root*))
   (%tree (uiop:ensure-directory-pathname *cl-json-kit-root*))
   (%tree (uiop:ensure-directory-pathname *cl-host-kit-root*))
+  (%tree (uiop:ensure-directory-pathname *cl-cc-ast-root*))
+  (%tree (uiop:ensure-directory-pathname *cl-cc-bootstrap-root*))
+  (%tree (uiop:ensure-directory-pathname *cl-cc-parse-root*))
+  (%tree (uiop:ensure-directory-pathname *cl-cc-vm-root*))
+  (%tree (uiop:ensure-directory-pathname *cl-cc-type-root*))
+  (%tree (uiop:ensure-directory-pathname *cl-cc-binary-root*))
+  (%tree (uiop:ensure-directory-pathname *cl-cc-runtime-root*))
+  (%tree (uiop:ensure-directory-pathname *cl-cc-mir-root*))
+  (%tree (uiop:ensure-directory-pathname *cl-cc-codegen-native-root*))
+  (%tree (uiop:ensure-directory-pathname *cl-cc-expand-root*))
+  (%tree (uiop:ensure-directory-pathname *cl-cc-cps-root*))
+  (%tree (uiop:ensure-directory-pathname *cl-cc-optimize-root*))
+  (%tree (uiop:ensure-directory-pathname *cl-log-kit-root*))
+  (%tree (uiop:ensure-directory-pathname *cl-date-kit-root*))
+  (%tree (uiop:ensure-directory-pathname *cl-concurrent-kit-root*))
+  (%tree (uiop:ensure-directory-pathname *cl-boundary-kit-root*))
+  (%tree (uiop:ensure-directory-pathname *cl-codec-kit-root*))
+  (%tree (uiop:ensure-directory-pathname *cl-process-kit-root*))
+  (%tree (uiop:ensure-directory-pathname *cl-regex-kit-root*))
+  (%tree (uiop:ensure-directory-pathname *cl-tty-kit-root*))
   (%tree (uiop:getcwd))
   (append
    (mapcar (lambda (subdir)

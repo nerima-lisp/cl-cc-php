@@ -6,13 +6,24 @@
     # release tests pass, so it is less likely to land a broken build.
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
-    # cl-cc-php depends on cl-cc-ast/cl-cc-bootstrap/cl-cc-parse/cl-cc-vm, and
-    # its e2e test suite additionally needs cl-cc-pipeline to compile and run
-    # PHP source end-to-end. bootstrap/vm/parse are the compiler's
-    # self-referential core (see cl-cc's docs/repo-split-design.md — they are
-    # explicitly a non-goal for further splitting), so unlike a dependency-free
-    # leaf (cl-cc-ast) this system pulls its dependencies out of a checkout of
-    # the whole monorepo rather than from independently split repos.
+    # cl-cc-php's e2e test suite needs cl-cc-pipeline to compile and run PHP
+    # source end-to-end (see run-tests.lisp), which pulls in most of cl-cc's
+    # compiler pipeline transitively. cl-cc.asd itself says why this can't be
+    # satisfied by pulling cl-cc alone: "cl-cc-bootstrap, cl-cc-vm, cl-cc-ast,
+    # cl-cc-type, cl-cc-binary, cl-cc-runtime, cl-cc-mir and cl-cc-target ...
+    # live in the standalone repositories of the same name under nerima-lisp
+    # and reach this build as flake.nix inputs" — that obligation falls on
+    # every consumer that materializes cl-cc's source tree, cl-cc-php
+    # included. Empirically the transitive closure is wider than those eight:
+    # cl-cc-parse/optimize/expand/cps and codegen/emit/regalloc (bundled in
+    # one cl-cc-codegen-native repo) are equally absent from the tree, and
+    # cl-log-kit alone drags in cl-date-kit, cl-concurrent-kit (which drags in
+    # cl-boundary-kit) and cl-process-kit (which drags in cl-codec-kit) — 20
+    # additional inputs below this one, discovered by loading
+    # :cl-cc-php/test and following each MISSING-DEPENDENCY error to its
+    # system, the same discipline *cl-cc-package-subdirs* in run-tests.lisp
+    # describes for the handful of systems still resolved from the tree
+    # (compile/pipeline/stdlib).
     #
     # Pinned to a commit, not a tag, unlike every other sibling below. cl-cc's
     # only tag is v0.1.0, which predates the packages/ split this repository
@@ -71,8 +82,123 @@
     # like every sibling above, rather than consumed as a flake package the way
     # cl-nix-forge-based repos in the org do it — this flake has no
     # `lispDependencies`; run-tests.lisp resolves dependencies itself.
+    # v0.3.1, not the previously-pinned v0.2.5: cl-log-kit below (transitively
+    # required through cl-cc-binary/cl-cc-runtime/cl-cc-codegen-native)
+    # carries a `(:version "cl-host-kit" "0.3.1")` floor in its own
+    # :depends-on, and ASDF signals a version-mismatch error rather than
+    # silently loading the older tree if this pin stays below that floor.
     cl-host-kit = {
-      url = "github:nerima-lisp/cl-host-kit/v0.2.5";
+      url = "github:nerima-lisp/cl-host-kit/v0.3.1";
+      flake = false;
+    };
+
+    # The 20 standalone systems cl-cc.asd requires but the pinned cl-cc
+    # checkout above no longer provides, plus what they in turn require that
+    # cl-cc-php didn't already pull for its own sake (cl-log-kit and its own
+    # transitive closure). Every one of these is `flake = false`: a plain
+    # source tree added to run-tests.lisp's ASDF source-registry, exactly
+    # like cl-json-kit/cl-host-kit above — none of them is consumed as a Nix
+    # package. Pinned to each repo's latest release tag where one exists,
+    # since a bare `github:nerima-lisp/<name>` follows the default branch and
+    # would break this repo's CI on an unrelated upstream push.
+    cl-cc-ast = {
+      url = "github:nerima-lisp/cl-cc-ast/v0.2.0";
+      flake = false;
+    };
+    cl-cc-bootstrap = {
+      url = "github:nerima-lisp/cl-cc-bootstrap/v0.1.0";
+      flake = false;
+    };
+    cl-cc-parse = {
+      url = "github:nerima-lisp/cl-cc-parse/v0.1.0";
+      flake = false;
+    };
+    cl-cc-vm = {
+      url = "github:nerima-lisp/cl-cc-vm/v0.1.0";
+      flake = false;
+    };
+    cl-cc-type = {
+      url = "github:nerima-lisp/cl-cc-type/v0.2.0";
+      flake = false;
+    };
+    cl-cc-binary = {
+      url = "github:nerima-lisp/cl-cc-binary/v0.2.0";
+      flake = false;
+    };
+    cl-cc-runtime = {
+      url = "github:nerima-lisp/cl-cc-runtime/v0.1.0";
+      flake = false;
+    };
+    # No release tag exists yet, so this is pinned to a raw revision — same
+    # reasoning as the cl-cc pin above. This repo also defines cl-cc-target
+    # as a second system alongside cl-cc-mir in the same tree (see its own
+    # cl-cc-target.asd), so one input covers both names.
+    cl-cc-mir = {
+      url = "github:nerima-lisp/cl-cc-mir/663c4c01c800ca7e64d444c53204645173e84854";
+      flake = false;
+    };
+    # Bundles cl-cc-codegen, cl-cc-emit and cl-cc-regalloc as three separate
+    # .asd files nested under codegen/, emit/ and regalloc/ (see its own
+    # cl-cc-codegen-native.asd header) — one input covers all three names.
+    cl-cc-codegen-native = {
+      url = "github:nerima-lisp/cl-cc-codegen-native/v0.2.0";
+      flake = false;
+    };
+    cl-cc-expand = {
+      url = "github:nerima-lisp/cl-cc-expand/v0.1.0";
+      flake = false;
+    };
+    cl-cc-cps = {
+      url = "github:nerima-lisp/cl-cc-cps/v0.1.0";
+      flake = false;
+    };
+    # No release tag carries the cl-prolog -> cl-prolog-kit rename yet
+    # (v0.5.1 still says `:depends-on (... :cl-prolog ...)`), so this is
+    # pinned to the raw revision on main that does. Re-check before ever
+    # moving this to a tag.
+    cl-cc-optimize = {
+      url = "github:nerima-lisp/cl-cc-optimize/51c0db63ff125413568ec08c79e33dcf34f00fbf";
+      flake = false;
+    };
+    # Needed by cl-cc-binary, cl-cc-runtime and cl-cc-codegen-native's
+    # cl-cc-codegen system.
+    cl-log-kit = {
+      url = "github:nerima-lisp/cl-log-kit/v2.2.0";
+      flake = false;
+    };
+    # cl-log-kit's own dependency.
+    cl-date-kit = {
+      url = "github:nerima-lisp/cl-date-kit/v1.0.0";
+      flake = false;
+    };
+    # cl-log-kit's own dependency; itself needs cl-boundary-kit below.
+    cl-concurrent-kit = {
+      url = "github:nerima-lisp/cl-concurrent-kit/v0.6.1";
+      flake = false;
+    };
+    cl-boundary-kit = {
+      url = "github:nerima-lisp/cl-boundary-kit/v2.3.0";
+      flake = false;
+    };
+    # cl-process-kit's own dependency.
+    cl-codec-kit = {
+      url = "github:nerima-lisp/cl-codec-kit/v0.5.0";
+      flake = false;
+    };
+    # Needed by cl-cc-binary, cl-cc-runtime and cl-cc-codegen-native's
+    # cl-cc-codegen system.
+    cl-process-kit = {
+      url = "github:nerima-lisp/cl-process-kit/v3.2.0";
+      flake = false;
+    };
+    # Needed by cl-cc-vm.
+    cl-regex-kit = {
+      url = "github:nerima-lisp/cl-regex-kit/v2.0.0";
+      flake = false;
+    };
+    # Needed by cl-cc-vm.
+    cl-tty-kit = {
+      url = "github:nerima-lisp/cl-tty-kit/v1.6.1";
       flake = false;
     };
 
@@ -97,6 +223,26 @@
       cl-parser-kit,
       cl-json-kit,
       cl-host-kit,
+      cl-cc-ast,
+      cl-cc-bootstrap,
+      cl-cc-parse,
+      cl-cc-vm,
+      cl-cc-type,
+      cl-cc-binary,
+      cl-cc-runtime,
+      cl-cc-mir,
+      cl-cc-codegen-native,
+      cl-cc-expand,
+      cl-cc-cps,
+      cl-cc-optimize,
+      cl-log-kit,
+      cl-date-kit,
+      cl-concurrent-kit,
+      cl-boundary-kit,
+      cl-codec-kit,
+      cl-process-kit,
+      cl-regex-kit,
+      cl-tty-kit,
       treefmt-nix,
     }:
     let
@@ -138,6 +284,26 @@
         CL_CC_PHP_CL_PARSER_KIT_ROOT = "${cl-parser-kit}";
         CL_CC_PHP_CL_JSON_KIT_ROOT = "${cl-json-kit}";
         CL_CC_PHP_CL_HOST_KIT_ROOT = "${cl-host-kit}";
+        CL_CC_PHP_CL_CC_AST_ROOT = "${cl-cc-ast}";
+        CL_CC_PHP_CL_CC_BOOTSTRAP_ROOT = "${cl-cc-bootstrap}";
+        CL_CC_PHP_CL_CC_PARSE_ROOT = "${cl-cc-parse}";
+        CL_CC_PHP_CL_CC_VM_ROOT = "${cl-cc-vm}";
+        CL_CC_PHP_CL_CC_TYPE_ROOT = "${cl-cc-type}";
+        CL_CC_PHP_CL_CC_BINARY_ROOT = "${cl-cc-binary}";
+        CL_CC_PHP_CL_CC_RUNTIME_ROOT = "${cl-cc-runtime}";
+        CL_CC_PHP_CL_CC_MIR_ROOT = "${cl-cc-mir}";
+        CL_CC_PHP_CL_CC_CODEGEN_NATIVE_ROOT = "${cl-cc-codegen-native}";
+        CL_CC_PHP_CL_CC_EXPAND_ROOT = "${cl-cc-expand}";
+        CL_CC_PHP_CL_CC_CPS_ROOT = "${cl-cc-cps}";
+        CL_CC_PHP_CL_CC_OPTIMIZE_ROOT = "${cl-cc-optimize}";
+        CL_CC_PHP_CL_LOG_KIT_ROOT = "${cl-log-kit}";
+        CL_CC_PHP_CL_DATE_KIT_ROOT = "${cl-date-kit}";
+        CL_CC_PHP_CL_CONCURRENT_KIT_ROOT = "${cl-concurrent-kit}";
+        CL_CC_PHP_CL_BOUNDARY_KIT_ROOT = "${cl-boundary-kit}";
+        CL_CC_PHP_CL_CODEC_KIT_ROOT = "${cl-codec-kit}";
+        CL_CC_PHP_CL_PROCESS_KIT_ROOT = "${cl-process-kit}";
+        CL_CC_PHP_CL_REGEX_KIT_ROOT = "${cl-regex-kit}";
+        CL_CC_PHP_CL_TTY_KIT_ROOT = "${cl-tty-kit}";
       };
 
       # treefmt drives `nix fmt` and the `checks.<system>.formatting` gate.
@@ -324,6 +490,26 @@
               export CL_CC_PHP_CL_PARSER_KIT_ROOT="${cl-parser-kit}"
               export CL_CC_PHP_CL_JSON_KIT_ROOT="${cl-json-kit}"
               export CL_CC_PHP_CL_HOST_KIT_ROOT="${cl-host-kit}"
+              export CL_CC_PHP_CL_CC_AST_ROOT="${cl-cc-ast}"
+              export CL_CC_PHP_CL_CC_BOOTSTRAP_ROOT="${cl-cc-bootstrap}"
+              export CL_CC_PHP_CL_CC_PARSE_ROOT="${cl-cc-parse}"
+              export CL_CC_PHP_CL_CC_VM_ROOT="${cl-cc-vm}"
+              export CL_CC_PHP_CL_CC_TYPE_ROOT="${cl-cc-type}"
+              export CL_CC_PHP_CL_CC_BINARY_ROOT="${cl-cc-binary}"
+              export CL_CC_PHP_CL_CC_RUNTIME_ROOT="${cl-cc-runtime}"
+              export CL_CC_PHP_CL_CC_MIR_ROOT="${cl-cc-mir}"
+              export CL_CC_PHP_CL_CC_CODEGEN_NATIVE_ROOT="${cl-cc-codegen-native}"
+              export CL_CC_PHP_CL_CC_EXPAND_ROOT="${cl-cc-expand}"
+              export CL_CC_PHP_CL_CC_CPS_ROOT="${cl-cc-cps}"
+              export CL_CC_PHP_CL_CC_OPTIMIZE_ROOT="${cl-cc-optimize}"
+              export CL_CC_PHP_CL_LOG_KIT_ROOT="${cl-log-kit}"
+              export CL_CC_PHP_CL_DATE_KIT_ROOT="${cl-date-kit}"
+              export CL_CC_PHP_CL_CONCURRENT_KIT_ROOT="${cl-concurrent-kit}"
+              export CL_CC_PHP_CL_BOUNDARY_KIT_ROOT="${cl-boundary-kit}"
+              export CL_CC_PHP_CL_CODEC_KIT_ROOT="${cl-codec-kit}"
+              export CL_CC_PHP_CL_PROCESS_KIT_ROOT="${cl-process-kit}"
+              export CL_CC_PHP_CL_REGEX_KIT_ROOT="${cl-regex-kit}"
+              export CL_CC_PHP_CL_TTY_KIT_ROOT="${cl-tty-kit}"
               # Same reason as checks.default: the suite writes .cache/ relative
               # to the working directory, so it needs a writable tree rather
               # than the read-only store path.
