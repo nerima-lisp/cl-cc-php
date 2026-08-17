@@ -27,7 +27,7 @@
     # branch and would break this repository on an unrelated upstream push.
     # Move to `/vX.Y.Z` once cl-cc's suite is green and it releases.
     cl-cc = {
-      url = "github:nerima-lisp/cl-cc/4aca55a2e7e3c92685870a434c2e60827a3d90a1";
+      url = "github:nerima-lisp/cl-cc/ce67ffd62647985cf72947b34075d8b20a351d0e";
       flake = false;
     };
 
