@@ -7,7 +7,7 @@ nix develop
 ```
 
 This gives you SBCL with the dependency roots already exported as environment
-variables, so `run-tests.lisp` finds cl-cc, cl-weave, cl-prolog, cl-parser-kit,
+variables, so `run-tests.lisp` finds cl-cc, cl-weave, cl-prolog-kit, cl-parser-kit,
 and cl-json-kit without further setup.
 
 ## Running the full check
@@ -40,9 +40,9 @@ Or without Nix, from the repository root:
 sbcl --script run-tests.lisp
 ```
 
-That falls back to sibling checkouts (`../cl-cc`, `../cl-weave`, `../cl-prolog`,
+That falls back to sibling checkouts (`../cl-cc`, `../cl-weave`, `../cl-prolog-kit`,
 `../cl-parser-kit`, `../cl-json-kit`). Override any root with
-`CL_CC_PHP_CL_CC_ROOT`, `CL_CC_PHP_CL_WEAVE_ROOT`, `CL_CC_PHP_CL_PROLOG_ROOT`,
+`CL_CC_PHP_CL_CC_ROOT`, `CL_CC_PHP_CL_WEAVE_ROOT`, `CL_CC_PHP_CL_PROLOG_KIT_ROOT`,
 `CL_CC_PHP_CL_PARSER_KIT_ROOT`, or `CL_CC_PHP_CL_JSON_KIT_ROOT`.
 
 ## Coverage
