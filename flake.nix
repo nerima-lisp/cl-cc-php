@@ -49,6 +49,12 @@
       url = "github:nerima-lisp/cl-prolog-kit/v1.5.0";
       flake = false;
     };
+    # Compatibility source for the currently pinned cl-cc revision, whose
+    # optimize system still depends on the pre-rename :cl-prolog name.
+    cl-prolog = {
+      url = "github:nerima-lisp/cl-prolog/v1.3.0";
+      flake = false;
+    };
     cl-parser-kit = {
       url = "github:nerima-lisp/cl-parser-kit/v1.1.1";
       flake = false;
@@ -94,6 +100,7 @@
       cl-cc,
       cl-weave,
       cl-prolog-kit,
+      cl-prolog,
       cl-parser-kit,
       cl-json-kit,
       cl-host-kit,
@@ -135,6 +142,7 @@
         CL_CC_PHP_CL_CC_ROOT = "${cl-cc}";
         CL_CC_PHP_CL_WEAVE_ROOT = "${cl-weave}";
         CL_CC_PHP_CL_PROLOG_KIT_ROOT = "${cl-prolog-kit}";
+        CL_CC_PHP_CL_PROLOG_ROOT = "${cl-prolog}";
         CL_CC_PHP_CL_PARSER_KIT_ROOT = "${cl-parser-kit}";
         CL_CC_PHP_CL_JSON_KIT_ROOT = "${cl-json-kit}";
         CL_CC_PHP_CL_HOST_KIT_ROOT = "${cl-host-kit}";
@@ -321,6 +329,7 @@
               export CL_CC_PHP_CL_CC_ROOT="${cl-cc}"
               export CL_CC_PHP_CL_WEAVE_ROOT="${cl-weave}"
               export CL_CC_PHP_CL_PROLOG_KIT_ROOT="${cl-prolog-kit}"
+              export CL_CC_PHP_CL_PROLOG_ROOT="${cl-prolog}"
               export CL_CC_PHP_CL_PARSER_KIT_ROOT="${cl-parser-kit}"
               export CL_CC_PHP_CL_JSON_KIT_ROOT="${cl-json-kit}"
               export CL_CC_PHP_CL_HOST_KIT_ROOT="${cl-host-kit}"

@@ -42,6 +42,9 @@ arrives through its env var and this branch is not taken."
 (defvar *cl-prolog-kit-root*
   (%env-or "CL_CC_PHP_CL_PROLOG_KIT_ROOT" "../cl-prolog-kit"))
 
+(defvar *cl-prolog-root*
+  (%env-or "CL_CC_PHP_CL_PROLOG_ROOT" "../cl-prolog"))
+
 (defvar *cl-parser-kit-root*
   (%env-or "CL_CC_PHP_CL_PARSER_KIT_ROOT" "../cl-parser-kit"))
 
@@ -69,6 +72,7 @@ arrives through its env var and this branch is not taken."
  (list*
   :source-registry
   (%tree (uiop:ensure-directory-pathname *cl-weave-root*))
+  (%tree (uiop:ensure-directory-pathname *cl-prolog-root*))
   (%tree (uiop:ensure-directory-pathname *cl-prolog-kit-root*))
   (%tree (uiop:ensure-directory-pathname *cl-parser-kit-root*))
   (%tree (uiop:ensure-directory-pathname *cl-json-kit-root*))
