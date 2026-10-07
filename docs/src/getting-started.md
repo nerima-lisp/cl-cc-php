@@ -56,7 +56,7 @@ parent/
   cl-cc/
   cl-cc-php/
   cl-weave/
-  cl-prolog/
+  cl-prolog-kit/
   cl-parser-kit/
   cl-json-kit/
 ```

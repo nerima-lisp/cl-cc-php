@@ -64,7 +64,7 @@ nix fmt                              # nixfmt via treefmt
 ```
 
 Without Nix, `run-tests.lisp` falls back to sibling checkouts of `cl-cc`,
-`cl-weave`, `cl-prolog`, `cl-parser-kit`, and `cl-json-kit` next to this
+`cl-weave`, `cl-prolog-kit`, `cl-parser-kit`, and `cl-json-kit` next to this
 repository:
 
 ```sh
