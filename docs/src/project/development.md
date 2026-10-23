@@ -7,8 +7,8 @@ nix develop
 ```
 
 This gives you SBCL with the dependency roots already exported as environment
-variables, so `run-tests.lisp` finds cl-cc, cl-weave, cl-prolog-kit, cl-parser-kit,
-and cl-json-kit without further setup.
+variables, so `run-tests.lisp` finds the compiler systems, cl-weave, and the
+runtime libraries without further setup.
 
 ## Running the full check
 
@@ -40,10 +40,12 @@ Or without Nix, from the repository root:
 sbcl --script run-tests.lisp
 ```
 
-That falls back to sibling checkouts (`../cl-cc`, `../cl-weave`, `../cl-prolog-kit`,
-`../cl-parser-kit`, `../cl-json-kit`). Override any root with
-`CL_CC_PHP_CL_CC_ROOT`, `CL_CC_PHP_CL_WEAVE_ROOT`, `CL_CC_PHP_CL_PROLOG_KIT_ROOT`,
-`CL_CC_PHP_CL_PARSER_KIT_ROOT`, or `CL_CC_PHP_CL_JSON_KIT_ROOT`.
+That falls back to sibling checkouts of the compiler systems and runtime
+libraries. Override compiler roots with `CL_CC_PHP_CL_CC_BOOTSTRAP_ROOT`,
+`CL_CC_PHP_CL_CC_AST_ROOT`, `CL_CC_PHP_CL_CC_PARSE_ROOT`, or
+`CL_CC_PHP_CL_CC_VM_ROOT`. Other roots use `CL_CC_PHP_CL_WEAVE_ROOT`,
+`CL_CC_PHP_CL_PARSER_KIT_ROOT`, `CL_CC_PHP_CL_JSON_KIT_ROOT`, and
+`CL_CC_PHP_CL_HOST_KIT_ROOT`.
 
 ## Coverage
 
@@ -52,15 +54,13 @@ nix build .#coverage
 open result/cover-index.html   # or xdg-open on Linux
 ```
 
-An `sb-cover` HTML report over `src/`'s own code — the dependency systems
-(`cl-cc`, `cl-weave`, `cl-cc-pipeline`, `cl-json-kit`) and the test suite
-itself are loaded uninstrumented, so the report answers "how much of cl-cc-php's implementation
-do the tests reach", not "how much of the test suite runs". This is a
-package, not a check: it exists to make the number visible and trending, not
-to gate `nix flake check` on a percentage nobody has agreed to yet. Without
-Nix: `sbcl --script coverage.lisp`, with the same environment variables as
-`run-tests.lisp`; the report lands in `coverage-report/` by default, or
-`$CL_CC_PHP_COVERAGE_OUT` if set.
+An `sb-cover` HTML report over `src/`'s own code. The compiler systems,
+cl-weave, runtime libraries, and test suite load uninstrumented, so the report
+shows how much of cl-cc-php's implementation the tests reach. This package
+makes coverage visible; it does not gate `nix flake check` on a percentage.
+Without Nix, run `sbcl --script coverage.lisp` with the same environment
+variables as `run-tests.lisp`. The report lands in `coverage-report/` by
+default, or in `$CL_CC_PHP_COVERAGE_OUT` if set.
 
 ## Iterating in a REPL
 
@@ -110,16 +110,16 @@ mkdocs is invoked from the repository root, so the config path is always
 
 ## Test layout
 
-Tests live in `t/` and run on cl-weave with no adapter layer. Two support files,
-`helpers-parser` and `helpers-e2e`, carry the shared helpers.
+Tests live in `t/` and run on cl-weave with no adapter layer. Shared parser
+fixtures live in `helpers-parser`.
 
 Every other file is named `<source>-test.lisp` after the `src/` file it covers,
 or `<source>-<aspect>-test.lisp` when one source has several aspects.
 
-Most suites are table-driven: a test is a row of input and expected output. The
-`*-e2e-test` suites go further and compile and run PHP source through the full
-pipeline, which is why the test system depends on `cl-cc-pipeline` while the
-shipped system does not.
+Most suites are table-driven: a test is a row of input and expected output.
+Tests that need to compile and execute PHP through the compiler and VM are
+reserved for umbrella-level integration. The PHP test system exercises
+tokenization, parsing, CST generation, and runtime behavior.
 
 ## Versioning
 

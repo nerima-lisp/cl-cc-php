@@ -26,12 +26,6 @@
     "The pipe helper applies a callable to the piped value."
     (expect (cl-cc/php::%php-pipe "HI" #'cl-cc/php::%php-strtolower) :to-equal "hi"))
   (it-sequential
-    "A parsed pipe chain can execute PHP first-class callable RHS expressions."
-    (expect
-      (%php-run-capture "<?php echo \"  HI  \" |> trim(...) |> strtolower(...);")
-      :to-equal
-      "hi"))
-  (it-sequential
     "array_first() and array_last() return inserted first/last values."
     (let ((array (cl-cc/php::%php-array)))
       (cl-cc/php::%php-array-set array "a" 10)
@@ -44,22 +38,9 @@
       (expect (cl-cc/php:%php-array-first array) :to-be cl-cc/php:+php-null+)
       (expect (cl-cc/php:%php-array-last array) :to-be cl-cc/php:+php-null+)))
   (it-sequential
-    "The PHP 8.5 array_first() and array_last() builtins execute from PHP source."
-    (expect
-      (%php-run-capture
-        "<?php $a=['a'=>10,'b'=>20]; echo array_first($a).':'.array_last($a);")
-      :to-equal
-      "10:20"))
-  (it-sequential
     "grapheme_levenshtein() treats a base character plus combining mark as one cluster."
     (let ((cluster (format nil "a~C" (code-char #x0301))))
       (expect (= 1 (cl-cc/php::%php-grapheme-levenshtein cluster "")) :to-be-truthy)))
-  (it-sequential
-    "The PHP 8.5 grapheme_levenshtein() builtin executes from PHP source."
-    (expect
-      (%php-run-capture "<?php echo grapheme_levenshtein('kitten','sitting');")
-      :to-equal
-      "3"))
   (it-sequential
     "PHP 8.5 Locale direction helper detects common RTL locale identifiers."
     (expect (cl-cc/php:%php-locale-is-right-to-left "ar_EG.UTF-8") :to-be-truthy)
@@ -68,20 +49,6 @@
     (expect (cl-cc/php:%php-locale-is-right-to-left "en_US") :to-be-falsy)
     (expect (cl-cc/php:%php-locale-is-right-to-left "az-Latn") :to-be-falsy))
   (it-sequential
-    "The PHP 8.5 locale_is_right_to_left() builtin executes from PHP source."
-    (expect
-      (%php-run-capture
-        "<?php echo (locale_is_right_to_left('he_IL') ? 'rtl' : 'ltr') . ':' . (locale_is_right_to_left('en_US') ? 'rtl' : 'ltr');")
-      :to-equal
-      "rtl:ltr"))
-  (it-sequential
-    "The PHP 8.5 Locale::isRightToLeft() static method lowers to the runtime helper."
-    (expect
-      (%php-run-capture
-        "<?php echo (Locale::isRightToLeft('ur_PK') ? 'rtl' : 'ltr') . ':' . (Locale::isRightToLeft('fr_FR') ? 'rtl' : 'ltr');")
-      :to-equal
-      "rtl:ltr"))
-  (it-sequential
     "PHP_BUILD_DATE and PHP_BUILD_PROVIDER resolve as predefined PHP 8.5 constants."
     (multiple-value-bind (date date-found) (cl-cc/php::%php-lookup-constant "PHP_BUILD_DATE")
       (multiple-value-bind (provider provider-found) (cl-cc/php::%php-lookup-constant "PHP_BUILD_PROVIDER")
@@ -89,13 +56,6 @@
         (expect provider-found :to-be-truthy)
         (expect date :to-equal "1970-01-01T00:00:00+00:00")
         (expect provider :to-equal "cl-cc"))))
-  (it-sequential
-    "PHP 8.5 build metadata constants are available to parsed PHP code."
-    (expect
-      (%php-run-capture
-        "<?php echo PHP_BUILD_PROVIDER . ':' . (PHP_BUILD_DATE === '' ? 'empty' : 'date');")
-      :to-equal
-      "cl-cc:date"))
   (it-sequential
     "PHP 8.5 #[\\NoDiscard] is preserved as function attribute metadata."
     (let* ((ast
@@ -114,61 +74,6 @@
       (expect (cl-cc/php:php-attribute-name attr) :to-equal "NoDiscard")
       (expect (cl-cc/ast:ast-quote-p arg) :to-be-truthy)
       (expect (cl-cc/ast:ast-quote-value arg) :to-equal "use the return value")))
-  (it-sequential
-    "Discarding a #[NoDiscard] function result emits E_USER_WARNING."
-    (expect
-      (%php-run-capture
-        "<?php function h($errno,$errstr){ echo $errno . ':' . (str_contains($errstr, 'important()') ? 'name' : 'missing') . ':' . (str_contains($errstr, 'must use it') ? 'msg' : 'missing') . ':'; return true; } set_error_handler('h', E_USER_WARNING); #[NoDiscard('must use it')] function important() { echo '7'; return 7; } important(); restore_error_handler();")
-      :to-equal
-      "512:name:msg:7"))
-  (it-sequential
-    "Using a #[NoDiscard] function result does not emit a warning."
-    (expect
-      (%php-run-capture
-        "<?php function h($errno,$errstr){ echo 'warn:'; return true; } set_error_handler('h', E_USER_WARNING); #[NoDiscard] function important(){ return 7; } $x = important(); echo $x; restore_error_handler();")
-      :to-equal
-      "7"))
-  (it-sequential
-    "Casting a #[NoDiscard] function result to void suppresses the warning."
-    (expect
-      (%php-run-capture
-        "<?php function h($errno,$errstr){ echo 'warn:'; return true; } set_error_handler('h', E_USER_WARNING); #[NoDiscard] function important(){ echo 'called'; return 7; } (void) important(); restore_error_handler();")
-      :to-equal
-      "called"))
-  (it-sequential
-    "Discarding a #[NoDiscard] method result emits E_USER_WARNING."
-    (expect
-      (%php-run-capture
-        "<?php function h($errno,$errstr){ echo $errno . ':' . (str_contains($errstr, 'label()') ? 'name' : 'missing') . ':' . (str_contains($errstr, 'must use method') ? 'msg' : 'missing') . ':'; return true; } set_error_handler('h', E_USER_WARNING); class Box { #[NoDiscard('must use method')] public function label(){ echo 'm'; return 'm'; } } $box = new Box(); $box->label(); restore_error_handler();")
-      :to-equal
-      "512:name:msg:m"))
-  (it-sequential
-    "Using a #[NoDiscard] method result does not emit a warning."
-    (expect
-      (%php-run-capture
-        "<?php function h($errno,$errstr){ echo 'warn:'; return true; } set_error_handler('h', E_USER_WARNING); class Box { #[NoDiscard] public function label(){ return 'm'; } } $box = new Box(); $x = $box->label(); echo $x; restore_error_handler();")
-      :to-equal
-      "m"))
-  (it-sequential
-    "Casting a #[NoDiscard] method result to void suppresses the warning."
-    (expect
-      (%php-run-capture
-        "<?php function h($errno,$errstr){ echo 'warn:'; return true; } set_error_handler('h', E_USER_WARNING); class Box { #[NoDiscard] public function label(){ echo 'm'; return 'm'; } } $box = new Box(); (void) $box->label(); restore_error_handler();")
-      :to-equal
-      "m"))
-  (it-sequential
-    "Discarding a #[NoDiscard] static method result emits E_USER_WARNING."
-    (expect
-      (%php-run-capture
-        "<?php function h($errno,$errstr){ echo $errno . ':' . (str_contains($errstr, 'label()') ? 'name' : 'missing') . ':'; return true; } set_error_handler('h', E_USER_WARNING); class Box { #[NoDiscard] public static function label(){ echo 's'; return 's'; } } Box::label(); restore_error_handler();")
-      :to-equal
-      "512:name:s"))
-  (it-sequential
-    "PHP top-level const declarations define readable constants."
-    (expect
-      (%php-run-capture "<?php const ANSWER = 42; echo ANSWER;")
-      :to-equal
-      "42"))
   (it-sequential
     "PHP 8.5 attributes on top-level constants survive as constant metadata."
     (let* ((ast (%php-first "<?php #[Deprecated('use NEW')] const OLD = 1;"))
@@ -235,7 +140,4 @@
            (forms (cl-cc/ast:ast-progn-forms value)))
       (expect (cl-cc/ast:ast-progn-p value) :to-be-truthy)
       (expect (= 2 (length forms)) :to-be-truthy)
-      (expect (cl-cc/ast:ast-quote-value (second forms)) :to-be cl-cc/php:+php-null+)))
-  (it-sequential
-    "The PHP 8.5 (void) statement still evaluates the discarded expression."
-    (expect (%php-run-capture "<?php $x=0; (void)($x=1); echo $x;") :to-equal "1")))
+      (expect (cl-cc/ast:ast-quote-value (second forms)) :to-be cl-cc/php:+php-null+))))

@@ -4,8 +4,7 @@
 ;;;; handful of names" but "every registered entry round-trips through its own lookup function" —
 ;;;; that catches a typo'd or duplicate key the same way a checksum catches a bit flip, and it
 ;;;; exercises %php-lookup-constant/%php-lookup-dynamic-constant/%php-predefined-class-constant
-;;;; far more thoroughly than the handful of constant names any individual e2e test happens to
-;;;; reference by name.
+;;;; without relying on incidental constant references in PHP programs.
 
 (in-package :cl-cc-php/test)
 

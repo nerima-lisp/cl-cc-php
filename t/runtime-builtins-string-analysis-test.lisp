@@ -1,9 +1,8 @@
 ;;;; runtime-builtins-string-analysis-test.lisp — src/runtime-builtins-string-analysis.lisp —
 ;;;; string search, word counting, edit-distance/similarity, and the printf family.
 ;;;;
-;;;; Before this file, strstr/stristr/strchr/str_word_count/levenshtein/similar_text/soundex/
-;;;; printf/vsprintf/vprintf had zero coverage of any kind — no direct unit test and no PHP-source
-;;;; e2e test either.
+;;;; This file directly tests string-analysis and formatting helpers; compiler-driven cases are
+;;;; reserved for umbrella-level integration.
 
 (in-package :cl-cc-php/test)
 
@@ -22,8 +21,7 @@
   (expect (cl-cc/php::%php-strchr "user@example.com" "@") :to-equal "@example.com"))
 
   )
-
-(describe "PHP str_word_count"
+(describe "PHP string-analysis helpers"
 
 (it-sequential "format 0 (default) returns the word count"
   (expect (cl-cc/php::%php-str-word-count "Hello fair world") :to-be 3)
@@ -89,19 +87,6 @@
 
   )
 
-(describe "PHP similar_text end-to-end: the compiled $percent by-reference output parameter"
-
-(it-sequential "php-e2e-similar-text-return-value"
-  (expect (%php-run-capture "<?php echo similar_text('World', 'Word');")
-          :to-equal "4"))
-
-(it-sequential "php-e2e-similar-text-percent-out-param"
-  (expect (%php-run-capture
-           "<?php $p = null; similar_text('World', 'Word', $p); echo round($p, 2);")
-          :to-equal "88.89"))
-
-  )
-
 (describe "PHP soundex"
 
 (it-sequential "encodes common examples to their known Soundex codes"
@@ -109,21 +94,5 @@
   (expect (cl-cc/php::%php-soundex "Rupert") :to-equal "R163")
   (expect (cl-cc/php::%php-soundex "Ashcraft") :to-equal "A261")
   (expect (cl-cc/php::%php-soundex "") :to-equal ""))
-
-  )
-
-(describe "PHP printf/vsprintf/vprintf: the output-writing half of the sprintf family"
-
-(it-sequential "php-e2e-printf-writes-formatted-output-and-returns-its-length"
-  (expect (%php-run-capture "<?php $n = printf('%d-%s', 5, 'x'); echo '|' . $n;")
-          :to-equal "5-x|3"))
-
-(it-sequential "php-e2e-vsprintf-formats-from-an-array-without-writing"
-  (expect (%php-run-capture "<?php echo vsprintf('%d-%s', [5, 'x']);")
-          :to-equal "5-x"))
-
-(it-sequential "php-e2e-vprintf-writes-formatted-output-and-returns-its-length"
-  (expect (%php-run-capture "<?php $n = vprintf('%d-%s', [5, 'x']); echo '|' . $n;")
-          :to-equal "5-x|3"))
 
   )

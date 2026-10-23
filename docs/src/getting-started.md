@@ -5,18 +5,21 @@
 - SBCL. This is the only supported implementation; the runtime builtins use
   `sb-*` facilities directly in the I/O and filesystem layers.
 - Nix, if you want the reproducible path.
-- A checkout of [cl-cc](https://github.com/nerima-lisp/cl-cc), which supplies
-  `cl-cc-ast`, `cl-cc-bootstrap`, `cl-cc-parse`, and `cl-cc-vm`.
+- The sibling source repositories for `cl-cc-ast`, `cl-cc-bootstrap`,
+  `cl-cc-parse`, and `cl-cc-vm`. The flake pins each compiler system directly;
+  it does not need the cl-cc umbrella checkout.
+- A checkout of [cl-host-kit](https://github.com/nerima-lisp/cl-host-kit),
+  which supplies host operations used by the runtime builtins.
 - A checkout of [cl-json-kit](https://github.com/nerima-lisp/cl-json-kit),
   which `json_validate` calls directly.
 
-cl-cc-php cannot load without cl-cc on the ASDF source registry. That is a
-property of the system rather than a packaging oversight — see
-[Architecture](reference/architecture.md).
+cl-cc-php cannot load until its compiler and runtime dependencies are on the
+ASDF source registry. See [Architecture](reference/architecture.md) for the
+dependency graph.
 
 ## As a flake input
 
-Add the input and let it follow your nixpkgs:
+Add the input:
 
 ```nix
 {
@@ -37,8 +40,9 @@ Add the input and let it follow your nixpkgs:
     form as soon as a tag exists. Until then your `flake.lock` is the only thing
     holding the revision steady, so commit it.
 
-Then put the source tree on the ASDF source registry of whatever derivation
-consumes it, alongside a cl-cc checkout.
+Before loading `cl-cc-php`, register its source tree, the four compiler source
+trees, and the runtime library source trees with ASDF. The sibling checkout
+layout below is what `run-tests.lisp` uses during local development.
 
 ## As an ASDF dependency
 
@@ -48,22 +52,27 @@ In your `.asd`:
 :depends-on ("cl-cc-php")   ; PHP frontend: lexer, parser, grammar, runtime builtins
 ```
 
-Loading it requires cl-cc's `packages/` subsystems to be visible to ASDF. The
-simplest arrangement is sibling checkouts:
+Loading it requires the compiler and runtime dependency systems to be visible
+to ASDF. For local development, keep their source checkouts beside this
+repository:
 
 ```text
 parent/
-  cl-cc/
+  cl-cc-ast/
+  cl-cc-bootstrap/
+  cl-cc-parse/
+  cl-cc-vm/
   cl-cc-php/
   cl-weave/
-  cl-prolog-kit/
   cl-parser-kit/
+  cl-host-kit/
   cl-json-kit/
 ```
 
-With that layout, `run-tests.lisp` finds everything with no configuration.
+With that layout, `run-tests.lisp` finds the sibling source trees with no
+configuration.
 
-The main system depends on four cl-cc subsystems, plus one standalone package:
+The main system depends on four compiler systems and two runtime libraries:
 
 | Dependency | Why |
 |---|---|
@@ -71,12 +80,8 @@ The main system depends on four cl-cc subsystems, plus one standalone package:
 | `cl-cc-bootstrap` | Compiler self-hosting core |
 | `cl-cc-parse` | Shared parsing infrastructure |
 | `cl-cc-vm` | Bytecode VM |
+| [`cl-host-kit`](https://github.com/nerima-lisp/cl-host-kit) | Host operations used by runtime builtins |
 | [`cl-json-kit`](https://github.com/nerima-lisp/cl-json-kit) | RFC 8259 JSON reader backing `json_validate` |
-
-The test system additionally depends on `cl-cc-pipeline`, for the end-to-end
-suites that compile and run PHP source, and on
-[cl-weave](https://github.com/nerima-lisp/cl-weave) as the test framework.
-Neither is a dependency of the shipped system.
 
 ## Verifying the install
 
@@ -134,7 +139,7 @@ the frontend does not handle, rather than letting it fail deeper in the
 pipeline:
 
 ```lisp
-(let ((ast (cl-cc/php:parse-php-source source)))
+(let ((ast (cl-cc/php:parse-php-source "<?php $a = 1;")))
   (cl-cc/php:php-check-supported-forms ast)
   ast)
 ```

@@ -11,58 +11,6 @@
 (describe
   "PHP 8.5 runtime tokenizer"
   (it-sequential
-    "PHP 8.5 IMAGETYPE_* constants match current extension values."
-    (expect
-      (%php-run-capture
-        "<?php echo IMAGETYPE_UNKNOWN . ':' . IMAGETYPE_WEBP . ':' . IMAGETYPE_AVIF . ':' . IMAGETYPE_HEIF . ':' . IMAGETYPE_SVG . ':' . IMAGETYPE_COUNT;")
-      :to-equal
-      "0:18:19:20:21:22"))
-  (it-sequential
-    "PHP 8.5 image type helpers support current IMAGETYPE_* values."
-    (expect
-      (%php-run-capture
-        "<?php
-echo image_type_to_extension(IMAGETYPE_SVG) . ':' .
-     image_type_to_extension(IMAGETYPE_SVG, false) . ':' .
-     image_type_to_mime_type(IMAGETYPE_SVG) . ':' .
-     image_type_to_extension(IMAGETYPE_WEBP) . ':' .
-     image_type_to_extension(IMAGETYPE_WEBP, false) . ':' .
-     image_type_to_mime_type(IMAGETYPE_WEBP) . ':' .
-     image_type_to_extension(IMAGETYPE_AVIF) . ':' .
-     image_type_to_extension(IMAGETYPE_AVIF, false) . ':' .
-     image_type_to_mime_type(IMAGETYPE_AVIF) . ':' .
-     image_type_to_extension(IMAGETYPE_HEIF) . ':' .
-     image_type_to_extension(IMAGETYPE_HEIF, false) . ':' .
-     image_type_to_mime_type(IMAGETYPE_HEIF) . ':' .
-     (function_exists('image_type_to_extension') ? 'Y' : 'N') . ':' .
-     (function_exists('image_type_to_mime_type') ? 'Y' : 'N') . ':' .
-     (image_type_to_extension(9999) === false ? 'false' : 'other');
-")
-      :to-equal
-      ".svg:svg:image/svg+xml:.webp:webp:image/webp:.avif:avif:image/avif:.heif:heif:image/heif:Y:Y:false"))
-  (it-sequential
-    "PHP 8.5 getimagesize returns SVG dimensions, units, MIME, and image type."
-    (expect
-      (%php-run-capture
-        "<?php
-$f = tempnam(sys_get_temp_dir(), 'clcc-svg-');
-file_put_contents($f, '<svg width=\"12cm\" height=\"34px\" xmlns=\"http://www.w3.org/2000/svg\"></svg>');
-$size = getimagesize($f);
-echo $size[0] . ':' .
-     $size[1] . ':' .
-     ($size[2] === IMAGETYPE_SVG ? 'type' : 'bad') . ':' .
-     $size['mime'] . ':' .
-     $size['width_unit'] . ':' .
-     $size['height_unit'] . ':' .
-     (exif_imagetype($f) === IMAGETYPE_SVG ? 'exif' : 'bad') . ':' .
-     (getimagesize($f . '.missing') === false ? 'false' : 'other') . ':' .
-     (function_exists('getimagesize') ? 'Y' : 'N') . ':' .
-     (function_exists('exif_imagetype') ? 'Y' : 'N');
-unlink($f);
-")
-      :to-equal
-      "12:34:type:image/svg+xml:cm:px:exif:false:Y:Y"))
-  (it-sequential
     "PHP 8.5 tokenizer constants have token_name mappings."
     (dolist (name
         '("T_PIPE"
@@ -343,13 +291,6 @@ unlink($f);
             parsed)
           :to-be-truthy))))
   (it-sequential
-    "PHP 8.5 tokenizer builtins are callable from PHP code."
-    (expect
-      (%php-run-capture
-        "<?php echo token_name(T_PIPE) . ':' . token_name(T_VOID_CAST) . ':' . token_name(T_INLINE_HTML) . ':' . token_name(T_CLOSE_TAG) . ':' . token_name(T_YIELD_FROM) . ':' . token_name(T_ATTRIBUTE) . ':' . token_name(T_NAME_FULLY_QUALIFIED) . ':' . token_name(T_NAME_QUALIFIED) . ':' . token_name(T_NAME_RELATIVE) . ':' . token_name(T_NS_SEPARATOR) . ':' . token_name(T_BAD_CHARACTER);")
-      :to-equal
-      "T_PIPE:T_VOID_CAST:T_INLINE_HTML:T_CLOSE_TAG:T_YIELD_FROM:T_ATTRIBUTE:T_NAME_FULLY_QUALIFIED:T_NAME_QUALIFIED:T_NAME_RELATIVE:T_NS_SEPARATOR:T_BAD_CHARACTER"))
-  (it-sequential
     "New PHP 8.5 extension-level free functions are registered as builtins."
     (dolist (function-name
         '("enchant_dict_remove_from_session"
@@ -389,20 +330,6 @@ unlink($f);
     (multiple-value-bind (value found) (cl-cc/php::%php-lookup-constant "FILTER_THROW_ON_FAILURE")
       (expect found :to-be-truthy)
       (expect (= 268435456 value) :to-be-truthy)))
-  (it-sequential
-    "filter_var() supports integer validation."
-    (expect
-      (%php-run-capture
-        "<?php echo filter_var('42', FILTER_VALIDATE_INT) . ':' . (filter_var('abc', FILTER_VALIDATE_INT) === false ? 'false' : 'bad');")
-      :to-equal
-      "42:false"))
-  (it-sequential
-    "FILTER_VALIDATE_BOOLEAN can return a successful false result."
-    (expect
-      (%php-run-capture
-        "<?php echo filter_var('false', FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) === false ? 'false' : 'bad';")
-      :to-equal
-      "false"))
   (it-sequential
     "FILTER_THROW_ON_FAILURE raises the PHP 8.5 filter exception on validation failure."
     (let ((%%signaled1 nil))

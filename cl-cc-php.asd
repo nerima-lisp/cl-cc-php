@@ -126,12 +126,7 @@
    (:file "runtime-bridge-provider"))
   :in-order-to ((test-op (test-op "cl-cc-php/test"))))
 
-;; A separate system: the e2e suites need to compile and *run* PHP source
-;; through the full pipeline (cl-cc/compile:compile-string, cl-cc/vm:run-compiled),
-;; which pulls in far more than cl-cc-php's own :depends-on — folding
-;; :cl-cc-pipeline into the main system would make every consumer of the PHP
-;; frontend drag along codegen/optimize/regalloc/emit for no reason. Load this
-;; system to run the test suite.
+;; Keep the PHP test system limited to its frontend and runtime tests.
 (asdf:defsystem "cl-cc-php/test"
   :description "Test suite for cl-cc-php, run directly on cl-weave"
   :author "takeokunn <bararararatty@gmail.com>"
@@ -141,20 +136,13 @@
   :homepage "https://github.com/nerima-lisp/cl-cc-php"
   :bug-tracker "https://github.com/nerima-lisp/cl-cc-php/issues"
   :source-control (:git "https://github.com/nerima-lisp/cl-cc-php.git")
-  ;; Test-only: cl-cc-pipeline provides compile-string/run-compiled so the e2e
-  ;; suites can compile and *run* PHP source end-to-end, and cl-weave is the
-  ;; test framework. Neither belongs in the shipped system's :depends-on —
-  ;; folding cl-cc-pipeline in would make every consumer of the PHP frontend
-  ;; drag along codegen/optimize/regalloc/emit for no reason.
-  :depends-on (:cl-cc-php
-               :cl-cc-pipeline  ; test-only: full compile-and-run for e2e suites
-               :cl-weave)       ; test-only: test framework
+  ;; cl-weave is the test framework; compiler integration tests are reserved for the umbrella.
+  :depends-on (:cl-cc-php :cl-weave)
   :pathname "t"
   :serial t
   :components
   ((:file "package")
    (:file "helpers-parser")
-   (:file "helpers-e2e")
    (:file "lexer-test")
    (:file "grammar-test")
    (:file "grammar-cst-test")
@@ -185,7 +173,6 @@
    (:file "runtime-builtins-math-test")
    (:file "runtime-constants-test")
    (:file "runtime-builtins-types-test")
-   (:file "parser-property-hooks-e2e-test")
    (:file "runtime-helpers-operators-case-property-test")
    (:file "runtime-helpers-generators-test")
    (:file "parser-php84-features-test")
@@ -199,8 +186,6 @@
    (:file "runtime-builtins-io-cookie-session-php85-test")
    (:file "runtime-builtins-array-e2e-test")
    (:file "runtime-builtins-register-e2e-test")
-   (:file "runtime-builtins-register-e2e-formatting-test")
    (:file "runtime-bridge-provider-test")
    (:file "parser-e2e-test")
-   (:file "parser-class-e2e-test")
-   (:file "runtime-helpers-e2e-test")))
+   (:file "parser-class-e2e-test")))

@@ -5,8 +5,8 @@ Lisp compiler.
 
 cl-cc-php turns PHP source into cl-cc's AST and supplies the PHP runtime
 builtins that compiled code calls into. It is a *plugin repository*: it defines
-the `cl-cc-php` ASDF system, but it does not stand alone, because the compiler
-core it plugs into lives in cl-cc.
+the `cl-cc-php` ASDF system, and depends on compiler core systems provided by
+separately pinned sibling repositories.
 
 ## What is in here
 
@@ -39,11 +39,10 @@ covers the build, test, and formatting commands.
 
 Two constraints are worth knowing up front.
 
-**It is not standalone.** cl-cc-php consumes `cl-cc-ast`, `cl-cc-bootstrap`,
-`cl-cc-parse`, and `cl-cc-vm` from a checkout of the cl-cc monorepo, because
-those systems have not been split into their own repositories and are not
-planned to be. A cl-cc revision and a cl-cc-php revision are only known to work
-together if `flake.lock` says so.
+**It has compiler dependencies.** cl-cc-php consumes `cl-cc-ast`,
+`cl-cc-bootstrap`, `cl-cc-parse`, and `cl-cc-vm` from separately pinned sibling
+repositories. `flake.lock` records the revisions tested together with
+cl-cc-php.
 
 **The `%php-` symbols are a compilation target.** They are exported so that
 generated code can name them, not because they form a comfortable user-facing

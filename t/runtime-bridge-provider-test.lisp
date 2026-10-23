@@ -1,11 +1,10 @@
 ;;;; runtime-bridge-provider-test.lisp — src/runtime-bridge-provider.lisp — the %PHP-* backend
 ;;;; bridge scan.
 ;;;;
-;;;; %php-host-bridge-entries is called by the pipeline orchestrator, not by anything in this
-;;;; package's own PHP-lowering code, so no e2e test calls it directly — the e2e suites only
-;;;; observe that its result was usable. This tests the scan itself: every entry it returns
-;;;; must be a real, callable %PHP-* function, and a handful of builtins known to be defined in
-;;;; this package must be among them.
+;;;; %php-host-bridge-entries is called by the compiler pipeline, not by this package's own PHP
+;;;; frontend. Compiler-driven cases observe it indirectly and are reserved for umbrella-level
+;;;; integration. This test checks the scan directly: every returned entry must be a real,
+;;;; callable %PHP-* function, including several known builtins.
 
 (in-package :cl-cc-php/test)
 

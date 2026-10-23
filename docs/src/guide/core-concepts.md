@@ -67,10 +67,8 @@ subtly-wrong output.
 
 ## Test organisation
 
-Tests live in `t/` and run on cl-weave. Two support files
-(`helpers-parser`, `helpers-e2e`) carry the shared helpers.
+Tests live in `t/` and run on cl-weave. Shared parser fixtures live in
+`helpers-parser`.
 
 Most suites are table-driven: a test is a row of input and expected output, not
-a hand-written block. End-to-end suites go further and actually compile and run
-PHP source through the full pipeline, which is why the test system depends on
-`cl-cc-pipeline` while the main system does not.
+a hand-written block.

@@ -1,10 +1,8 @@
 ;;;; runtime-builtins-io-cookie-session-test.lisp — src/runtime-builtins-io-cookie-session.lisp —
 ;;;; the small option-coercion and HTTP-date helpers underneath setcookie/session_*.
 ;;;;
-;;;; The high-level setcookie()/session_*() builtins are already exercised extensively by
-;;;; PHP-source e2e tests (see runtime-builtins-io-cookie-session-php85-test.lisp and the e2e
-;;;; suites); this file covers the small pure helpers underneath them directly, none of which any
-;;;; existing test called by name.
+;;;; Compiler-driven setcookie()/session_*() cases are reserved for umbrella-level integration.
+;;;; This file directly tests the small pure helpers underneath those builtins.
 
 (in-package :cl-cc-php/test)
 
@@ -52,8 +50,8 @@
   )
 
 (describe "PHP session_start($options) option-merging: %php-session-apply-start-options"
-  ;; Not exercised by name anywhere before this file — only the high-level session_start()
-  ;; PHP-source e2e tests reach it indirectly. *PHP-SESSION-NAME*/*PHP-SESSION-COOKIE-PARAMS* are
+  ;; The high-level session_start() integration case is reserved for the umbrella and reaches it
+  ;; indirectly. *PHP-SESSION-NAME* and *PHP-SESSION-COOKIE-PARAMS* are
   ;; DEFVARs, so each test LET-binds them to avoid leaking session state into other tests.
 
 (it-sequential "merges every cookie_* option into the modeled session cookie params"

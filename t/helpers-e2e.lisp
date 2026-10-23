@@ -1,7 +1,6 @@
-;;;; helpers-e2e.lisp — Shared end-to-end fixture.
+;;;; helpers-e2e.lisp — Former fixture helpers for PHP compiler integration tests.
 ;;;;
-;;;; %php-run-capture compiles PHP source to the VM, runs it, and returns what it echoed; every
-;;;; *-e2e-test.lisp file drives itself through this one function.
+;;;; The PHP test system no longer loads this file.
 
 (in-package :cl-cc-php/test)
 

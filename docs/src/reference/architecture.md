@@ -2,45 +2,28 @@
 
 ## Position in the dependency graph
 
-cl-cc-php is a domain-layer package: it depends on the compiler core and is
-depended upon by nothing else in the org.
+cl-cc-php is the PHP frontend for the compiler.
 
 ```
 cl-cc-php
   ├── cl-cc-ast        (AST node definitions)
   ├── cl-cc-bootstrap  (compiler self-hosting core)
   ├── cl-cc-parse      (shared parsing infrastructure)
-  └── cl-cc-vm         (bytecode VM)
+  ├── cl-cc-vm         (bytecode VM)
+  ├── cl-host-kit      (host operations)
+  └── cl-json-kit      (JSON reader)
 
-cl-cc-php/test  (additionally)
-  ├── cl-cc-pipeline   (full compile-and-run, for the e2e suites)
+cl-cc-php/test
+  ├── cl-cc-php        (system under test)
   └── cl-weave         (test framework)
 ```
 
-The split between the two is deliberate. The end-to-end suites need to compile
-*and run* PHP source through `cl-cc/compile:compile-string` and
-`cl-cc/vm:run-compiled`, which pulls in codegen, optimize, regalloc, and emit.
-Folding `cl-cc-pipeline` into the main system would make every consumer of the
-PHP frontend drag along the entire backend for no reason.
+## Compiler subsystem inputs
 
-## Why dependencies come from a cl-cc checkout
-
-`cl-cc-ast`, `cl-cc-bootstrap`, `cl-cc-parse`, and `cl-cc-vm` are not separate
-flakes here. They are read out of `packages/<name>/` inside a checkout of the
-cl-cc monorepo, registered by `run-tests.lisp` as ASDF source trees.
-
-This is a consequence of the ongoing repository split, not a design preference.
-Bootstrap, VM, and parse are the compiler's self-referential core and are an
-explicit non-goal for further splitting, so there is no independent repository
-to depend on. `flake.nix` therefore takes cl-cc as a `flake = false` source
-input.
-
-!!! warning "Known issue: duplicated systems in cl-cc"
-    `cl-cc/packages/` currently defines some systems twice under the same name
-    with differing contents. Which definition wins depends on ASDF source
-    registry ordering. This is a known design problem in cl-cc and is out of
-    scope for this repository. `run-tests.lisp` pins an explicit, ordered list
-    of `packages/` subdirectories partly to make that ordering deterministic.
+`cl-cc-ast`, `cl-cc-bootstrap`, `cl-cc-parse`, and `cl-cc-vm` come from
+separate sibling repositories. `flake.nix` pins each source directly, and
+`flake.lock` records the revisions used with cl-cc-php. The umbrella cl-cc
+repository is not an input to this flake.
 
 ## Source layout
 
@@ -80,14 +63,13 @@ Every suite is named `<source>-test.lisp` after the `src/` file it covers, or
 `<source>-<aspect>-test.lisp` where one source has several aspects worth
 separating. Shared fixtures are `helpers-*.lisp` and are not suites.
 
-The `*-e2e-test.lisp` suites are the ones that require the full pipeline: they
-compile and run PHP source rather than inspecting an AST.
+PHP tests use the frontend's APIs to inspect tokens, ASTs, CSTs, and runtime
+behavior. See the development guide for the test system's scope.
 
 ## Build and CI
 
-`flake.nix` declares `x86_64-linux` and `aarch64-darwin`. CI verifies the
-former; maintainers verify the latter on their development machines. No other
-platform is declared, because no one verifies any other platform.
+`flake.nix` declares only `x86_64-linux`, which CI verifies on each push and
+pull request.
 
 Granularity lives in `checks.*`, not in extra CI jobs:
 

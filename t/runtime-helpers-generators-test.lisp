@@ -1,11 +1,9 @@
 ;;;; runtime-helpers-generators-test.lisp — src/runtime-helpers-generators.lisp — the host-only
 ;;;; generator path and the PHP-exception payload helpers.
 ;;;;
-;;;; %php-generator-enter/-exit/-active (the VM-integrated path compiled PHP generators actually
-;;;; use) are already exercised extensively by e2e yield/yield-from tests. This file covers what
-;;;; those never reach directly: %php-make-generator's HOST-ONLY path (its own docstring: "Host-only
-;;;; path (BODY-THUNK is a Common Lisp function); compiled PHP uses the %php-generator-enter /
-;;;; %php-generator-exit threading instead"), %php-generator-p, and the exception-payload predicates.
+;;;; This file directly tests the host-only %php-make-generator path, %php-generator-p, and the
+;;;; exception-payload predicates. Compiler-driven generator cases are reserved for umbrella-level
+;;;; integration.
 
 (in-package :cl-cc-php/test)
 

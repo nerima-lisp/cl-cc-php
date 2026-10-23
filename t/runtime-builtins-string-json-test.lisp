@@ -1,10 +1,9 @@
 ;;;; runtime-builtins-string-json-test.lisp — src/runtime-builtins-string-json.lisp — json_encode/
 ;;;; json_decode/json_validate and the pure helpers underneath them.
 ;;;;
-;;;; json_encode/json_decode's happy paths are already exercised by PHP-source e2e tests
-;;;; elsewhere; this file covers what those never reach directly: %php-json-quote-string's escape
-;;;; table, JSON_PRETTY_PRINT formatting, json_decode's malformed-input-returns-null tolerance, and
-;;;; json_validate — which, before this file, had zero coverage of its actual validation behaviour.
+;;;; Compiler-driven JSON cases are reserved for umbrella-level integration. This file directly
+;;;; tests %php-json-quote-string's escape table, JSON_PRETTY_PRINT formatting,
+;;;; json_decode's malformed-input-returns-null tolerance, and json_validate.
 
 (in-package :cl-cc-php/test)
 

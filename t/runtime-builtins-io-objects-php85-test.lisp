@@ -10,20 +10,6 @@
 (describe
   "PHP 8.5 runtime objects"
   (it-sequential
-    "get_error_handler() returns the active handler and null when none is installed."
-    (expect
-      (%php-run-capture
-        "<?php function h($errno,$errstr){ return true; } echo get_error_handler() === null ? 'null' : 'bad'; set_error_handler('h'); echo ':' . get_error_handler() . ':'; restore_error_handler(); echo get_error_handler() === null ? 'null' : 'bad';")
-      :to-equal
-      "null:h:null"))
-  (it-sequential
-    "get_exception_handler() returns the active handler and null when none is installed."
-    (expect
-      (%php-run-capture
-        "<?php function eh($e){} echo get_exception_handler() === null ? 'null' : 'bad'; set_exception_handler('eh'); echo ':' . get_exception_handler() . ':'; restore_exception_handler(); echo get_exception_handler() === null ? 'null' : 'bad';")
-      :to-equal
-      "null:eh:null"))
-  (it-sequential
     "opcache_is_script_cached_in_file_cache() is available and false without an OPCache file cache."
     (expect
       (cl-cc/php:%php-opcache-is-script-cached-in-file-cache "/tmp/example.php")
@@ -31,20 +17,6 @@
   (it-sequential
     "PHP 8.5 gc_collect_cycles() returns an integer 0 in cl-cc's no-GC PHP model."
     (expect (= 0 (cl-cc/php::%php-gc-collect-cycles)) :to-be-truthy))
-  (it-sequential
-    "The PHP 8.5 gc_collect_cycles() builtin executes from PHP source."
-    (expect
-      (%php-run-capture
-        "<?php echo gettype(gc_collect_cycles()) . ':' . gc_collect_cycles();")
-      :to-equal
-      "integer:0"))
-  (it-sequential
-    "The PHP 8.5 opcache file-cache probe executes from PHP source."
-    (expect
-      (%php-run-capture
-        "<?php echo opcache_is_script_cached_in_file_cache('/tmp/example.php') ? 'warm' : 'cold';")
-      :to-equal
-      "cold"))
   (it-sequential
     "curl_share_init_persistent() returns a stable persistent handle for each ID."
     (let ((a (cl-cc/php:%php-curl-share-init-persistent "cache"))
@@ -55,34 +27,6 @@
       (expect (gethash "__class__" a) :to-equal "CurlSharePersistentHandle")
       (expect (gethash "id" a) :to-equal "cache")
       (expect (gethash "persistent" a) :to-be-truthy)))
-  (it-sequential
-    "The PHP 8.5 persistent cURL share initializer executes from PHP source."
-    (expect
-      (%php-run-capture
-        "<?php $a=curl_share_init_persistent('cache'); $b=curl_share_init_persistent('cache'); echo ($a === $b ? 'same' : 'diff') . ':' . gettype($a);")
-      :to-equal
-      "same:object"))
-  (it-sequential
-    "The persistent cURL share handle is visible to class_exists before it is created."
-    (expect
-      (%php-run-capture
-        "<?php echo class_exists('CurlSharePersistentHandle') ? 'Y' : 'N';")
-      :to-equal
-      "Y"))
-  (it-sequential
-    "PHP 8.5 object/boolean loose comparison follows the object's bool cast."
-    (expect
-      (%php-run-capture
-        "<?php $o = curl_share_init_persistent('cmp'); $t = true; $f = false; echo ($o == true ? 'T' : 'F'); echo ($o == $t ? 'T' : 'F'); echo ($o == $f ? 'T' : 'F');")
-      :to-equal
-      "TTF")
-    (let ((object (make-hash-table :test #'equal))
-          (empty-array (cl-cc/php::%php-array)))
-      (setf (gethash "__class__" object) "UncomparableInternal")
-      (expect (cl-cc/php::%php-truthy object) :to-be-truthy)
-      (expect (cl-cc/php::%php-eq-loose object t) :to-be-truthy)
-      (expect (cl-cc/php::%php-eq-loose object nil) :to-be-falsy)
-      (expect (cl-cc/php::%php-truthy empty-array) :to-be-falsy)))
   (it-sequential
     "curl_multi_get_handles() exposes a multi-handle's child handles as a PHP array."
     (let* ((multi (make-hash-table :test #'equal))
@@ -95,20 +39,6 @@
         (expect (= 2 (cl-cc/php:%php-count result)) :to-be-truthy)
         (expect (cl-cc/php:%php-array-ref result 0) :to-be a)
         (expect (cl-cc/php:%php-array-ref result 1) :to-be b))))
-  (it-sequential
-    "curl_multi_get_handles() is registered as a PHP 8.5 builtin."
-    (expect
-      (%php-run-capture
-        "<?php echo function_exists('curl_multi_get_handles') ? 'Y' : 'N';")
-      :to-equal
-      "Y"))
-  (it-sequential
-    "The PHP 8.5 Locale likely-subtag static methods lower to runtime helpers."
-    (expect
-      (%php-run-capture
-        "<?php echo Locale::addLikelySubtags('en') . ':' . Locale::minimizeSubtags('en_Latn_US');")
-      :to-equal
-      "en-Latn-US:en"))
   (it-sequential
     "PHP 8.5 runtime-visible classes, exceptions, and enums are visible to class_exists."
     (dolist (class-name
@@ -149,19 +79,6 @@
             (cl-cc/php::%php-array-values-list (cl-cc/php::%php-get-class-methods alias))))
         (expect (find "toRawString" methods :test #'string=) :to-be-truthy))))
   (it-sequential
-    "PHP 8.5 class_alias is registered for compiled PHP code."
-    (let ((alias (format nil "Php85AliasSourceUri~A" (symbol-name (gensym)))))
-      (expect
-        (%php-run-capture
-          (format
-            nil
-            "<?php echo class_alias('Uri\\Rfc3986\\Uri', '~A') && class_exists('~A') && method_exists('~A', 'parse') ? 'Y' : 'N';"
-            alias
-            alias
-            alias))
-        :to-equal
-        "Y")))
-  (it-sequential
     "PHP 8.5 class_alias rejects array and callable aliases."
     (dolist (alias '("array" "callable" "ARRAY" "Callable"))
       (let ((condition
@@ -174,13 +91,6 @@
         (expect
           (cl-cc/php:%php-exception-matches-p condition 'value-error)
           :to-be-truthy))))
-  (it-sequential
-    "PHP 8.5 IntlListFormatter, NumberFormatter, and Pdo\\Sqlite class constants resolve."
-    (expect
-      (%php-run-capture
-        "<?php echo IntlListFormatter::TYPE_AND . ':' . IntlListFormatter::TYPE_OR . ':' . NumberFormatter::CURRENCY_ISO . ':' . NumberFormatter::CURRENCY_PLURAL . ':' . NumberFormatter::CURRENCY_ACCOUNTING . ':' . NumberFormatter::CASH_CURRENCY . ':' . NumberFormatter::DECIMAL_COMPACT_SHORT . ':' . NumberFormatter::DECIMAL_COMPACT_LONG . ':' . NumberFormatter::CURRENCY_STANDARD . ':' . Pdo\\Sqlite::ATTR_OPEN_FLAGS . ':' . Pdo\\Sqlite::OPEN_READONLY . ':' . Pdo\\Sqlite::OPEN_READWRITE . ':' . Pdo\\Sqlite::OPEN_CREATE . ':' . Pdo\\Sqlite::ATTR_READONLY_STATEMENT . ':' . Pdo\\Sqlite::ATTR_EXTENDED_RESULT_CODES . ':' . Pdo\\Sqlite::ATTR_BUSY_STATEMENT . ':' . Pdo\\Sqlite::ATTR_EXPLAIN_STATEMENT . ':' . Pdo\\Sqlite::EXPLAIN_MODE_PREPARED . ':' . Pdo\\Sqlite::EXPLAIN_MODE_EXPLAIN . ':' . Pdo\\Sqlite::EXPLAIN_MODE_EXPLAIN_QUERY_PLAN . ':' . Pdo\\Sqlite::ATTR_TRANSACTION_MODE . ':' . Pdo\\Sqlite::TRANSACTION_MODE_DEFERRED . ':' . Pdo\\Sqlite::TRANSACTION_MODE_IMMEDIATE . ':' . Pdo\\Sqlite::TRANSACTION_MODE_EXCLUSIVE . ':' . Pdo\\Sqlite::DETERMINISTIC;")
-      :to-equal
-      "0:1:10:11:12:13:14:15:16:1000:1:2:4:1001:1002:1003:1004:0:1:2:1005:0:1:2:2048"))
   (it-sequential
     "PHP 8.5 built-in class method additions are visible to method_exists."
     (dolist (case '(("Dom\\Element" "getElementsByClassName")
@@ -214,93 +124,6 @@
           ("Uri\\WhatWg\\UrlValidationError" "__construct")))
       (destructuring-bind (class method) case
         (expect (cl-cc/php::%php-method-exists class method) :to-be-truthy))))
-  (it-sequential
-    "PHP 8.5 SoapClient, SoapFault, SoapServer, and XSLTProcessor methods execute from PHP source."
-    (expect
-      (%php-run-capture
-        "<?php
-$client = new SoapClient(null, ['location' => 'http://example.test', 'uri' => 'urn:test']);
-$fault = new SoapFault('Sender', 'Boom', 'actor', 'detail', 'name', 'header', 'ja');
-$server = new SoapServer(null, ['uri' => 'urn:test']);
-$proc = new XSLTProcessor();
-$proc->setParameter('urn:a', 'foo', 'bar');
-echo (is_array($client->__getTypes()) ? 'Y' : 'N') . ':' .
-     ($fault->lang === 'ja' ? 'Y' : 'N') . ':' .
-     $fault->lang . ':' .
-     (is_null($server->fault('Client', 'Boom')) ? 'Y' : 'N') . ':' .
-     ($proc->getParameter('urn:a', 'foo') === 'bar' ? 'Y' : 'N') . ':' .
-     ($proc->getParameter('urn:b', 'foo') === false ? 'Y' : 'N') . ':' .
-     ($proc->removeParameter('urn:a', 'foo') ? 'Y' : 'N');
-")
-      :to-equal
-      "Y:Y:ja:Y:Y:Y:Y"))
-  (it-sequential
-    "PHP 8.5 ReflectionConstant method additions execute from PHP source."
-    (expect
-      (%php-run-capture
-        "<?php
-$r = new ReflectionConstant('PHP_VERSION');
-echo ($r->isDeprecated() ? 'Y' : 'N') . ':' .
-     (is_array($r->getAttributes()) ? 'Y' : 'N') . ':' .
-     (is_null($r->getFileName()) ? 'Y' : 'N') . ':' .
-     (is_null($r->getExtensionName()) ? 'Y' : 'N');
-")
-      :to-equal
-      "N:Y:Y:Y"))
-  (it-sequential
-    "PHP 8.5 ReflectionProperty::getMangledName executes from PHP source."
-    (expect
-      (%php-run-capture
-        "<?php
-class RProp {
-    public $name;
-}
-$r = new ReflectionProperty('RProp', 'name');
-echo $r->getMangledName();
-")
-      :to-equal
-      "name"))
-  (it-sequential
-    "%php-reflection-property-new always sets :public, so getMangledName never
-actually mangles a private/protected property's name"
-    ;; ReflectionProperty's constructor never looks up the target property's real
-    ;; declared visibility — this runtime has no class-property-visibility registry
-    ;; for it to consult — so it hardcodes :PUBLIC unconditionally, and the
-    ;; :PRIVATE/:PROTECTED branches in %PHP-REFLECTION-PROPERTY-GET-MANGLED-NAME
-    ;; are unreachable from any real PHP program. Real PHP mangles a private
-    ;; property's name to "\0ClassName\0propname"; this runtime always returns the
-    ;; bare name instead, even for a genuinely `private`-declared property.
-    (expect
-      (%php-run-capture
-        "<?php
-class RPriv {
-    private $secret;
-}
-$r = new ReflectionProperty('RPriv', 'secret');
-echo $r->getMangledName();
-")
-      :to-equal
-      "secret"))
-  (it-sequential
-    "PHP 8.5 Pdo\\Sqlite::setAuthorizer executes from PHP source."
-    (expect
-      (%php-run-capture
-        "<?php
-$pdo = new Pdo\\Sqlite('sqlite::memory:');
-echo is_null($pdo->setAuthorizer(null)) ? 'Y' : 'N';
-")
-      :to-equal
-      "Y"))
-  (it-sequential
-    "PHP 8.5 SQLite3Stmt::busy executes from PHP source."
-    (expect
-      (%php-run-capture
-        "<?php
-$stmt = new SQLite3Stmt();
-echo $stmt->busy() ? 'Y' : 'N';
-")
-      :to-equal
-      "N"))
   (it-sequential
     "PHP 8.5 predefined constants are available through constant lookup."
     (dolist (constant

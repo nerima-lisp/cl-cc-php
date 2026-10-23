@@ -27,16 +27,11 @@ not currently supported.
 
 ## Platform support
 
-`flake.nix` declares exactly two systems:
+`flake.nix` declares exactly one system:
 
 | System | Verified by |
 |---|---|
 | `x86_64-linux` | CI, on every push and pull request |
-| `aarch64-darwin` | Maintainer `nix flake check` runs |
-
-`aarch64-linux` and `x86_64-darwin` are deliberately not declared. They may well
-work, but nothing verifies them, and declaring an unverified platform is a
-promise this project cannot keep.
 
 Note that some filesystem builtins are platform-sensitive; `is_dir()` in
 particular has needed platform-specific correction.
@@ -58,18 +53,10 @@ you are working on cl-cc itself.
 This is the tightest compatibility constraint in the project.
 
 cl-cc-php consumes `cl-cc-ast`, `cl-cc-bootstrap`, `cl-cc-parse`, and
-`cl-cc-vm` from a checkout of the cl-cc monorepo rather than from tagged
-sibling repositories, because those systems have not been split out and are not
-planned to be. `flake.nix` consequently takes cl-cc as an unpinned
-`flake = false` input, with the exact revision recorded in `flake.lock`.
+`cl-cc-vm` from separately pinned sibling source repositories. `flake.lock`
+records the revisions tested together with cl-cc-php; the umbrella cl-cc
+repository is not a dependency of the PHP flake.
 
-The practical consequence: **a cl-cc revision and a cl-cc-php revision are only
-known to work together if `flake.lock` says so.** Bumping the cl-cc input is a
-change that needs its own test run. The existing `v0.1.0` tag on cl-cc predates
-the `packages/` layout this repository expects, so it is not a usable pin.
-
-The other inputs — cl-weave, cl-prolog-kit, cl-parser-kit, cl-json-kit — are
-pinned to release tags and behave normally. Unlike the first three, which are
-test-only, cl-json-kit is a real dependency of the shipped `cl-cc-php` system
-(`json_validate` calls into it directly) — see `cl-cc-php.asd`'s
-`:depends-on`.
+The practical consequence is that compiler and PHP revisions are only known to
+work together when recorded in the same `flake.lock`. Updating a compiler input
+requires running the PHP checks.

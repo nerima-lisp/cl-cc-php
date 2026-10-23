@@ -1,21 +1,20 @@
 ;;;; coverage.lisp
 ;;;;
-;;;; sb-cover entry point: report which lines of cl-cc-php's OWN source (not its
-;;;; cl-cc/cl-weave dependencies) the test suite actually exercises.
+;;;; sb-cover entry point: report which lines of cl-cc-php's own source the
+;;;; test suite exercises.
 ;;;;
 ;;;; Instrumentation is a COMPILE-time property (SB-COVER:STORE-COVERAGE-DATA is
 ;;;; an (optimize ...) quality), so :cl-cc-php/test loads first — uninstrumented,
 ;;;; exactly as run-tests.lisp loads it — establishing every cross-package symbol
 ;;;; cl-cc-php's own files reference before those files are force-recompiled: a
 ;;;; premature :force t would recompile package.lisp before its cl-cc/ast,
-;;;; cl-cc/bootstrap, and cl-cc/parse imports exist yet, turning ordinary
-;;;; undefined-variable warnings into a fatal COMPILE-FILE-ERROR. Only :cl-cc-php
-;;;; is then force-recompiled with the declaim on — ASDF considers already-
-;;;; compiled fasls current and skips recompilation otherwise, which is how an
-;;;; empty report happens silently — and reloaded, so its (now instrumented)
-;;;; functions replace the ones RUN-TESTS below actually calls. Neither the test
-;;;; suite's own forms nor its cl-cc-pipeline/cl-weave dependencies are ever
-;;;; compiled under the declaim, so they never appear in the report: the question
+;;;; cl-cc/bootstrap, cl-cc/parse, and cl-cc/vm imports exist yet, turning
+;;;; ordinary undefined-variable warnings into a fatal COMPILE-FILE-ERROR.
+;;;; Only :cl-cc-php is force-recompiled under the declaim. ASDF skips current
+;;;; fasls, and a normal load would leave them uninstrumented. Reloading its
+;;;; instrumented files replaces the functions RUN-TESTS calls below. The test suite
+;;;; and its dependencies are not compiled under the declaim, so they never
+;;;; appear in the report: the question
 ;;;; this answers is "how much of cl-cc-php's implementation do the tests reach",
 ;;;; not "how much of the test suite runs".
 ;;;;
@@ -36,43 +35,43 @@
         (uiop:ensure-directory-pathname default)
         *repo-root*))))
 
-(defvar *cl-cc-root* (%env-or "CL_CC_PHP_CL_CC_ROOT" "../cl-cc"))
-(defvar *cl-weave-root* (%env-or "CL_CC_PHP_CL_WEAVE_ROOT" "../cl-weave"))
-(defvar *cl-prolog-kit-root* (%env-or "CL_CC_PHP_CL_PROLOG_KIT_ROOT" "../cl-prolog-kit"))
-(defvar *cl-prolog-root* (%env-or "CL_CC_PHP_CL_PROLOG_ROOT" "../cl-prolog"))
-(defvar *cl-parser-kit-root* (%env-or "CL_CC_PHP_CL_PARSER_KIT_ROOT" "../cl-parser-kit"))
-(defvar *cl-json-kit-root* (%env-or "CL_CC_PHP_CL_JSON_KIT_ROOT" "../cl-json-kit"))
-(defvar *cl-host-kit-root* (%env-or "CL_CC_PHP_CL_HOST_KIT_ROOT" "../cl-host-kit"))
-
-(defparameter *cl-cc-package-subdirs*
-  '("bootstrap" "ast" "parse" "vm" "runtime" "type" "mir" "optimize" "emit"
-    "expand" "compile" "cps" "codegen" "target" "regalloc" "bytecode" "ir"
-    "binary" "stdlib" "javascript" "pipeline"))
-
+(defparameter *cl-cc-roots*
+  (list
+   (%env-or "CL_CC_PHP_CL_CC_BOOTSTRAP_ROOT" "../cl-cc-bootstrap")
+   (%env-or "CL_CC_PHP_CL_CC_AST_ROOT" "../cl-cc-ast")
+   (%env-or "CL_CC_PHP_CL_CC_PARSE_ROOT" "../cl-cc-parse")
+   (%env-or "CL_CC_PHP_CL_CC_RUNTIME_ROOT" "../cl-cc-runtime")
+   (%env-or "CL_CC_PHP_CL_CC_VM_ROOT" "../cl-cc-vm")))
+(defparameter *cl-support-roots*
+  (list
+   (%env-or "CL_CC_PHP_CL_WEAVE_ROOT" "../cl-weave")
+   (%env-or "CL_CC_PHP_CL_PARSER_KIT_ROOT" "../cl-parser-kit")
+   (%env-or "CL_CC_PHP_CL_REGEX_KIT_ROOT" "../cl-regex-kit")
+   (%env-or "CL_CC_PHP_CL_TTY_KIT_ROOT" "../cl-tty-kit")
+   (%env-or "CL_CC_PHP_CL_LOG_KIT_ROOT" "../cl-log-kit")
+   (%env-or "CL_CC_PHP_CL_PROCESS_KIT_ROOT" "../cl-process-kit")
+   (%env-or "CL_CC_PHP_CL_CODEC_KIT_ROOT" "../cl-codec-kit")
+   (%env-or "CL_CC_PHP_CL_CONCURRENT_KIT_ROOT" "../cl-concurrent-kit")
+   (%env-or "CL_CC_PHP_CL_BOUNDARY_KIT_ROOT" "../cl-boundary-kit")
+   (%env-or "CL_CC_PHP_CL_DATE_KIT_ROOT" "../cl-date-kit")
+   (%env-or "CL_CC_PHP_CL_JSON_KIT_ROOT" "../cl-json-kit")
+   (%env-or "CL_CC_PHP_CL_HOST_KIT_ROOT" "../cl-host-kit")))
 (defun %tree (pathname)
   (list :tree (uiop:ensure-directory-pathname pathname)))
 
 (asdf:initialize-source-registry
  (list*
   :source-registry
-  (%tree (uiop:ensure-directory-pathname *cl-weave-root*))
-  (%tree (uiop:ensure-directory-pathname *cl-prolog-root*))
-  (%tree (uiop:ensure-directory-pathname *cl-prolog-kit-root*))
-  (%tree (uiop:ensure-directory-pathname *cl-parser-kit-root*))
-  (%tree (uiop:ensure-directory-pathname *cl-json-kit-root*))
-  (%tree (uiop:ensure-directory-pathname *cl-host-kit-root*))
-  (%tree (uiop:getcwd))
   (append
-   (mapcar (lambda (subdir)
-             (%tree (merge-pathnames
-                     (format nil "packages/~A/" subdir)
-                     (uiop:ensure-directory-pathname *cl-cc-root*))))
-           *cl-cc-package-subdirs*)
-   (list :ignore-inherited-configuration))))
+   (mapcar (function %tree) *cl-cc-roots*)
+   (mapcar (function %tree) *cl-support-roots*)
+   (list
+    (%tree (uiop:getcwd))
+    :ignore-inherited-configuration))))
 
 ;; Load everything uninstrumented first, exactly as run-tests.lisp does: every
-;; cross-package symbol cl-cc-php's own files reference (from cl-cc/ast,
-;; cl-cc/bootstrap, cl-cc/parse, and beyond) has to already be defined in the
+;; cross-package symbol cl-cc-php's own files reference from its compiler and
+;; runtime dependencies has to already be defined in the
 ;; image before those files are force-recompiled below, or the recompile
 ;; itself hits "undefined variable" warnings that UIOP promotes to a fatal
 ;; COMPILE-FILE-ERROR.

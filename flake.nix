@@ -6,57 +6,69 @@
     # release tests pass, so it is less likely to land a broken build.
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
-    # cl-cc-php depends on cl-cc-ast/cl-cc-bootstrap/cl-cc-parse/cl-cc-vm, and
-    # its e2e test suite additionally needs cl-cc-pipeline to compile and run
-    # PHP source end-to-end. bootstrap/vm/parse are the compiler's
-    # self-referential core (see cl-cc's docs/repo-split-design.md — they are
-    # explicitly a non-goal for further splitting), so unlike a dependency-free
-    # leaf (cl-cc-ast) this system pulls its dependencies out of a checkout of
-    # the whole monorepo rather than from independently split repos.
-    #
-    # Pinned to a commit, not a tag, unlike every other sibling below. cl-cc's
-    # only tag is v0.1.0, which predates the packages/ split this repository
-    # loads from, and it cannot cut a new one yet: its own `nix flake check`
-    # is still red on `main` and getting worse, not better, as development
-    # continues there — 83 failed, 229 errored as of the "Merge FR-371 CPS
-    # catch and throw" run (2026-07-30), up from 55 failed/31 errored
-    # earlier in that same month. Re-check before ever bumping this pin.
-    #
-    # A commit is as immutable as a tag, which is what the pinning rule is
-    # actually for; a bare `github:nerima-lisp/cl-cc` follows the default
-    # branch and would break this repository on an unrelated upstream push.
-    # Move to `/vX.Y.Z` once cl-cc's suite is green and it releases.
-    cl-cc = {
-      url = "github:nerima-lisp/cl-cc/4aca55a2e7e3c92685870a434c2e60827a3d90a1";
+    # Compiler systems are pinned to their child-main snapshots from the
+    # umbrella pinset so this flake consumes only the packages it needs.
+    cl-cc-bootstrap = {
+      url = "github:nerima-lisp/cl-cc-bootstrap/027f6c9826010c15789454e69abd2930738b50af";
+      flake = false;
+    };
+    cl-cc-ast = {
+      url = "github:nerima-lisp/cl-cc-ast/a45c5acecfccb91a43f6a04251e8a5d6ec3d3213";
+      flake = false;
+    };
+    cl-cc-parse = {
+      url = "github:nerima-lisp/cl-cc-parse/75d8699835731ec6ca44e15c82ef02601f5100fe";
+      flake = false;
+    };
+    cl-cc-runtime = {
+      url = "github:nerima-lisp/cl-cc-runtime/d23ea44512b162def39ec981426c4c8e1af4df84";
+      flake = false;
+    };
+    cl-cc-vm = {
+      url = "github:nerima-lisp/cl-cc-vm/462213fcf5e0e6cecc09992e8cb0b7ed48dbce2f";
       flake = false;
     };
 
-    # Test-only: cl-weave is the test framework t/ runs on directly. cl-prolog-kit
-    # and cl-parser-kit are, in turn, cl-cc-optimize's own dependencies (part of
-    # the transitive closure cl-cc-pipeline pulls in for the e2e suites) —
-    # pulled the same way cl-cc's own flake pulls them, as plain source trees
-    # built by cl-cc-php's own ASDF source registry rather than as flakes (see
-    # run-tests.lisp).
-    #
-    # These three are pinned to release tags: a bare github:nerima-lisp/<name>
-    # follows that repo's default branch, so an upstream push to main would
-    # break this repo's CI without warning.
+    # Plain source inputs are resolved by the ASDF source registry in the
+    # test and coverage scripts.
     cl-weave = {
       url = "github:nerima-lisp/cl-weave/v1.4.0";
       flake = false;
     };
-    cl-prolog-kit = {
-      url = "github:nerima-lisp/cl-prolog-kit/v1.5.0";
-      flake = false;
-    };
-    # Compatibility source for the currently pinned cl-cc revision, whose
-    # optimize system still depends on the pre-rename :cl-prolog name.
-    cl-prolog = {
-      url = "github:nerima-lisp/cl-prolog/v1.3.0";
-      flake = false;
-    };
     cl-parser-kit = {
       url = "github:nerima-lisp/cl-parser-kit/v1.1.1";
+      flake = false;
+    };
+    cl-regex-kit = {
+      url = "github:nerima-lisp/cl-regex-kit/v2.2.0";
+      flake = false;
+    };
+    cl-tty-kit = {
+      url = "github:nerima-lisp/cl-tty-kit/v1.6.1";
+      flake = false;
+    };
+    cl-log-kit = {
+      url = "github:nerima-lisp/cl-log-kit/v2.2.0";
+      flake = false;
+    };
+    cl-process-kit = {
+      url = "github:nerima-lisp/cl-process-kit/v3.4.0";
+      flake = false;
+    };
+    cl-codec-kit = {
+      url = "github:nerima-lisp/cl-codec-kit/v0.6.0";
+      flake = false;
+    };
+    cl-concurrent-kit = {
+      url = "github:nerima-lisp/cl-concurrent-kit/v0.6.1";
+      flake = false;
+    };
+    cl-boundary-kit = {
+      url = "github:nerima-lisp/cl-boundary-kit/v2.3.0";
+      flake = false;
+    };
+    cl-date-kit = {
+      url = "github:nerima-lisp/cl-date-kit/v1.1.1";
       flake = false;
     };
 
@@ -97,28 +109,27 @@
     {
       self,
       nixpkgs,
-      cl-cc,
+      cl-cc-bootstrap,
+      cl-cc-ast,
+      cl-cc-parse,
+      cl-cc-runtime,
+      cl-cc-vm,
       cl-weave,
-      cl-prolog-kit,
-      cl-prolog,
       cl-parser-kit,
+      cl-regex-kit,
+      cl-tty-kit,
+      cl-log-kit,
+      cl-process-kit,
+      cl-codec-kit,
+      cl-concurrent-kit,
+      cl-boundary-kit,
+      cl-date-kit,
       cl-json-kit,
       cl-host-kit,
       treefmt-nix,
     }:
     let
-      # x86_64-linux is what CI gates; aarch64-darwin is the development
-      # machine. Every per-system output -- packages, checks, apps AND devShells
-      # -- comes from this one list, so leaving aarch64-darwin out takes `nix
-      # build` and `nix develop` off the development machine as well. That trade
-      # was made on 2026-08-01 and reverted on 2026-08-02; aarch64-darwin carries
-      # no CI gate, which PACKAGE_STANDARD.md's "systems" section accepts
-      # explicitly. aarch64-linux and x86_64-darwin are nobody's verification and
-      # are not declared.
-      systems = [
-        "x86_64-linux"
-        "aarch64-darwin"
-      ];
+      systems = [ "x86_64-linux" ];
       forAllSystems = nixpkgs.lib.genAttrs systems;
 
       # Single source of truth for the package version: the `:version` form in
@@ -139,11 +150,21 @@
       # derivation can hand in exact flake-input store paths. Shared verbatim by
       # checks.default and apps.test so the two cannot drift.
       testEnv = {
-        CL_CC_PHP_CL_CC_ROOT = "${cl-cc}";
+        CL_CC_PHP_CL_CC_BOOTSTRAP_ROOT = "${cl-cc-bootstrap}";
+        CL_CC_PHP_CL_CC_AST_ROOT = "${cl-cc-ast}";
+        CL_CC_PHP_CL_CC_PARSE_ROOT = "${cl-cc-parse}";
+        CL_CC_PHP_CL_CC_RUNTIME_ROOT = "${cl-cc-runtime}";
+        CL_CC_PHP_CL_CC_VM_ROOT = "${cl-cc-vm}";
         CL_CC_PHP_CL_WEAVE_ROOT = "${cl-weave}";
-        CL_CC_PHP_CL_PROLOG_KIT_ROOT = "${cl-prolog-kit}";
-        CL_CC_PHP_CL_PROLOG_ROOT = "${cl-prolog}";
         CL_CC_PHP_CL_PARSER_KIT_ROOT = "${cl-parser-kit}";
+        CL_CC_PHP_CL_REGEX_KIT_ROOT = "${cl-regex-kit}";
+        CL_CC_PHP_CL_TTY_KIT_ROOT = "${cl-tty-kit}";
+        CL_CC_PHP_CL_LOG_KIT_ROOT = "${cl-log-kit}";
+        CL_CC_PHP_CL_PROCESS_KIT_ROOT = "${cl-process-kit}";
+        CL_CC_PHP_CL_CODEC_KIT_ROOT = "${cl-codec-kit}";
+        CL_CC_PHP_CL_CONCURRENT_KIT_ROOT = "${cl-concurrent-kit}";
+        CL_CC_PHP_CL_BOUNDARY_KIT_ROOT = "${cl-boundary-kit}";
+        CL_CC_PHP_CL_DATE_KIT_ROOT = "${cl-date-kit}";
         CL_CC_PHP_CL_JSON_KIT_ROOT = "${cl-json-kit}";
         CL_CC_PHP_CL_HOST_KIT_ROOT = "${cl-host-kit}";
       };
@@ -172,9 +193,8 @@
             inherit version;
             src = self;
             nativeBuildInputs = [ pkgs.sbcl ];
-            # No dependency-free compile check is possible (see README's Status
-            # section) — the lightest verifiable build artifact is the source
-            # tree itself, exactly as cl-cc-ast's own `default` package does.
+            # The package artifact is the ASDF source tree; checks.default runs
+            # the test system against it.
             installPhase = ''
               runHook preInstall
               mkdir -p "$out/share/common-lisp/source/cl-cc-php"
@@ -284,20 +304,11 @@
               ''
                 export HOME="$TMPDIR/home"
                 mkdir -p "$HOME" "$out"
-                # run-tests.lisp registers the working directory as an ASDF
-                # source tree, and the CLI-compile-path suite writes a .cache/
-                # directory next to it, so the suite needs a WRITABLE copy of
-                # the tree. Running it straight out of the read-only store path
-                # fails with "Can't create directory .../.cache".
+                # Run tests from a writable copy of the source tree.
                 cp -R ${self} "$TMPDIR/src"
                 chmod -R u+w "$TMPDIR/src"
                 cd "$TMPDIR/src"
-                # A hung test (an infinite loop introduced by a bug, a deadlock
-                # between the VM and a fiber/generator, ...) must fail the build
-                # loudly rather than hang the CI runner indefinitely. 600s is
-                # generous relative to a normal run so it only ever fires on a
-                # genuine hang, matching the timeoutSeconds convention other
-                # nerima-lisp repos' cl-nix-forge-based checks use.
+                # Bound the test run so a hung runner cannot stall CI.
                 timeout 600 sbcl --script run-tests.lisp
                 touch "$out/passed"
               '';
@@ -326,22 +337,30 @@
               pkgs.coreutils
             ];
             text = ''
-              export CL_CC_PHP_CL_CC_ROOT="${cl-cc}"
+              export CL_CC_PHP_CL_CC_BOOTSTRAP_ROOT="${cl-cc-bootstrap}"
+              export CL_CC_PHP_CL_CC_AST_ROOT="${cl-cc-ast}"
+              export CL_CC_PHP_CL_CC_PARSE_ROOT="${cl-cc-parse}"
+              export CL_CC_PHP_CL_CC_RUNTIME_ROOT="${cl-cc-runtime}"
+              export CL_CC_PHP_CL_CC_VM_ROOT="${cl-cc-vm}"
               export CL_CC_PHP_CL_WEAVE_ROOT="${cl-weave}"
-              export CL_CC_PHP_CL_PROLOG_KIT_ROOT="${cl-prolog-kit}"
-              export CL_CC_PHP_CL_PROLOG_ROOT="${cl-prolog}"
               export CL_CC_PHP_CL_PARSER_KIT_ROOT="${cl-parser-kit}"
+              export CL_CC_PHP_CL_REGEX_KIT_ROOT="${cl-regex-kit}"
+              export CL_CC_PHP_CL_TTY_KIT_ROOT="${cl-tty-kit}"
+              export CL_CC_PHP_CL_LOG_KIT_ROOT="${cl-log-kit}"
+              export CL_CC_PHP_CL_PROCESS_KIT_ROOT="${cl-process-kit}"
+              export CL_CC_PHP_CL_CODEC_KIT_ROOT="${cl-codec-kit}"
+              export CL_CC_PHP_CL_CONCURRENT_KIT_ROOT="${cl-concurrent-kit}"
+              export CL_CC_PHP_CL_BOUNDARY_KIT_ROOT="${cl-boundary-kit}"
+              export CL_CC_PHP_CL_DATE_KIT_ROOT="${cl-date-kit}"
               export CL_CC_PHP_CL_JSON_KIT_ROOT="${cl-json-kit}"
               export CL_CC_PHP_CL_HOST_KIT_ROOT="${cl-host-kit}"
-              # Same reason as checks.default: the suite writes .cache/ relative
-              # to the working directory, so it needs a writable tree rather
-              # than the read-only store path.
+              # Run tests from a writable copy of the source tree.
               workdir="$(mktemp -d)"
               trap 'rm -rf "$workdir"' EXIT
               cp -R ${self}/. "$workdir"
               chmod -R u+w "$workdir"
               cd "$workdir"
-              # Same hang-must-fail-loudly reasoning as checks.default's timeout.
+              # Bound the test run so a hung runner cannot stall the command.
               exec timeout 600 sbcl --script run-tests.lisp
             '';
           };

@@ -6,9 +6,7 @@
 
 The PHP frontend for the [cl-cc](https://github.com/nerima-lisp/cl-cc) Common
 Lisp compiler: a lexer, parser, and grammar that turn PHP source into cl-cc's
-AST, plus the PHP runtime builtins that compiled code calls into. Full
-documentation is at
-[nerima-lisp.github.io/cl-cc-php](https://nerima-lisp.github.io/cl-cc-php/).
+AST, plus the PHP runtime builtins that compiled code calls into.
 
 ## Quick Start
 
@@ -40,10 +38,11 @@ Then depend on it from your `.asd`:
 :depends-on ("cl-cc-php")
 ```
 
-cl-cc-php is not standalone. It needs `cl-cc-ast`, `cl-cc-bootstrap`,
-`cl-cc-parse`, and `cl-cc-vm`, which live inside a checkout of the cl-cc
-monorepo rather than in split-out repositories, plus a checkout of
-[cl-json-kit](https://github.com/nerima-lisp/cl-json-kit). See
+cl-cc-php needs the compiler systems `cl-cc-ast`, `cl-cc-bootstrap`,
+`cl-cc-parse`, and `cl-cc-vm` from their separately pinned sibling source
+repositories. It also uses [cl-host-kit](https://github.com/nerima-lisp/cl-host-kit)
+and [cl-json-kit](https://github.com/nerima-lisp/cl-json-kit) at runtime. The
+umbrella cl-cc checkout is not a PHP package dependency. See
 [Getting Started](https://nerima-lisp.github.io/cl-cc-php/getting-started/).
 
 ## Documentation
@@ -63,9 +62,9 @@ nix run .#test                       # the test suite alone
 nix fmt                              # nixfmt via treefmt
 ```
 
-Without Nix, `run-tests.lisp` falls back to sibling checkouts of `cl-cc`,
-`cl-weave`, `cl-prolog-kit`, `cl-parser-kit`, and `cl-json-kit` next to this
-repository:
+Without Nix, `run-tests.lisp` uses sibling checkouts for the compiler systems
+and library dependencies. See [Getting Started](https://nerima-lisp.github.io/cl-cc-php/getting-started/)
+for the expected source roots:
 
 ```sh
 sbcl --script run-tests.lisp

@@ -1,16 +1,9 @@
 ;;;; run-tests.lisp
 ;;;;
-;;;; CI entry point: load :cl-cc-php/test against the still-monorepo-internal
-;;;; systems it depends on (bootstrap/ast/parse/vm and, transitively via
-;;;; cl-cc-pipeline for the e2e suites, most of cl-cc) and run the suite on
-;;;; cl-weave. cl-cc-php is not dependency-free (see README's Status section),
-;;;; so unlike a leaf system this can't just ASDF:LOAD-SYSTEM itself — every
-;;;; dependency root has to be registered first.
-;;;;
-;;;; Each dependency root is read from an env var so the Nix derivation can
-;;;; hand in exact flake-input store paths; CL-CC-PHP-DEFAULT-CL-CC-ROOT below
-;;;; is only a convenience fallback for running this script directly against
-;;;; sibling checkouts outside Nix (see README's Testing section).
+;;;; CI entry point: load :cl-cc-php/test against the compiler systems and
+;;;; runtime/test libraries it depends on, then run the suite on cl-weave.
+;;;; Each sibling dependency is read from an env var so Nix can provide its
+;;;; pinned source root; local runs use sibling checkouts as fallbacks.
 
 (require :asdf)
 
@@ -33,37 +26,28 @@ arrives through its env var and this branch is not taken."
         (uiop:ensure-directory-pathname default)
         *repo-root*))))
 
-(defvar *cl-cc-root*
-  (%env-or "CL_CC_PHP_CL_CC_ROOT" "../cl-cc"))
+(defparameter *cl-cc-roots*
+  (list
+   (%env-or "CL_CC_PHP_CL_CC_BOOTSTRAP_ROOT" "../cl-cc-bootstrap")
+   (%env-or "CL_CC_PHP_CL_CC_AST_ROOT" "../cl-cc-ast")
+   (%env-or "CL_CC_PHP_CL_CC_PARSE_ROOT" "../cl-cc-parse")
+   (%env-or "CL_CC_PHP_CL_CC_RUNTIME_ROOT" "../cl-cc-runtime")
+   (%env-or "CL_CC_PHP_CL_CC_VM_ROOT" "../cl-cc-vm")))
 
-(defvar *cl-weave-root*
-  (%env-or "CL_CC_PHP_CL_WEAVE_ROOT" "../cl-weave"))
-
-(defvar *cl-prolog-kit-root*
-  (%env-or "CL_CC_PHP_CL_PROLOG_KIT_ROOT" "../cl-prolog-kit"))
-
-(defvar *cl-prolog-root*
-  (%env-or "CL_CC_PHP_CL_PROLOG_ROOT" "../cl-prolog"))
-
-(defvar *cl-parser-kit-root*
-  (%env-or "CL_CC_PHP_CL_PARSER_KIT_ROOT" "../cl-parser-kit"))
-
-(defvar *cl-json-kit-root*
-  (%env-or "CL_CC_PHP_CL_JSON_KIT_ROOT" "../cl-json-kit"))
-
-(defvar *cl-host-kit-root*
-  (%env-or "CL_CC_PHP_CL_HOST_KIT_ROOT" "../cl-host-kit"))
-
-(defparameter *cl-cc-package-subdirs*
-  ;; Every packages/<name>/ under the cl-cc checkout that :cl-cc-php/test
-  ;; needs, transitively, to load: cl-cc-php's own four dependencies
-  ;; (bootstrap ast parse vm) plus everything cl-cc-pipeline pulls in to
-  ;; compile-and-run PHP source end-to-end for the e2e suites. Determined
-  ;; empirically by loading :cl-cc-php/test and following each
-  ;; MISSING-DEPENDENCY error to its system.
-  '("bootstrap" "ast" "parse" "vm" "runtime" "type" "mir" "optimize" "emit"
-    "expand" "compile" "cps" "codegen" "target" "regalloc" "bytecode" "ir"
-    "binary" "stdlib" "javascript" "pipeline"))
+(defparameter *cl-support-roots*
+  (list
+   (%env-or "CL_CC_PHP_CL_WEAVE_ROOT" "../cl-weave")
+   (%env-or "CL_CC_PHP_CL_PARSER_KIT_ROOT" "../cl-parser-kit")
+   (%env-or "CL_CC_PHP_CL_REGEX_KIT_ROOT" "../cl-regex-kit")
+   (%env-or "CL_CC_PHP_CL_TTY_KIT_ROOT" "../cl-tty-kit")
+   (%env-or "CL_CC_PHP_CL_LOG_KIT_ROOT" "../cl-log-kit")
+   (%env-or "CL_CC_PHP_CL_PROCESS_KIT_ROOT" "../cl-process-kit")
+   (%env-or "CL_CC_PHP_CL_CODEC_KIT_ROOT" "../cl-codec-kit")
+   (%env-or "CL_CC_PHP_CL_CONCURRENT_KIT_ROOT" "../cl-concurrent-kit")
+   (%env-or "CL_CC_PHP_CL_BOUNDARY_KIT_ROOT" "../cl-boundary-kit")
+   (%env-or "CL_CC_PHP_CL_DATE_KIT_ROOT" "../cl-date-kit")
+   (%env-or "CL_CC_PHP_CL_JSON_KIT_ROOT" "../cl-json-kit")
+   (%env-or "CL_CC_PHP_CL_HOST_KIT_ROOT" "../cl-host-kit")))
 
 (defun %tree (pathname)
   (list :tree (uiop:ensure-directory-pathname pathname)))
@@ -71,20 +55,12 @@ arrives through its env var and this branch is not taken."
 (asdf:initialize-source-registry
  (list*
   :source-registry
-  (%tree (uiop:ensure-directory-pathname *cl-weave-root*))
-  (%tree (uiop:ensure-directory-pathname *cl-prolog-root*))
-  (%tree (uiop:ensure-directory-pathname *cl-prolog-kit-root*))
-  (%tree (uiop:ensure-directory-pathname *cl-parser-kit-root*))
-  (%tree (uiop:ensure-directory-pathname *cl-json-kit-root*))
-  (%tree (uiop:ensure-directory-pathname *cl-host-kit-root*))
-  (%tree (uiop:getcwd))
   (append
-   (mapcar (lambda (subdir)
-             (%tree (merge-pathnames
-                     (format nil "packages/~A/" subdir)
-                     (uiop:ensure-directory-pathname *cl-cc-root*))))
-           *cl-cc-package-subdirs*)
-   (list :ignore-inherited-configuration))))
+   (mapcar (function %tree) *cl-cc-roots*)
+   (mapcar (function %tree) *cl-support-roots*)
+   (list
+    (%tree (uiop:getcwd))
+    :ignore-inherited-configuration))))
 
 (handler-case
     (progn

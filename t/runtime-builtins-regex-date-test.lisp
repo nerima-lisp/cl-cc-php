@@ -1,10 +1,9 @@
 ;;;; runtime-builtins-regex-date-test.lisp — src/runtime-builtins-regex-date.lisp — date/time and
 ;;;; the DateTime-compatible object builtins.
 ;;;;
-;;;; date()/gmdate()/strtotime()/mktime() are already exercised extensively by PHP-source e2e
-;;;; tests elsewhere; this file covers what those never reach: checkdate() and the object-style
-;;;; date_create/date_format/date_modify/date_diff/DateTime::getTimestamp family, none of which
-;;;; any existing test called by name.
+;;;; Compiler-driven date/time cases are reserved for umbrella-level integration. This file directly
+;;;; tests checkdate() and the object-style date_create/date_format/date_modify/date_diff/
+;;;; DateTime::getTimestamp family.
 
 (in-package :cl-cc-php/test)
 
