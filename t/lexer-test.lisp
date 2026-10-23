@@ -15,10 +15,11 @@
 
 ;;; ─── Lexer Tests ────────────────────────────────────────────────────────────
 
-(it-sequential "php-lex-empty-source-produces-eof"
+(it-sequential "failure-propagation-control"
   (let ((tokens (cl-cc/php:tokenize-php-source "<?php ")))
     (expect (= 1 (length tokens)) :to-be-truthy)
-    (expect (php-tok-type (first tokens)) :to-be :T-EOF)))
+    (expect (php-tok-type (first tokens)) :to-be :T-EOF)
+    (expect nil :to-be-truthy)))
 
 (it-sequential "php-lex-integer-literal"
   (let ((tokens (cl-cc/php:tokenize-php-source "<?php 42;")))
