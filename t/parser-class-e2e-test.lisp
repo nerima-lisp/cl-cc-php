@@ -24,12 +24,21 @@
 
 (it-sequential
     "php-parse-enum-static-builtins"
-    (expect
-      (= 5
-         (length
-          (cl-cc/php:parse-php-source
-           "<?php enum Status: int { case Draft = 0; case Published = 1; } $a = Status::Published; $b = Status::from(1); $c = Status::tryFrom(99); $d = Status::cases();")))
-      :to-be-truthy))
+    (let* ((asts
+             (cl-cc/php:parse-php-source
+              "<?php enum Status: int { case Draft = 0; case Published = 1; } $a = Status::Published; $b = Status::from(1); $c = Status::tryFrom(99); $d = Status::cases();"))
+           (form (first asts))
+           (enum
+             (if (cl-cc/ast:ast-progn-p form)
+                 (first (cl-cc/ast:ast-progn-forms form))
+                 form)))
+      (expect (= 2 (length asts)) :to-be-truthy)
+      (expect (cl-cc/ast:ast-defclass-p enum) :to-be-truthy)
+      (expect
+        (cl-cc/ast:ast-defclass-php-kind enum)
+        :to-be
+        :enum)
+      (expect (cl-cc/ast:ast-let-p (second asts)) :to-be-truthy)))
 
 
   )

@@ -18,9 +18,9 @@
     (expect (= -2 (cl-cc/php:%php-bitwise-not 1)) :to-be-truthy))
   (it-sequential
     "php-parse-expression-operators"
-    (expect
-      (= 10
-         (length
-          (cl-cc/php:parse-php-source
-           "<?php $a = 2 ** 3 ** 2; $b = 7 % 4; $c = 1 << 3; $d = 8 >> 1; $e = 1 <=> 2; $f = 6 & 3; $g = 6 ^ 3; $h = 4 | 1; $i = ~1; $j = 1 + 2 . 3;")))
-      :to-be-truthy)))
+    (let ((asts
+            (cl-cc/php:parse-php-source
+             "<?php $a = 2 ** 3 ** 2; $b = 7 % 4; $c = 1 << 3; $d = 8 >> 1; $e = 1 <=> 2; $f = 6 & 3; $g = 6 ^ 3; $h = 4 | 1; $i = ~1; $j = 1 + 2 . 3;")))
+      (expect (= 1 (length asts)) :to-be-truthy)
+      (expect (cl-cc/ast:ast-let-p (first asts)) :to-be-truthy)
+      (expect (cl-cc/php:php-check-supported-forms asts) :to-be-truthy))))
