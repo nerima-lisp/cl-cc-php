@@ -313,6 +313,57 @@
                 touch "$out/passed"
               '';
 
+          orphan-tests =
+            pkgs.runCommand "cl-cc-php-orphan-tests"
+              {
+                nativeBuildInputs = [
+                  pkgs.coreutils
+                  pkgs.findutils
+                  pkgs.gnugrep
+                  pkgs.sbcl
+                ];
+              }
+              ''
+                set -euo pipefail
+                cd ${self}
+                test_files="$(find t -type f -name '*.lisp' -print | sort)"
+                test -n "$test_files"
+                file_count="$(printf '%s\n' "$test_files" | wc -l)"
+                echo "Checking $file_count Lisp files under t/ against cl-cc-php.asd"
+                cat > "$TMPDIR/component-files.lisp" <<'LISP'
+                (require :asdf)
+                (asdf:load-asd (truename "cl-cc-php.asd"))
+
+                (defun component-files (component)
+                  (let ((pathname (asdf:component-pathname component)))
+                    (append
+                     (when (and pathname
+                                (not (uiop:directory-pathname-p pathname))
+                                (uiop:file-exists-p pathname))
+                       (list (namestring (truename pathname))))
+                     (when (typep component 'asdf:module)
+                       (mapcan #'component-files
+                               (asdf:component-children component))))))
+
+                (dolist (pathname
+                         (component-files (asdf:find-system "cl-cc-php/test")))
+                  (write-line pathname))
+                LISP
+                sbcl --script "$TMPDIR/component-files.lisp" > "$TMPDIR/loaded-test-files"
+                orphaned=0
+                while IFS= read -r file; do
+                  resolved="$(readlink -f "$file")"
+                  if ! grep -Fxq "$resolved" "$TMPDIR/loaded-test-files"; then
+                    echo "Unloaded test file: $file"
+                    orphaned=1
+                  fi
+                done <<EOF
+                $test_files
+                EOF
+                test "$orphaned" -eq 0
+                touch "$out"
+              '';
+
           # Fails `nix flake check` when any tracked file is unformatted,
           # turning the formatter into an enforced CI gate.
           formatting = treefmtEval.${system}.config.build.check self;

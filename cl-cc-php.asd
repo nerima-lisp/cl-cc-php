@@ -140,6 +140,9 @@
   :depends-on (:cl-cc-php :cl-weave)
   :pathname "t"
   :serial t
+  :perform (test-op (operation system)
+             (declare (ignore operation system))
+             (funcall (find-symbol "RUN-TESTS" "CL-CC-PHP/TEST")))
   :components
   ((:file "package")
    (:file "helpers-parser")

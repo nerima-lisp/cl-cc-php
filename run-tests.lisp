@@ -63,11 +63,7 @@ arrives through its env var and this branch is not taken."
     :ignore-inherited-configuration))))
 
 (handler-case
-    (progn
-      (asdf:load-system :cl-cc-php/test)
-      ;; RUN-TESTS signals an error on any failure rather than returning NIL,
-      ;; so reaching past this call at all already means the suite is green.
-      (funcall (find-symbol "RUN-TESTS" "CL-CC-PHP/TEST")))
+    (asdf:test-system :cl-cc-php)
   (error (e)
     (format t "~&FAIL cl-cc-php/test: ~A~%" e)
     (finish-output)
