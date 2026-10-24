@@ -172,6 +172,7 @@
                 ;; runtime-bridge-provider.lisp.
                 #:register-backend-parser
                 #:register-backend-bridge-provider
+                #:register-backend-input-validator
                 ;; Hooks the runtime installs itself into so that PHP callables
                 ;; become callable from compiled VM code.
                 #:*runtime-vm-callable-register-hook*

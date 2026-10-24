@@ -9,7 +9,7 @@
     # Compiler systems are pinned to their child-main snapshots from the
     # umbrella pinset so this flake consumes only the packages it needs.
     cl-cc-bootstrap = {
-      url = "github:nerima-lisp/cl-cc-bootstrap/027f6c9826010c15789454e69abd2930738b50af";
+      url = "github:nerima-lisp/cl-cc-bootstrap/2aa21fe542cbf00fe4f9e93ade891512f3bc7b71";
       flake = false;
     };
     cl-cc-ast = {
