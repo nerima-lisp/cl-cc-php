@@ -46,3 +46,4 @@ prevent."
 
 (register-backend-parser
  :php (lambda (source) (values (parse-php-source source) nil)))
+(register-backend-input-validator :php #'php-check-supported-forms)

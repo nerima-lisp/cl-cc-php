@@ -8,7 +8,7 @@
 
 (in-package :cl-cc-php/test)
 
-(describe "PHP backend bridge provider"
+(describe "PHP backend registration"
 
 (it-sequential "%php-host-bridge-entries returns only fbound, non-macro %PHP-* symbols from cl-cc/php"
   (let ((entries (cl-cc/php::%php-host-bridge-entries)))
@@ -29,5 +29,9 @@
                   (cl-cc/php::%php-host-bridge-entries))))
     (dolist (expected '("%PHP-ABS" "%PHP-ARRAY-MERGE" "%PHP-STRLEN"))
       (expect (member expected names :test #'string=) :to-be-truthy))))
+
+(it-sequential "registers the PHP supported-form validator"
+  (expect (cl-cc/bootstrap:find-backend-input-validator :php)
+          :to-be #'cl-cc/php:php-check-supported-forms))
 
   )
