@@ -283,5 +283,6 @@
    (:module "backend" :serial t :components
      ((:file "package")
       (:file "parser-class-test")
-      (:file "runtime-bridge-provider-test")))
+      (:file "runtime-bridge-provider-test")
+      (:file "runtime-bridge-current-closure-test")))
   ))
