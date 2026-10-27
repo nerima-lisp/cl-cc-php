@@ -1,6 +1,6 @@
-;;;; Runtime helpers for PHP lowering: object clone, generators, and exceptions.
+;;;; Runtime helpers for PHP lowering: generators.
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/generators)
 
 ;;; -----------------------------------------------------------------------
 ;;;  PHP Generator — eager evaluation with pre-collected value queue
@@ -16,47 +16,8 @@
   return-value  ; the generator's final return value
   done-p)       ; true when all values have been consumed
 
-(defun %php-has-method (instance name-sym)
-  "Return true when INSTANCE's class defines a slot/method named NAME-SYM. Used by
-the `new C(args)' lowering to call __construct only when it exists — the call
-itself runs through the normal method-dispatch (vm-call) path, so the constructor
-executes in the right VM context."
-  (and (cl-cc/vm::%vm-vector-instance-p instance)
-       (let ((class (aref instance 0)))
-         (and (hash-table-p class)
-              (cl-cc/vm::%vm-slot-vector-index class name-sym)
-              t))))
-
-(defun %php-clone (instance)
-  "Return PHP's shallow object clone. The parser is responsible for invoking a
-class-defined __clone method on the copied object so the call stays inside the
-normal VM method-dispatch path."
-  (handler-case
-      (cl-cc/vm::copy-instance instance)
-    (error (condition)
-      (error "Cannot clone non-object value ~S: ~A" instance condition))))
-
-(defun %php-clone-with-slot (property)
-  "Map a PHP clone-with property key to the VM slot symbol used by class fields."
-  (intern (string-upcase (%php-stringify property)) (find-package :cl-cc/php)))
-
-(defun %php-clone-with (instance overrides)
-  "Apply PHP 8.5 clone-with property OVERRIDES to already-cloned INSTANCE."
-  (unless (hash-table-p overrides)
-    (%php-throw 'type-error "clone-with overrides must be an array"))
-  (dolist (pair (%php-array-pairs overrides) instance)
-    (let* ((slot (%php-clone-with-slot (car pair)))
-           (class (and (cl-cc/vm::%vm-vector-instance-p instance)
-                       (aref instance 0)))
-           (index (and class
-                       (cl-cc/vm::%vm-slot-vector-index class slot))))
-      (unless (and index (< index (length instance)))
-        (%php-throw 'error
-                    (format nil "The slot ~S is missing from the cloned object"
-                            slot)))
-      (setf (aref instance index) (cdr pair)))))
-
 (defun %php-generator-p (x) (php-generator-p x))
+(defun %php-generator-value-count (generator) (length (php-gen-values generator)))
 
 (defvar *current-generator* nil
   "Dynamically bound to the collecting generator during host-only evaluation
@@ -190,40 +151,5 @@ lists get sequential integer keys 0,1,2,..."
      (loop for v in iterable for i from 0 collect (cons i v)))
     (t (error "PHP foreach: value is not iterable: ~S" iterable))))
 
-(defun %php-throw (class-name value)
-  "Signal VALUE as a PHP exception with CLASS-NAME metadata."
-  (error 'php-exception :class-name class-name :value value))
+(eval-when (:load-toplevel :execute) (register-php-runtime-symbol :yield '%php-yield) (register-php-runtime-symbol :yield-from '%php-yield-from) (register-php-runtime-symbol :generator-enter '%php-generator-enter) (register-php-runtime-symbol :generator-exit '%php-generator-exit))
 
-(defun %php-make-exception (class-name value)
-  "Return a lightweight PHP exception payload for VM catch/throw lowering."
-  (list :php-exception class-name value))
-
-(defun %php-exception-object-p (value)
-  "Return true when VALUE is a PHP exception payload or condition."
-  (or (typep value 'php-exception)
-      (and (consp value) (eq (first value) :php-exception))))
-
-(defun %php-exception-class (value)
-  "Return VALUE's PHP exception class metadata when present."
-  (cond ((typep value 'php-exception) (php-exception-class-name value))
-        ((and (consp value) (eq (first value) :php-exception)) (second value))
-        (t nil)))
-
-(defun %php-exception-value (value)
-  "Return the thrown PHP exception value from VALUE, preserving non-payloads."
-  (cond ((typep value 'php-exception) (php-exception-value value))
-        ((and (consp value) (eq (first value) :php-exception)) (third value))
-        (t value)))
-
-(defun %php-exception-matches-p (condition class-name)
-  "Return true when PHP exception CONDITION matches CLASS-NAME."
-  (and (%php-exception-object-p condition)
-       (cond ((listp class-name)
-              (some (lambda (name) (%php-exception-matches-p condition name)) class-name))
-             (t
-              (let ((actual (%php-exception-class condition)))
-                (or (null class-name)
-                    (eq class-name 'php-exception)
-                    (eq class-name actual)
-                    (and actual
-                         (string= (symbol-name class-name) (symbol-name actual)))))))))

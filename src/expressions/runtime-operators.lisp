@@ -1,17 +1,6 @@
-;;;; Runtime helpers for PHP lowering: value coercion, operators, and enums.
+;;;; Runtime helpers for PHP lowering: value coercion and operators.
 
-(in-package :cl-cc/php)
-
-(defun %php-truthy (value)
-  "Return VALUE interpreted according to PHP truthiness rules."
-  (cond ((%php-null-p value) nil)
-        ((null value) nil)
-        ((and (integerp value) (zerop value)) nil)
-        ((and (floatp value) (zerop value)) nil)
-        ((and (stringp value) (or (string= value "") (string= value "0"))) nil)
-        ((%php-object-table-p value) t)
-        ((and (hash-table-p value) (%php-array-empty-p value)) nil)
-        (t t)))
+(in-package #:cl-cc/php/expressions)
 
 (defun %php-numeric (x)
   "PHP numeric coercion for an arithmetic operand: number -> itself, null -> 0,
@@ -25,24 +14,11 @@ number operand (null + 3, '5' + 3, true + 1 all signalled `not of type NUMBER').
         ((stringp x) (%php-to-number x))
         (t 0)))
 
-(defun %php-array-union (a b)
-  "PHP array + : a new array with all of A's entries (keys preserved), plus B's
-entries whose keys are not already present in A — the LEFT operand wins on key
-conflicts.  Unlike array_merge, integer keys are NOT reindexed."
-  (let ((result (%php-array))
-        (a-keys (gethash +php-array-order-key+ a)))
-    (dolist (pair (%php-array-pairs a))
-      (%php-array-set result (car pair) (cdr pair)))
-    (dolist (pair (%php-array-pairs b))
-      (unless (member (car pair) a-keys :test #'equal)
-        (%php-array-set result (car pair) (cdr pair))))
-    result))
-
 (defun %php-add (a b)
   "PHP + : array UNION when both operands are arrays (left keys win, keys
 preserved), otherwise numeric addition with operand coercion."
   (if (and (hash-table-p a) (hash-table-p b))
-      (%php-array-union a b)
+      (call-php-array-expression-lowerer :union a b)
       (+ (%php-numeric a) (%php-numeric b))))
 
 (defun %php-unary-plus (value)
@@ -123,58 +99,6 @@ rational (10 / 4 -> 5/2, printed \"5/2\")."
   "PHP !== : the negation of strict equality."
   (not (%php-eq-strict a b)))
 
-(defun %php-strlen (s)
-  "Return the length of string S."
-  (check-type s string)
-  (length s))
-
-(defun %php-strtolower (s)
-  "Return S converted to lowercase."
-  (check-type s string)
-  (string-downcase s))
-
-(defun %php-strtoupper (s)
-  "Return S converted to uppercase."
-  (check-type s string)
-  (string-upcase s))
-
-(defun %php-number-to-string (n)
-  "Format a PHP number the way echo / string interpolation does: integers as-is,
-floats (and the rationals PHP / can produce) with up to 14 significant digits,
-trailing zeros trimmed, no exponent marker — and a whole-valued float prints as
-an integer (3.0 -> \"3\").  princ-to-string leaked the CL form: \"1.5d0\", \"5/2\"."
-  (cond
-    ((integerp n) (princ-to-string n))
-    (t
-     (let ((d (coerce n 'double-float)))
-       (cond
-         ;; whole-valued within the integer-printable range
-         ((and (= d (ftruncate d)) (< (abs d) 1d15))
-          (princ-to-string (truncate d)))
-         (t
-          ;; 14 fractional digits then trim trailing zeros (whole case handled
-          ;; above, so a fractional digit always remains).
-          (let* ((s (format nil "~,14F" d))
-                 (dot (position #\. s)))
-            (if dot
-                (let ((end (1+ (position-if (lambda (c) (char/= c #\0)) s :from-end t))))
-                  (subseq s 0 (max end (+ dot 2))))
-                s))))))))
-
-(defun %php-stringify (value)
-  "Convert VALUE to PHP's simple string representation for interpolation."
-  (cond ((%php-null-p value) "")
-        ((null value) "")
-        ((eq value t) "1")
-        ((stringp value) value)
-        ((numberp value) (%php-number-to-string value))
-        ((hash-table-p value) "Array")
-        (t (princ-to-string value))))
-
-(defun %php-concat (&rest values)
-  "Concatenate VALUES after PHP-style string conversion."
-  (apply #'concatenate 'string (mapcar #'%php-stringify values)))
-
 (defun %php-to-integer (value)
   "Coerce VALUE to an integer for PHP arithmetic/bitwise helpers."
   (cond ((integerp value) value)
@@ -247,67 +171,18 @@ the %PHP-SPACESHIP result against 0 with CMP."
   (check-type var symbol)
   (boundp var))
 
-(defun %php-enum-make-case (enum-name case-name value)
-  "Create a PHP enum case singleton payload.  `name' and `value' are stored under
-STRING keys so $case->name / $case->value resolve through the slot-read string-
-key fallback (a symbol key would require the runtime-interned property symbol to
-land in the same package, which it does not reliably)."
-  ;; :test #'equal — the slot-read string-key fallback looks up "name"/"value"
-  ;; with a freshly built string, which is not EQ to the stored key; equal makes
-  ;; both the string property keys and the keyword internal keys resolve.
-  (let ((case (make-hash-table :test #'equal)))
-    (setf (gethash :__php-enum-case__ case) t
-          (gethash :__enum-name__ case) enum-name
-          (gethash :__case-name__ case) case-name
-          (gethash "value" case) value
-          (gethash "name" case) (symbol-name case-name))
-    case))
+(defun %php-pipe (value callable)
+  "Apply PHP 8.5 pipe operator VALUE |> CALLABLE."
+  (let ((fn (call-php-expression-callable-resolver callable)))
+    (if fn
+        (funcall fn value)
+        (%php-throw 'type-error
+                    "Pipe operator RHS must be a valid callable"))))
 
-(defun %php-enum-case-p (value)
-  "Return true when VALUE is a PHP enum case payload."
-  (and (hash-table-p value) (gethash :__php-enum-case__ value)))
+(in-package #:cl-cc/php/expressions)
 
-(defun %php-enum-finalize (enum-class)
-  "Link each of ENUM-CLASS's case singletons to the class via :__class__ so that
-$case->method() dispatches through the class.  (Enum methods are stored class-
-allocated, so slot-read on a case whose __class__ is the enum class resolves
-them.)  Returns ENUM-CLASS."
-  (when (hash-table-p enum-class)
-    (dolist (case (%php-enum-case-list enum-class))
-      (setf (gethash :__class__ case) enum-class)))
-  enum-class)
-
-(defun %php-enum-case-list (enum-class)
-  "Return ENUM-CLASS's case singleton payloads as a CL list (insertion order)."
-  (check-type enum-class hash-table)
-  (loop for slot-name in (gethash :__class-slots__ enum-class)
-        for slot-value = (gethash slot-name enum-class)
-        when (%php-enum-case-p slot-value)
-          collect slot-value))
-
-(defun %php-enum-cases (enum-class)
-  "Return ENUM::cases() — a PHP ARRAY of the case singletons (so count(), foreach,
-etc. work). The previous CL list broke count()/array builtins."
-  (%php-list-to-array (%php-enum-case-list enum-class)))
-
-(defun %php-enum-case-value (enum-case)
-  "Return ENUM-CASE's backed value, or PHP null for unit cases."
-  (check-type enum-case hash-table)
-  (gethash "value" enum-case +php-null+))
-
-(defun %php-enum-try-from (enum-class value)
-  "Return the backed enum case from ENUM-CLASS matching VALUE, or PHP null."
-  (or (find value (%php-enum-case-list enum-class)
-            :key #'%php-enum-case-value
-            :test #'%php-eq-strict)
-      +php-null+))
-
-(defun %php-enum-from (enum-class value)
-  "Return the backed enum case from ENUM-CLASS matching VALUE, or signal a PHP ValueError."
-  (let ((case (%php-enum-try-from enum-class value)))
-    (if (%php-null-p case)
-        (%php-throw 'value-error (format nil "No enum case for value ~S" value))
-        case)))
-
-;;; ─── Enum case accessors ────────────────────────────────────────────────────
-
+(defun %php-concat (&rest values)
+  "Concatenate VALUES after PHP-style string conversion."
+  (apply #'concatenate 'string (mapcar #'%php-stringify values)))
+(eval-when (:load-toplevel :execute)
+  (register-php-runtime-symbol :concat '%php-concat))

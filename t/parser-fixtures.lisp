@@ -3,7 +3,7 @@
 ;;;; Not a suite: %php-first and friends are used by every parser-*-test.lisp file, which is why
 ;;;; this is named helpers-* rather than *-test.
 
-(in-package :cl-cc-php/test)
+(in-package :cl-cc/php/test-support)
 
 
 (defun %php-first (src)
@@ -22,3 +22,10 @@
              (cl-cc/ast:ast-var-p (cl-cc/ast:ast-call-func ast)))
     (symbol-name (cl-cc/ast:ast-var-name (cl-cc/ast:ast-call-func ast)))))
 
+(defun %php-cst-ts (php-source)
+  "Tokenize PHP-SOURCE (a full \"<?php ...\" snippet) and wrap it in a
+php-token-stream, ready for the php-cst-parse-* functions."
+  (cl-cc/php/syntax:make-php-token-stream
+   :tokens (cl-cc/php:tokenize-php-source php-source)
+   :source php-source
+   :diagnostics nil))

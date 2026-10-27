@@ -1,6 +1,6 @@
 ;;;; PHP ordered array runtime model.
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/arrays)
 
 (defun %php-array-empty-p (ht)
   "Return true when PHP ordered array HT contains no user entries."
@@ -143,3 +143,34 @@ elements in — integer keys re-indexed, string keys preserved (PHP 8.1)."
            (%php-array-set array
                            (if key-present-p key (%php-array-next-auto-index array))
                            value)))))))
+
+(defun %php-array-union (a b)
+  "PHP array + : a new array with all of A's entries (keys preserved), plus B's
+entries whose keys are not already present in A — the LEFT operand wins on key
+conflicts.  Unlike array_merge, integer keys are NOT reindexed."
+  (let ((result (%php-array))
+        (a-keys (gethash +php-array-order-key+ a)))
+    (dolist (pair (%php-array-pairs a))
+      (%php-array-set result (car pair) (cdr pair)))
+    (dolist (pair (%php-array-pairs b))
+      (unless (member (car pair) a-keys :test #'equal)
+        (%php-array-set result (car pair) (cdr pair))))
+    result))
+(defun %php-array-append-assignment (array value)
+  "Append VALUE to ARRAY and return the resulting entry count."
+  (%php-array-set array (%php-array-next-auto-index array) value)
+  (%php-count array))
+
+(in-package #:cl-cc/php/arrays)
+
+(defun %php-array-append-target (&rest _)
+  "Stub for the $a[] append marker reached in read context, which is a PHP fatal
+error (\"Cannot use [] for reading\"). Valid code consumes the marker at assignment
+time, so this only fires on misuse."
+  (declare (ignore _))
+  (%php-fatal-error "PHP fatal error: Cannot use [] for reading"))
+
+(eval-when (:load-toplevel :execute)
+  (register-php-array-empty-predicate (function %php-array-empty-p))
+  (register-php-runtime-symbol :spread '%php-spread))
+

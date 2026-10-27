@@ -5,7 +5,7 @@
 ;;;; properties below hold for EVERY input, so a generator-driven check catches edge cases
 ;;;; hand-picked cases miss.
 
-(in-package :cl-cc-php/test)
+(in-package :cl-cc/php/strings/test)
 
 (describe "PHP string case-conversion properties"
 
