@@ -147,7 +147,6 @@
    #:%php-array-first
    #:%php-array-key-exists
    #:%php-array-last
-   #:%php-array-pairs
    #:%php-array-ref
    #:%php-array-set
    #:%php-array-unset
@@ -196,8 +195,6 @@
    #:%php-locale-add-likely-subtags
    #:%php-locale-is-right-to-left
    #:%php-locale-minimize-subtags
-   #:%php-lookup-builtin
-   #:%php-lookup-builtin-symbol
    #:%php-make-exception
    #:%php-make-generator
    #:%php-make-ref
@@ -215,8 +212,6 @@
    #:%php-predefined-class-constant
    #:%php-ref-p
    #:%php-ref-set!
-   #:%php-register-all-builtins
-   #:%php-register-builtin
    #:%php-shift-left
    #:%php-shift-right
    #:%php-spaceship
@@ -231,7 +226,6 @@
    #:%php-yield
    #:%php-yield-from
    #:*current-generator*
-   #:*php-builtin-registry*
    #:*php-by-ref-param-registry*
    #:*php-interface-registry*
    #:*php-named-param-registry*
