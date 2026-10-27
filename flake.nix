@@ -294,6 +294,27 @@
         system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
+          featureLintCore = cl-nix-forge.lib.${system}.mkFeatureLintCheck {
+            src = ./.;
+            featureDefinitions = "nix/feature-dependencies.sexp";
+            glossary = "docs/src/reference/glossary.md";
+            glossaryHeadingPrefix = "## ";
+            exportSurface = "t/export-surface.txt";
+            mode = "transition";
+            legacyInternalRefs = "t/legacy-internal-refs.sexp";
+            forbiddenNames = [
+              "phases"
+              "misc"
+              "utils"
+              "helpers"
+            ];
+            numberedPrefixes = [
+              "FR-"
+              "W"
+            ];
+            packagePrefix = "cl-cc/php/";
+            infraSuffix = "/infra";
+          };
         in
         {
           default =
@@ -370,27 +391,17 @@
                 touch "$out"
               '';
 
-          feature-lint = cl-nix-forge.lib.${system}.mkFeatureLintCheck {
-            src = ./.;
-            featureDefinitions = "nix/feature-dependencies.sexp";
-            glossary = "docs/src/reference/glossary.md";
-            glossaryHeadingPrefix = "## ";
-            exportSurface = "t/export-surface.txt";
-            mode = "transition";
-            legacyInternalRefs = "t/legacy-internal-refs.sexp";
-            forbiddenNames = [
-              "phases"
-              "misc"
-              "utils"
-              "helpers"
-            ];
-            numberedPrefixes = [
-              "FR-"
-              "W"
-            ];
-            packagePrefix = "cl-cc/php/";
-            infraSuffix = "/infra";
-          };
+          feature-lint =
+            pkgs.runCommand "cl-cc-php-feature-lint"
+              {
+                nativeBuildInputs = [ pkgs.sbcl ];
+              }
+              ''
+                test -e ${featureLintCore}
+                cd ${self}
+                sbcl --script nix/check-feature-test-pairing.lisp
+                touch "$out"
+              '';
 
           # Fails `nix flake check` when any tracked file is unformatted,
           # turning the formatter into an enforced CI gate.
