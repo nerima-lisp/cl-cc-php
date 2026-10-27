@@ -1,17 +1,8 @@
 ;;;; t/package.lisp — the test package for cl-cc-php.
 
 (defpackage :cl-cc-php/test
-  (:use :cl :cl-cc/ast :cl-cc/parse :cl-cc/php)
-  (:shadowing-import-from :cl-weave #:describe)
-  (:import-from :cl-weave
-                #:expect
-                #:it-sequential
-                #:it-sequential-each
-                #:it-property
-                #:it-fuzz
-                #:signals
-                #:run-all
-                #:gen-string)
+  (:use :cl)
+  (:import-from :cl-weave #:run-all)
   (:export #:run-tests))
 
 (in-package :cl-cc-php/test)

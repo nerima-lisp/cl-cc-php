@@ -1,0 +1,490 @@
+(in-package #:cl-cc/php/stdlib)
+
+(defparameter +php-uri-rfc3986-methods+ nil)
+(defparameter +php-uri-whatwg-methods+ nil)
+
+(defun %php-uri-class-name (name)
+  (let ((s (%php-stringify name)))
+    (cond
+      ((string-equal s "Uri\\Rfc3986\\Uri") "Uri\\Rfc3986\\Uri")
+      ((string-equal s "Uri\\WhatWg\\Url") "Uri\\WhatWg\\Url")
+      (t s))))
+
+(defun %php-uri-null-or-string (value)
+  (if (or (null value) (%php-null-p value))
+      +php-null+
+      (%php-stringify value)))
+
+(defun %php-uri-find-any (text chars &optional (start 0))
+  (loop for i from start below (length text)
+        when (find (char text i) chars :test #'char=)
+          do (return i)))
+
+(defun %php-uri-split-before (text ch)
+  (let ((pos (position ch text :test #'char=)))
+    (if pos
+        (values (subseq text 0 pos) (subseq text (1+ pos)) t)
+        (values text nil nil))))
+
+(defun %php-uri-scheme-boundary (text)
+  (let ((colon (position #\: text :test #'char=))
+        (special (%php-uri-find-any text '(#\/ #\? #\#))))
+    (when (and colon (or (null special) (< colon special)))
+      colon)))
+
+(defun %php-uri-alpha-char-p (ch)
+  (or (char<= #\a ch #\z)
+      (char<= #\A ch #\Z)))
+
+(defun %php-uri-scheme-char-p (ch)
+  (or (%php-uri-alpha-char-p ch)
+      (digit-char-p ch)
+      (find ch '(#\+ #\- #\.) :test #'char=)))
+
+(defun %php-uri-valid-scheme-p (scheme)
+  (and (stringp scheme)
+       (> (length scheme) 0)
+       (%php-uri-alpha-char-p (char scheme 0))
+       (loop for i from 1 below (length scheme)
+             always (%php-uri-scheme-char-p (char scheme i)))))
+
+(defun %php-uri-hex-digit-p (ch)
+  (not (null (digit-char-p ch 16))))
+
+(defun %php-uri-valid-percent-encoding-p (value)
+  (or (%php-null-p value)
+      (loop with text = (%php-stringify value)
+            for i from 0 below (length text)
+            always (let ((ch (char text i)))
+                     (or (not (char= ch #\%))
+                         (and (<= (+ i 2) (1- (length text)))
+                              (%php-uri-hex-digit-p (char text (1+ i)))
+                              (%php-uri-hex-digit-p (char text (+ i 2)))))))))
+
+(defun %php-uri-valid-characters-p (value)
+  (or (%php-null-p value)
+      (loop for ch across (%php-stringify value)
+            for code = (char-code ch)
+            always (and (> code 32) (/= code 127)))))
+
+(defun %php-uri-valid-port-p (port)
+  (or (%php-null-p port)
+      (and (stringp port)
+           (> (length port) 0)
+           (every #'digit-char-p port)
+           (<= (parse-integer port :junk-allowed nil) 65535))))
+
+(defun %php-uri-valid-components-p (text components whatwg-p base)
+  (destructuring-bind (&key scheme username password host port path query fragment)
+      components
+    (let ((has-scheme (not (%php-null-p scheme))))
+      (and (if (%php-uri-scheme-boundary text)
+               (and has-scheme (%php-uri-valid-scheme-p scheme))
+               (not has-scheme))
+           (%php-uri-valid-characters-p text)
+           (%php-uri-valid-percent-encoding-p username)
+           (%php-uri-valid-percent-encoding-p password)
+           (%php-uri-valid-percent-encoding-p host)
+           (%php-uri-valid-percent-encoding-p path)
+           (%php-uri-valid-percent-encoding-p query)
+           (%php-uri-valid-percent-encoding-p fragment)
+           (%php-uri-valid-port-p port)
+           (or (not whatwg-p)
+               has-scheme
+               (hash-table-p base))))))
+
+(defun %php-uri-parse-components (uri)
+  (let* ((text (%php-stringify uri))
+         (scheme +php-null+)
+         (username +php-null+)
+         (password +php-null+)
+         (host +php-null+)
+         (port +php-null+)
+         (path "")
+         (query +php-null+)
+         (fragment +php-null+)
+         (rest text))
+    (let ((colon (position #\: rest :test #'char=))
+          (special (%php-uri-find-any rest '(#\/ #\? #\#))))
+      (when (and colon (or (null special) (< colon special)))
+        (setf scheme (subseq rest 0 colon)
+              rest (subseq rest (1+ colon)))))
+    (when (and (>= (length rest) 2)
+               (string= rest "//" :start1 0 :end1 2))
+      (setf rest (subseq rest 2))
+      (let* ((auth-end (or (%php-uri-find-any rest '(#\/ #\? #\#))
+                           (length rest)))
+             (authority (subseq rest 0 auth-end)))
+        (setf rest (subseq rest auth-end))
+        (multiple-value-bind (userinfo hostport has-userinfo)
+            (%php-uri-split-before authority #\@)
+          (when has-userinfo
+            (multiple-value-bind (user pass has-pass)
+                (%php-uri-split-before userinfo #\:)
+              (setf username user)
+              (when has-pass
+                (setf password pass))))
+          (let ((target (if has-userinfo hostport userinfo)))
+            (multiple-value-bind (h p has-port)
+                (%php-uri-split-before target #\:)
+              (setf host (if (string= h "") +php-null+ h))
+              (when has-port
+                (setf port p)))))))
+    (multiple-value-bind (before-frag frag has-frag)
+        (%php-uri-split-before rest #\#)
+      (when has-frag
+        (setf fragment frag))
+      (multiple-value-bind (before-query qry has-query)
+          (%php-uri-split-before before-frag #\?)
+        (when has-query
+          (setf query qry))
+        (setf path before-query)))
+    (list :scheme scheme :username username :password password :host host
+          :port port :path path :query query :fragment fragment)))
+
+(defun %php-uri-object-from-components (class-name components)
+  (destructuring-bind (&key scheme username password host port path query fragment)
+      components
+    (let* ((canonical (%php-uri-class-name class-name))
+           (object (%php-spl-object canonical
+                                    (apply #'%php-spl-make-methods
+                                           (%php-runtime-class-methods canonical)))))
+      (setf (gethash "__scheme__" object) scheme
+            (gethash "__username__" object) username
+            (gethash "__password__" object) password
+            (gethash "__host__" object) host
+            (gethash "__port__" object) port
+            (gethash "__path__" object) path
+            (gethash "__query__" object) query
+            (gethash "__fragment__" object) fragment)
+      (%php-spl-install-methods object
+                                (if (string-equal canonical "Uri\\WhatWg\\Url")
+                                    +php-uri-whatwg-methods+
+                                    +php-uri-rfc3986-methods+))
+      object)))
+
+(defun %php-uri-maybe-object (class-name uri &key base whatwg-p)
+  (let* ((text (%php-stringify uri))
+         (components (%php-uri-parse-components text)))
+    (when (%php-uri-valid-components-p text components whatwg-p base)
+      (let ((object (%php-uri-object-from-components class-name components)))
+        (if (and base
+                 (hash-table-p base)
+                 (%php-null-p (%php-uri-field object "__scheme__")))
+            (%php-uri-resolve base object)
+            object)))))
+
+(defun %php-uri-field (uri key)
+  (let ((value (gethash key uri)))
+    (if (or (null value) (%php-null-p value)) +php-null+ value)))
+
+(defun %php-uri-field-text (uri key)
+  (let ((value (%php-uri-field uri key)))
+    (unless (%php-null-p value)
+      (%php-stringify value))))
+
+(defun %php-uri-set-field (uri key value)
+  (setf (gethash key uri) (%php-uri-null-or-string value))
+  uri)
+
+(defun %php-uri-copy (uri)
+  (let ((copy (make-hash-table :test #'equal)))
+    (maphash (lambda (key value)
+               (setf (gethash key copy) value))
+             uri)
+    copy))
+
+(defun %php-uri-build-string (uri)
+  (with-output-to-string (out)
+    (let ((scheme (%php-uri-field-text uri "__scheme__"))
+          (username (%php-uri-field-text uri "__username__"))
+          (password (%php-uri-field-text uri "__password__"))
+          (host (%php-uri-field-text uri "__host__"))
+          (port (%php-uri-field-text uri "__port__"))
+          (path (%php-uri-field-text uri "__path__"))
+          (query (%php-uri-field-text uri "__query__"))
+          (fragment (%php-uri-field-text uri "__fragment__")))
+      (when scheme
+        (format out "~A:" scheme))
+      (when host
+        (write-string "//" out)
+        (when username
+          (write-string username out)
+          (when password
+            (format out ":~A" password))
+          (write-char #\@ out))
+        (write-string host out)
+        (when port
+          (format out ":~A" port)))
+      (write-string (or path "") out)
+      (when query
+        (format out "?~A" query))
+      (when fragment
+        (format out "#~A" fragment)))))
+
+(defparameter +php-uri-component-fields+
+  '(("scheme" . "__scheme__")
+    ("username" . "__username__")
+    ("password" . "__password__")
+    ("host" . "__host__")
+    ("port" . "__port__")
+    ("path" . "__path__")
+    ("query" . "__query__")
+    ("fragment" . "__fragment__"))
+  "PHP-visible URI component name -> internal storage slot key.")
+
+(defun %php-uri-components-array (uri)
+  (let ((result (%php-make-array)))
+    (dolist (pair +php-uri-component-fields+ result)
+      (%php-array-set result (car pair) (%php-uri-field uri (cdr pair))))))
+
+(defun %php-uri-object (class-name uri)
+  (%php-uri-object-from-components class-name (%php-uri-parse-components uri)))
+
+(defun %php-uri-to-raw-string (self) (%php-uri-build-string self))
+(defun %php-uri-to-string (self) (%php-uri-build-string self))
+(defun %php-uri-to-ascii-string (self) (%php-uri-build-string self))
+(defun %php-uri-to-unicode-string (self) (%php-uri-build-string self))
+
+(defmacro define-php-uri-getter (name field &rest aliases)
+  "Define NAME reading FIELD off a URI object, plus ALIASES as pass-through
+synonyms of NAME."
+  `(progn
+     (defun ,name (self) (%php-uri-field self ,field))
+     ,@(mapcar (lambda (alias) `(defun ,alias (self) (,name self))) aliases)))
+
+(define-php-uri-getter %php-uri-get-scheme   "__scheme__"   %php-uri-get-raw-scheme)
+(define-php-uri-getter %php-uri-get-username "__username__" %php-uri-get-raw-username)
+(define-php-uri-getter %php-uri-get-password "__password__" %php-uri-get-raw-password)
+(define-php-uri-getter %php-uri-get-host     "__host__"     %php-uri-get-raw-host
+                                                              %php-uri-get-ascii-host
+                                                              %php-uri-get-unicode-host)
+(define-php-uri-getter %php-uri-get-port     "__port__")
+(define-php-uri-getter %php-uri-get-path     "__path__"     %php-uri-get-raw-path)
+(define-php-uri-getter %php-uri-get-query    "__query__"    %php-uri-get-raw-query)
+(define-php-uri-getter %php-uri-get-fragment "__fragment__" %php-uri-get-raw-fragment)
+
+(defun %php-uri-get-user-info (self)
+  (let ((username (%php-uri-field-text self "__username__"))
+        (password (%php-uri-field-text self "__password__")))
+    (cond
+      ((and username password) (format nil "~A:~A" username password))
+      (username username)
+      (t +php-null+))))
+
+(defun %php-uri-get-raw-user-info (self)
+  (%php-uri-get-user-info self))
+
+(defun %php-uri-with-field (self key value)
+  (let ((copy (%php-uri-copy self)))
+    (%php-uri-set-field copy key value)
+    copy))
+
+(defmacro define-php-uri-with (name field)
+  "Define NAME returning a copy of SELF with FIELD set to VALUE."
+  `(defun ,name (self value) (%php-uri-with-field self ,field value)))
+
+(define-php-uri-with %php-uri-with-scheme   "__scheme__")
+(define-php-uri-with %php-uri-with-host     "__host__")
+(define-php-uri-with %php-uri-with-port     "__port__")
+(define-php-uri-with %php-uri-with-path     "__path__")
+(define-php-uri-with %php-uri-with-query    "__query__")
+(define-php-uri-with %php-uri-with-fragment "__fragment__")
+
+(defun %php-uri-with-user-info (self username &optional password)
+  (let ((copy (%php-uri-copy self)))
+    (%php-uri-set-field copy "__username__" username)
+    (%php-uri-set-field copy "__password__" (or password +php-null+))
+    copy))
+
+(defun %php-uri-with-username (self username)
+  (let ((copy (%php-uri-copy self)))
+    (%php-uri-set-field copy "__username__" username)
+    copy))
+
+(defun %php-uri-with-password (self password)
+  (let ((copy (%php-uri-copy self)))
+    (%php-uri-set-field copy "__password__" password)
+    copy))
+
+(defun %php-uri-as-object (value &optional (class-name "Uri\\Rfc3986\\Uri"))
+  (if (hash-table-p value)
+      value
+      (%php-uri-object class-name value)))
+
+(defun %php-uri-equals (self other &optional mode)
+  (string= (%php-uri-comparison-string self mode)
+           (%php-uri-comparison-string
+            (%php-uri-as-object other (%php-uri-class-name (%php-array-ref self "__class__")))
+            mode)))
+
+(defun %php-uri-comparison-include-fragment-p (mode)
+  (cond
+    ((or (null mode) (%php-null-p mode)) nil)
+    ((eq mode :include-fragment) t)
+    ((eq mode :exclude-fragment) nil)
+    ((symbolp mode)
+     (string= (string-upcase (symbol-name mode)) "INCLUDE-FRAGMENT"))
+    ((stringp mode)
+     (or (string-equal mode "IncludeFragment")
+         (string-equal mode "include-fragment")))
+    (t nil)))
+
+(defun %php-uri-comparison-object (uri mode)
+  (let ((copy (%php-uri-copy uri)))
+    (let ((scheme (%php-uri-field copy "__scheme__"))
+          (host (%php-uri-field copy "__host__")))
+      (unless (%php-null-p scheme)
+        (%php-uri-set-field copy "__scheme__" (string-downcase (%php-stringify scheme))))
+      (unless (%php-null-p host)
+        (%php-uri-set-field copy "__host__" (string-downcase (%php-stringify host)))))
+    (unless (%php-uri-comparison-include-fragment-p mode)
+      (%php-uri-set-field copy "__fragment__" +php-null+))
+    copy))
+
+(defun %php-uri-comparison-string (uri mode)
+  (%php-uri-build-string (%php-uri-comparison-object uri mode)))
+
+(defun %php-uri-resolve (self reference)
+  (let* ((class-name (%php-uri-class-name (%php-array-ref self "__class__")))
+         (ref (%php-uri-as-object reference class-name)))
+    (if (or (not (%php-null-p (%php-uri-field ref "__scheme__")))
+            (not (%php-null-p (%php-uri-field ref "__host__"))))
+        ref
+        (let ((copy (%php-uri-copy self)))
+          (dolist (key '("__path__" "__query__" "__fragment__"))
+            (let ((value (%php-uri-field ref key)))
+              (unless (%php-null-p value)
+                (%php-uri-set-field copy key value))))
+          copy))))
+
+(defun %php-uri-debug-info (self) (%php-uri-components-array self))
+(defun %php-uri-serialize (self) (%php-uri-components-array self))
+
+(defun %php-uri-unserialize (self data)
+  (when (hash-table-p data)
+    (dolist (pair '(("scheme" "__scheme__")
+                    ("username" "__username__")
+                    ("password" "__password__")
+                    ("host" "__host__")
+                    ("port" "__port__")
+                    ("path" "__path__")
+                    ("query" "__query__")
+                    ("fragment" "__fragment__")))
+      (%php-uri-set-field self (second pair) (%php-array-ref data (first pair)))))
+  +php-null+)
+
+(defun %php-uri-rfc3986-new (uri &optional base)
+  (or (%php-uri-maybe-object "Uri\\Rfc3986\\Uri" uri :base base)
+      (%php-throw (intern "URI\\INVALIDURIEXCEPTION" :cl-cc/php)
+                  (format nil "Invalid URI: ~A" (%php-stringify uri)))))
+
+(defun %php-uri-whatwg-new (uri &optional base)
+  (or (%php-uri-maybe-object "Uri\\WhatWg\\Url" uri :base base :whatwg-p t)
+      (%php-throw (intern "URI\\WHATWG\\INVALIDURLEXCEPTION" :cl-cc/php)
+                  (format nil "Invalid URL: ~A" (%php-stringify uri)))))
+
+(defun %php-uri-rfc3986-parse (uri &optional base)
+  (or (%php-uri-maybe-object "Uri\\Rfc3986\\Uri" uri :base base)
+      +php-null+))
+
+(defun %php-uri-whatwg-parse (uri &optional base)
+  (or (%php-uri-maybe-object "Uri\\WhatWg\\Url" uri :base base :whatwg-p t)
+      +php-null+))
+
+(defun %php-uri-rfc3986-instance-parse (self uri &optional base)
+  (declare (ignore self))
+  (%php-uri-rfc3986-parse uri base))
+
+(defun %php-uri-whatwg-instance-parse (self uri &optional base)
+  (declare (ignore self))
+  (%php-uri-whatwg-parse uri base))
+
+(setf +php-uri-rfc3986-methods+
+      '(("__debugInfo" %php-uri-debug-info)
+        ("equals" %php-uri-equals)
+        ("getFragment" %php-uri-get-fragment)
+        ("getHost" %php-uri-get-host)
+        ("getPassword" %php-uri-get-password)
+        ("getPath" %php-uri-get-path)
+        ("getPort" %php-uri-get-port)
+        ("getQuery" %php-uri-get-query)
+        ("getRawFragment" %php-uri-get-raw-fragment)
+        ("getRawHost" %php-uri-get-raw-host)
+        ("getRawPassword" %php-uri-get-raw-password)
+        ("getRawPath" %php-uri-get-raw-path)
+        ("getRawQuery" %php-uri-get-raw-query)
+        ("getRawScheme" %php-uri-get-raw-scheme)
+        ("getRawUserInfo" %php-uri-get-raw-user-info)
+        ("getRawUsername" %php-uri-get-raw-username)
+        ("getScheme" %php-uri-get-scheme)
+        ("getUserInfo" %php-uri-get-user-info)
+        ("getUsername" %php-uri-get-username)
+        ("parse" %php-uri-rfc3986-instance-parse)
+        ("resolve" %php-uri-resolve)
+        ("__serialize" %php-uri-serialize)
+        ("toRawString" %php-uri-to-raw-string)
+        ("toString" %php-uri-to-string)
+        ("__unserialize" %php-uri-unserialize)
+        ("withFragment" %php-uri-with-fragment)
+        ("withHost" %php-uri-with-host)
+        ("withPath" %php-uri-with-path)
+        ("withPort" %php-uri-with-port)
+        ("withQuery" %php-uri-with-query)
+        ("withScheme" %php-uri-with-scheme)
+        ("withUserInfo" %php-uri-with-user-info)))
+
+(setf +php-uri-whatwg-methods+
+      '(("__debugInfo" %php-uri-debug-info)
+        ("equals" %php-uri-equals)
+        ("getAsciiHost" %php-uri-get-ascii-host)
+        ("getFragment" %php-uri-get-fragment)
+        ("getPassword" %php-uri-get-password)
+        ("getPath" %php-uri-get-path)
+        ("getPort" %php-uri-get-port)
+        ("getQuery" %php-uri-get-query)
+        ("getScheme" %php-uri-get-scheme)
+        ("getUnicodeHost" %php-uri-get-unicode-host)
+        ("getUsername" %php-uri-get-username)
+        ("parse" %php-uri-whatwg-instance-parse)
+        ("resolve" %php-uri-resolve)
+        ("__serialize" %php-uri-serialize)
+        ("toAsciiString" %php-uri-to-ascii-string)
+        ("toUnicodeString" %php-uri-to-unicode-string)
+        ("__unserialize" %php-uri-unserialize)
+        ("withFragment" %php-uri-with-fragment)
+        ("withHost" %php-uri-with-host)
+        ("withPassword" %php-uri-with-password)
+        ("withPath" %php-uri-with-path)
+        ("withPort" %php-uri-with-port)
+        ("withQuery" %php-uri-with-query)
+        ("withScheme" %php-uri-with-scheme)
+        ("withUsername" %php-uri-with-username)))
+(defun %PARSER-PHP-URI-STATIC-MEMBER-LOWERER (object member args method-p)
+  (let* ((class-name
+           (and (ast-var-p object)
+                (string-upcase (symbol-name (ast-var-name object)))))
+         (kind (cond
+                 ((equal class-name "URI\\RFC3986\\URI") :rfc3986)
+                 ((equal class-name "URI\\WHATWG\\URL") :whatwg))))
+    (if (and method-p kind (string= (symbol-name member) "PARSE"))
+        (progn
+          (when (null args)
+            (error "PHP parse error: Uri::parse() expects at least 1 argument"))
+          (values
+           (make-ast-call
+            :func (make-ast-var
+                   :name (%PARSER-PHP-RUNTIME-SYMBOL
+                          (if (eq kind :rfc3986)
+                              :uri-rfc3986-parse
+                              :uri-whatwg-parse)))
+            :args args)
+           t))
+        (values nil nil))))
+(eval-when (:load-toplevel :execute)
+  (register-php-runtime-symbol :uri-rfc3986-new '%php-uri-rfc3986-new)
+  (register-php-runtime-symbol :uri-whatwg-new '%php-uri-whatwg-new)
+  (register-php-runtime-symbol :uri-rfc3986-parse '%php-uri-rfc3986-parse)
+  (register-php-runtime-symbol :uri-whatwg-parse '%php-uri-whatwg-parse)
+  (register-php-expression-static-member-lowerer
+   #'%PARSER-PHP-URI-STATIC-MEMBER-LOWERER))

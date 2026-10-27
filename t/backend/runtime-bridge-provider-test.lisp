@@ -1,0 +1,37 @@
+;;;; runtime-bridge-provider-test.lisp — src/runtime-bridge-provider.lisp — the %PHP-* backend
+;;;; bridge scan.
+;;;;
+;;;; %php-host-bridge-entries is called by the compiler pipeline, not by this package's own PHP
+;;;; frontend. Compiler-driven cases observe it indirectly and are reserved for umbrella-level
+;;;; integration. This test checks the scan directly: every returned entry must be a real,
+;;;; callable %PHP-* function, including several known builtins.
+
+(in-package :cl-cc/php/backend/test)
+
+(describe "PHP backend registration"
+
+(it-sequential "%php-host-bridge-entries returns only fbound, non-macro %PHP-* symbols from registered PHP runtime packages"
+  (let ((entries (cl-cc/php/backend:%php-host-bridge-entries)))
+    (expect (> (length entries) 0) :to-be-truthy)
+    (dolist (entry entries)
+      (let ((sym (car entry))
+            (fn (cdr entry)))
+        (expect (member (symbol-package sym) (php-runtime-packages) :test #'eq) :to-be-truthy)
+        (expect (string= "%PHP-" (symbol-name sym) :end2 5) :to-be-truthy)
+        (expect (fboundp sym) :to-be-truthy)
+        (expect (not (macro-function sym)) :to-be-truthy)
+        (expect (functionp fn) :to-be-truthy)
+        (expect (eq fn (fdefinition sym)) :to-be-truthy)))))
+
+(it-sequential "%php-host-bridge-entries includes known runtime builtins"
+  (let ((names
+          (mapcar (lambda (entry) (symbol-name (car entry)))
+                  (cl-cc/php/backend:%php-host-bridge-entries))))
+    (dolist (expected '("%PHP-ABS" "%PHP-ARRAY-MERGE" "%PHP-STRLEN"))
+      (expect (member expected names :test #'string=) :to-be-truthy))))
+
+(it-sequential "registers the PHP supported-form validator"
+  (expect (cl-cc/bootstrap:find-backend-input-validator :php)
+          :to-be #'cl-cc/php:php-check-supported-forms))
+
+  )
