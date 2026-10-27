@@ -56,7 +56,7 @@
   (:import-from #:cl-cc/php/syntax
                 #:%php-consume-expected
                 #:%php-qualified-name-segment-string
-                #:%php-runtime-symbol
+                #:%PARSER-PHP-RUNTIME-SYMBOL
                 #:%php-strip-leading-namespace-separator
                 #:php-ident-sym
                 #:php-parse-qualified-name

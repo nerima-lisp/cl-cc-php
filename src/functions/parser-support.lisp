@@ -374,7 +374,7 @@ expression, which lowers `yield' to a %php-yield / %php-yield-from call)."
        (let ((func (ast-call-func node)))
          (and (ast-var-p func)
               (member (ast-var-name func)
-                      (list (%php-runtime-symbol :yield) (%php-runtime-symbol :yield-from))
+                      (list (%PARSER-PHP-RUNTIME-SYMBOL :yield) (%PARSER-PHP-RUNTIME-SYMBOL :yield-from))
                       :test #'eq)))))
 
 (defun %php-body-contains-yield-p (node)
@@ -419,10 +419,10 @@ return value."
                      :bindings (list (cons gen-sym
                                            (make-ast-call
                                             :func (make-ast-var
-                                                   :name (%php-runtime-symbol :generator-enter))
+                                                   :name (%PARSER-PHP-RUNTIME-SYMBOL :generator-enter))
                                             :args nil)))
                      :body (list (make-ast-call
-                                  :func (make-ast-var :name (%php-runtime-symbol :generator-exit))
+                                  :func (make-ast-var :name (%PARSER-PHP-RUNTIME-SYMBOL :generator-exit))
                                   :args (list (make-ast-var :name gen-sym) block))
                                  (make-ast-var :name gen-sym)))))
             (list block)))

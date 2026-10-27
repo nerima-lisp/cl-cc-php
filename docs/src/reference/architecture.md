@@ -2,7 +2,7 @@
 
 ## Position in the dependency graph
 
-cl-cc-php is the PHP frontend for the compiler.
+cl-cc-php is the PHP frontend for the `cl-cc` compiler.
 
 ```
 cl-cc-php
@@ -24,9 +24,10 @@ The diagram shows direct ASDF dependencies. `cl-host-kit` and `cl-json-kit`
 provide host operations and JSON parsing; the separate `cl-cc-php/test` system
 adds `cl-weave`.
 
-`cl-cc-ast`, `cl-cc-bootstrap`, `cl-cc-parse`, `cl-cc-runtime`, and `cl-cc-vm`
-come from separate sibling repositories. `flake.nix` pins each source directly,
-and `flake.lock` records the revisions used with cl-cc-php. The umbrella cl-cc
+The flake also pins `cl-cc-runtime` and adds its source tree to the ASDF source
+registry used by tests because the compiler systems depend on it.
+`cl-cc-runtime` is not a direct dependency in `cl-cc-php.asd`. `flake.lock`
+records the source revisions used with cl-cc-php. The umbrella `cl-cc`
 repository is not an input to this flake.
 
 ## Source layout
@@ -53,55 +54,39 @@ public `cl-cc/php` facade; implementations live in `src/<feature>/` and use
 | `src/stdlib/` | PHP builtins, constants, JSON, URI, and DOM support |
 | `src/backend/` | VM bridge provider and backend registration |
 
-Feature dependencies are declared in `nix/feature-dependencies.sexp`. The
-syntax package owns the generic grammar registration points and does not
-depend on language-feature packages. Feature source files load after the syntax
-registry and register their grammar callbacks as they load.
+`nix/feature-dependencies.sexp` declares dependencies between feature
+packages, and the `feature-lint` check validates those edges. The syntax
+package owns generic parser callback registries and does not depend on
+language-feature packages. Feature source files load after the syntax registry
+and register their callbacks as they load.
 
-The PHP backend uses one `cl-cc/php/backend` package with no separate
-infrastructure package. Its PHP-specific adapter registers compiler bridge
-callbacks; the shared registration protocol remains owned by `cl-cc/bootstrap`.
+`src/backend/` contains the `cl-cc/php/backend` package for compiler
+integration. It registers a PHP bridge provider, parser, and input validator
+through functions owned by `cl-cc/bootstrap`. The bootstrap package owns the
+registration protocol; PHP supplies the callbacks.
 
-Builtin files load in these families: core; array core, callable, comparison,
-reshape, cursor, and sort; string data, core, formatting, multibyte, encoding,
-transform, analysis, ctype, extra, serialization, JSON, and digest; regex core,
-preg, date, number, callback, and array; math; types; and I/O data, core, ini,
-locale, scanning, files, streams, objects, autoload, SPL, reflection, compat,
-image, output, cookie/session, tokenizer, and URI. They live in `src/stdlib/`.
-`runtime-builtins-register` loads last because it references all of them. The
-name-to-symbol entries it walks are data split between
-`runtime-builtins-register-names.lisp` and
-`runtime-builtins-register-names-late.lisp`.
+Builtin implementations live in `src/stdlib/`, with filenames grouped by
+family, such as `runtime-builtins-array-*.lisp`. The registration data is in
+`src/stdlib/runtime-builtins-register-names.lisp` and
+`src/stdlib/runtime-builtins-register-names-late.lisp`. See [Adding a runtime
+builtin](../project/development.md#adding-a-runtime-builtin) for which table to
+use.
 
-Load order is significant: the `.asd` uses `:serial t`.
+Load order is significant: ASDF's `:serial t` loads components in the order
+listed in the `.asd`. The syntax registry must load before feature packages
+register callbacks, and `runtime-builtins-register` loads after its helpers.
 
 ## Test layout
 
 Tests are grouped under `t/<feature>/` with package roots matching the source
-feature packages. `t/package.lisp` owns the shared test runner, and
-`t/syntax/parser-fixtures.lisp` provides parser fixtures used by feature suites.
-
-The PHP test system covers tokenization, parsing, CST generation, and runtime
-behavior. Tests that compile and execute PHP through the compiler and VM remain
-in umbrella-level integration. See [Running only the tests](../project/development.md#running-only-the-tests)
-for the test command and [Running the full check](../project/development.md#running-the-full-check)
-for the CI checks.
+feature packages. See [Test layout in Development](../project/development.md#test-layout)
+for the shared test runner, parser fixtures, and test coverage.
 
 ## Build and CI
 
 `flake.nix` declares only `x86_64-linux`, which CI verifies on each push and
 pull request.
 
-Granularity lives in `checks.*`, not in extra CI jobs:
+See [Running the full check](../project/development.md#running-the-full-check)
+for the CI checks and commands to run all checks or one check.
 
-| Check | What it gates |
-|---|---|
-| `checks.default` | The SBCL test suite via `run-tests.lisp` |
-| `checks.orphan-tests` | Every Lisp file under `t/` is loaded by the test system |
-| `checks.feature-lint` | Feature ownership, dependency graph, glossary, and facade surface |
-| `checks.formatting` | treefmt/nixfmt over the Nix sources |
-| `checks.docs` | `mkdocs build --strict`, so broken links fail the PR |
-
-During Nix evaluation, `flake.nix` reads the `:version` form from
-`cl-cc-php.asd`, so the `.asd` is the single source of truth and no Nix-side
-number can drift from it.

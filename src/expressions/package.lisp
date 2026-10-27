@@ -134,11 +134,11 @@
                 #:php-exception
   )
   (:import-from #:cl-cc/php/syntax
-                #:%php-cst-parse-unary-keyword-expression
+                #:%PARSER-PHP-CST-PARSE-UNARY-KEYWORD-EXPRESSION
                 #:%php-helper-call-p
                 #:%php-named-arg-p
                 #:%php-reference-token-p
-                #:%php-runtime-symbol
+                #:%PARSER-PHP-RUNTIME-SYMBOL
                 #:%php-unsupported
                 #:*php-expression-constant-resolver*
                 #:*php-expression-dynamic-call-lowerer*

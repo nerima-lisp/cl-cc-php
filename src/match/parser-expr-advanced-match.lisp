@@ -105,7 +105,7 @@ failed to compile and the whole match produced nothing."
 ;;; ─── Exhaustiveness failure ─────────────────────────────────────────────────
 
 (progn
-  (defun %php-cst-parse-match-expression (ts)
+  (defun %PARSER-PHP-CST-PARSE-MATCH-EXPRESSION (ts)
     "Parse match(expr) { arms } into a conservative CST node."
     (let* ((kw-tok (%php-tok-to-cst (php-ts-advance ts)))
            (lp (%php-tok-to-cst (php-ts-expect ts :T-LPAREN "match(")))
@@ -122,12 +122,12 @@ failed to compile and the whole match produced nothing."
                          (list* kw-tok lp subject rp lb (append arms (list rb))))))
   (eval-when (:load-toplevel :execute)
     (register-php-cst-keyword-expression-parser
-     :match #'%php-cst-parse-match-expression))
-  (defun %php-parse-match-keyword-expression (stream known-vars)
+     :match #'%PARSER-PHP-CST-PARSE-MATCH-EXPRESSION))
+  (defun %PARSER-PHP-PARSE-MATCH-KEYWORD-EXPRESSION (stream known-vars)
     "Parse a PHP match keyword expression."
     (multiple-value-bind (token rest) (php-consume stream)
       (declare (ignore token))
       (%php-parse-match-expression rest known-vars)))
   (eval-when (:load-toplevel :execute)
     (register-php-expression-keyword-parser
-     :match #'%php-parse-match-keyword-expression)))
+     :match #'%PARSER-PHP-PARSE-MATCH-KEYWORD-EXPRESSION)))

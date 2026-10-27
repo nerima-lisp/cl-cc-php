@@ -460,7 +460,7 @@ synonyms of NAME."
         ("withQuery" %php-uri-with-query)
         ("withScheme" %php-uri-with-scheme)
         ("withUsername" %php-uri-with-username)))
-(defun %php-uri-static-member-lowerer (object member args method-p)
+(defun %PARSER-PHP-URI-STATIC-MEMBER-LOWERER (object member args method-p)
   (let* ((class-name
            (and (ast-var-p object)
                 (string-upcase (symbol-name (ast-var-name object)))))
@@ -474,7 +474,7 @@ synonyms of NAME."
           (values
            (make-ast-call
             :func (make-ast-var
-                   :name (%php-runtime-symbol
+                   :name (%PARSER-PHP-RUNTIME-SYMBOL
                           (if (eq kind :rfc3986)
                               :uri-rfc3986-parse
                               :uri-whatwg-parse)))
@@ -487,4 +487,4 @@ synonyms of NAME."
   (register-php-runtime-symbol :uri-rfc3986-parse '%php-uri-rfc3986-parse)
   (register-php-runtime-symbol :uri-whatwg-parse '%php-uri-whatwg-parse)
   (register-php-expression-static-member-lowerer
-   #'%php-uri-static-member-lowerer))
+   #'%PARSER-PHP-URI-STATIC-MEMBER-LOWERER))

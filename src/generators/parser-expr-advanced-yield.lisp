@@ -29,12 +29,12 @@ the yielded value for later generator lowering passes."
 (progn
   (eval-when (:load-toplevel :execute)
     (register-php-cst-keyword-expression-parser
-     :yield #'%php-cst-parse-unary-keyword-expression))
-  (defun %php-parse-yield-keyword-expression (stream known-vars)
+     :yield #'%PARSER-PHP-CST-PARSE-UNARY-KEYWORD-EXPRESSION))
+  (defun %PARSER-PHP-PARSE-YIELD-KEYWORD-EXPRESSION (stream known-vars)
     "Parse a PHP yield keyword expression."
     (multiple-value-bind (token rest) (php-consume stream)
       (declare (ignore token))
       (%php-parse-yield-expression rest known-vars)))
   (eval-when (:load-toplevel :execute)
     (register-php-expression-keyword-parser
-     :yield #'%php-parse-yield-keyword-expression)))
+     :yield #'%PARSER-PHP-PARSE-YIELD-KEYWORD-EXPRESSION)))

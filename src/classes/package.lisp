@@ -76,10 +76,10 @@
   (:import-from #:cl-cc/php/syntax
                 #:%php-consume-expected
                 #:%php-cst-interior
-                #:%php-cst-parse-unary-keyword-expression
+                #:%PARSER-PHP-CST-PARSE-UNARY-KEYWORD-EXPRESSION
                 #:%php-keyword-p
                 #:%php-reference-token-p
-                #:%php-runtime-symbol
+                #:%PARSER-PHP-RUNTIME-SYMBOL
                 #:%php-tok-to-cst
                 #:%php-unsupported
                 #:define-php-stmt-parser

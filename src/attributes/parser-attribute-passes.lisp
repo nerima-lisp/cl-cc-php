@@ -129,7 +129,7 @@
 (defun %php-no-discard-warning-ast (message call-node)
   "Emit E_USER_WARNING before evaluating a discarded NoDiscard call."
   (make-ast-progn
-   :forms (list (%php-call (%php-runtime-symbol :trigger-error)
+   :forms (list (%php-call (%PARSER-PHP-RUNTIME-SYMBOL :trigger-error)
                            (make-ast-quote :value message)
                            (make-ast-int :value 512))
                 call-node)))

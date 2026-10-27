@@ -451,7 +451,7 @@ the PHP block."
 
 (defun %php-exception-payload-call (expr)
   "Wrap thrown PHP EXPR with class metadata for VM catch/throw lowering."
-  (%php-call (%php-runtime-symbol :make-exception)
+  (%php-call (%PARSER-PHP-RUNTIME-SYMBOL :make-exception)
              (make-ast-quote :value (%php-exception-class-from-expression expr))
              expr))
 

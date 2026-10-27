@@ -1,7 +1,7 @@
 (defpackage #:cl-cc/php/errors
   (:use #:cl)
   (:import-from #:cl-cc/php/syntax
-                #:%php-runtime-symbol
+                #:%PARSER-PHP-RUNTIME-SYMBOL
                 #:register-php-runtime-symbol
   )
   (:export

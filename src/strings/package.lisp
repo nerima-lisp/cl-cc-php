@@ -9,7 +9,7 @@
                 #:php-parse-expr
   )
   (:import-from #:cl-cc/php/syntax
-                #:%php-runtime-symbol
+                #:%PARSER-PHP-RUNTIME-SYMBOL
                 #:php-consume
                 #:php-tok-value
                 #:php-var-sym

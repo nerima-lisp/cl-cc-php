@@ -55,7 +55,7 @@
                 #:%php-cst-interior
                 #:%php-keyword-p
                 #:%php-reference-token-p
-                #:%php-runtime-symbol
+                #:%PARSER-PHP-RUNTIME-SYMBOL
                 #:%php-tok-to-cst
                 #:%php-unsupported
                 #:*php-current-imports*

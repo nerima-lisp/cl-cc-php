@@ -316,7 +316,7 @@ else (values NIL NIL)."
     (if foundp
         value
         (error "Undefined PHP class constant ~A::~A" class-name constant-name))))
-(defun %php-predefined-class-constant-static-member-lowerer
+(defun %PARSER-PHP-PREDEFINED-CLASS-CONSTANT-STATIC-MEMBER-LOWERER
     (object member args method-p)
   (declare (ignore args))
   (let ((class-name (and (ast-var-p object)
@@ -330,7 +330,7 @@ else (values NIL NIL)."
         (values
          (make-ast-call
           :func
-          (make-ast-var :name (%php-runtime-symbol :predefined-class-constant))
+          (make-ast-var :name (%PARSER-PHP-RUNTIME-SYMBOL :predefined-class-constant))
           :args (list (make-ast-quote :value (symbol-name class-name))
                       (make-ast-quote :value (symbol-name member))))
          t)
@@ -372,7 +372,7 @@ else (values NIL NIL)."
 
 (eval-when (:load-toplevel :execute)
   (register-php-runtime-symbol :predefined-class-constant '%php-predefined-class-constant)
-  (register-php-expression-static-member-lowerer #'%php-predefined-class-constant-static-member-lowerer)
+  (register-php-expression-static-member-lowerer #'%PARSER-PHP-PREDEFINED-CLASS-CONSTANT-STATIC-MEMBER-LOWERER)
   (register-php-expression-constant-resolvers
    (function %php-lookup-constant)
    (function %php-lookup-dynamic-constant)))

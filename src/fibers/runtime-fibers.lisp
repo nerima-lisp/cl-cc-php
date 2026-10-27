@@ -168,13 +168,13 @@ Must be called from within a running Fiber body."
 (defun %php-fiber-terminated-p (fiber)
   "Return true when FIBER has finished execution."
   (php-fiber-terminated-p (%php-fiber-state fiber)))
-(defun %php-fiber-static-member-lowerer (object member args method-p)
+(defun %PARSER-PHP-FIBER-STATIC-MEMBER-LOWERER (object member args method-p)
   (if (and method-p
            (ast-var-p object)
            (string= (string-upcase (symbol-name (ast-var-name object))) "FIBER")
            (string= (string-upcase (symbol-name member)) "SUSPEND"))
       (values
-       (apply #'%php-call (%php-runtime-symbol :fiber-suspend) args)
+       (apply #'%php-call (%PARSER-PHP-RUNTIME-SYMBOL :fiber-suspend) args)
        t)
       (values nil nil)))
 
@@ -184,4 +184,4 @@ Must be called from within a running Fiber body."
   (register-php-runtime-symbol :fiber-suspend '%php-fiber-suspend)
   (register-php-runtime-symbol :fiber-make '%php-fiber-make)
   (register-php-expression-static-member-lowerer
-   #'%php-fiber-static-member-lowerer))
+   #'%PARSER-PHP-FIBER-STATIC-MEMBER-LOWERER))

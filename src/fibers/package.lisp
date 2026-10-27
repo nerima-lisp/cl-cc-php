@@ -11,7 +11,7 @@
                 #:%php-callable-function
   )
   (:import-from #:cl-cc/php/syntax
-                #:%php-runtime-symbol
+                #:%PARSER-PHP-RUNTIME-SYMBOL
                 #:php-ident-sym
                 #:register-php-expression-static-member-lowerer
                 #:register-php-runtime-symbol

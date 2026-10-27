@@ -162,11 +162,11 @@ REF-CAPTURES from the use-list) instead of the arrow function's one."
               (values (%php-capture-wrapper captures wrapped) rest4 kv4)))))))))))
 (eval-when (:load-toplevel :execute)
   (register-php-cst-keyword-expression-parser
-   :fn #'%php-cst-parse-opaque-keyword-expression)
+   :fn #'%PARSER-PHP-CST-PARSE-OPAQUE-KEYWORD-EXPRESSION)
   (register-php-cst-keyword-expression-parser
-   :function #'%php-cst-parse-opaque-keyword-expression))
+   :function #'%PARSER-PHP-CST-PARSE-OPAQUE-KEYWORD-EXPRESSION))
 (progn
-  (defun %php-parse-function-keyword-expression (stream known-vars)
+  (defun %PARSER-PHP-PARSE-FUNCTION-KEYWORD-EXPRESSION (stream known-vars)
     "Parse a PHP function or arrow-function expression keyword."
     (let ((keyword (php-peek-value stream)))
       (multiple-value-bind (token rest) (php-consume stream)
@@ -176,6 +176,6 @@ REF-CAPTURES from the use-list) instead of the arrow function's one."
             (%php-parse-anonymous-function rest known-vars)))))
   (eval-when (:load-toplevel :execute)
     (register-php-expression-keyword-parser
-     :fn #'%php-parse-function-keyword-expression)
+     :fn #'%PARSER-PHP-PARSE-FUNCTION-KEYWORD-EXPRESSION)
     (register-php-expression-keyword-parser
-     :function #'%php-parse-function-keyword-expression)))
+     :function #'%PARSER-PHP-PARSE-FUNCTION-KEYWORD-EXPRESSION)))

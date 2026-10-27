@@ -161,7 +161,7 @@ marker."
         (rb (%php-tok-to-cst (php-ts-advance ts))))
     (%php-cst-interior :array (list* lb (append items (list rb))))))
 (progn
-  (defun %php-cst-parse-array-keyword-expression (ts)
+  (defun %PARSER-PHP-CST-PARSE-ARRAY-KEYWORD-EXPRESSION (ts)
     "Parse PHP array and list keyword expressions into conservative CST nodes."
     (let* ((keyword (php-ts-peek-value ts))
            (kw-tok (%php-tok-to-cst (php-ts-advance ts))))
@@ -191,11 +191,11 @@ marker."
   (eval-when (:load-toplevel :execute)
     (register-php-cst-primary-parser :T-LBRACKET #'%php-parse-bracket-expr)
     (register-php-cst-keyword-expression-parser
-     :array #'%php-cst-parse-array-keyword-expression)
+     :array #'%PARSER-PHP-CST-PARSE-ARRAY-KEYWORD-EXPRESSION)
     (register-php-cst-keyword-expression-parser
-     :list #'%php-cst-parse-array-keyword-expression)))
+     :list #'%PARSER-PHP-CST-PARSE-ARRAY-KEYWORD-EXPRESSION)))
 (progn
-  (defun %php-parse-array-keyword-expression (stream known-vars)
+  (defun %PARSER-PHP-PARSE-ARRAY-KEYWORD-EXPRESSION (stream known-vars)
     "Parse PHP array/list keyword expressions into array AST nodes."
     (multiple-value-bind (token rest) (php-consume stream)
       (declare (ignore token))
@@ -207,9 +207,9 @@ marker."
     (register-php-expression-primary-parser
      :T-LBRACKET #'%php-parse-array-expr)
     (register-php-expression-keyword-parser
-     :array #'%php-parse-array-keyword-expression)
+     :array #'%PARSER-PHP-PARSE-ARRAY-KEYWORD-EXPRESSION)
     (register-php-expression-keyword-parser
-     :list #'%php-parse-array-keyword-expression)
+     :list #'%PARSER-PHP-PARSE-ARRAY-KEYWORD-EXPRESSION)
     (register-php-array-expression-lowerer
      :ref-call #'%php-array-ref-call)
     (register-php-array-expression-lowerer
@@ -219,7 +219,7 @@ marker."
     (register-php-array-expression-lowerer
      :append-call #'%php-array-append-call)))
 (progn
-  (defun %php-array-append-assignment-call (array value)
+  (defun %PARSER-PHP-ARRAY-APPEND-ASSIGNMENT-CALL (array value)
     "Build an AST call that appends a value for `$array[] = value`."
     (make-ast-call :func (%php-helper-var (quote %php-array-append-assignment))
                    :args (list array value)))
@@ -231,7 +231,7 @@ marker."
     (register-php-array-expression-lowerer
      :lower-list-assign (function %php-lower-list-assign))
     (register-php-array-expression-lowerer
-     :append-assignment-call (function %php-array-append-assignment-call))
+     :append-assignment-call (function %PARSER-PHP-ARRAY-APPEND-ASSIGNMENT-CALL))
     (register-php-array-expression-lowerer
      :empty-p (function %php-array-empty-p))
     (register-php-array-expression-lowerer

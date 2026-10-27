@@ -22,15 +22,15 @@ with php-parse-expr; %php-concat stringifies the resulting value."
                               (:expr (%php-parse-interp-expr (second segment)))))
                           (second value))))
         (if args
-            (make-ast-call :func (make-ast-var :name (%php-runtime-symbol :concat))
+            (make-ast-call :func (make-ast-var :name (%PARSER-PHP-RUNTIME-SYMBOL :concat))
                            :args args)
             (make-ast-quote :value "")))
       (make-ast-quote :value value)))
 (progn
-  (defun %php-parse-string-primary (stream known-vars)
+  (defun %PARSER-PHP-PARSE-STRING-PRIMARY (stream known-vars)
     "Parse and lower a PHP string token."
     (multiple-value-bind (token rest) (php-consume stream)
       (values (%php-string-token-ast (php-tok-value token)) rest known-vars)))
   (eval-when (:load-toplevel :execute)
     (register-php-expression-primary-parser
-     :T-STRING (function %php-parse-string-primary))))
+     :T-STRING (function %PARSER-PHP-PARSE-STRING-PRIMARY))))

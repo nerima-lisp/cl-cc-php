@@ -123,7 +123,7 @@ Returns (values param-sym rest param-type param-attr-plist by-ref-p variadic-p).
     ;; PHP 8.0 constructor property promotion: visibility/readonly modifiers may
     ;; precede the type, e.g. __construct(public int $x).
     (multiple-value-bind (promo-modifiers rest-after-mods)
-        (%php-parse-parameter-modifiers rest-after-attributes)
+        (%PARSER-PHP-PARSE-PARAMETER-MODIFIERS rest-after-attributes)
       (multiple-value-bind (param-type rest-after-type)
           (php-parse-type-annotation rest-after-mods)
         ;; PHP by-reference marker: &$param

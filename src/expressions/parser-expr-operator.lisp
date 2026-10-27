@@ -116,12 +116,12 @@ to simple variables and avoids reading an unbound variable on first use."
   (let ((old-level (gensym "PHP-ERROR-REPORTING-")))
     (make-ast-let
      :bindings (list (cons old-level
-                           (%php-call (%php-runtime-symbol :error-reporting)
+                           (%php-call (%PARSER-PHP-RUNTIME-SYMBOL :error-reporting)
                                       (make-ast-int :value 0))))
      :body (list
             (make-ast-unwind-protect
              :protected expr
-             :cleanup (list (%php-call (%php-runtime-symbol :error-reporting)
+             :cleanup (list (%php-call (%PARSER-PHP-RUNTIME-SYMBOL :error-reporting)
                                        (make-ast-var :name old-level))))))))
 
 (defun php-parse-unary (stream known-vars)
@@ -340,7 +340,7 @@ to simple variables and avoids reading an unbound variable on first use."
                (multiple-value-bind (_tok rest-after) (php-consume current)
                  (declare (ignore _tok))
                  (multiple-value-bind (arg rest2 kv2) (php-parse-expr rest-after kv)
-                   (push (make-ast-call :func (make-ast-var :name (%php-runtime-symbol :spread))
+                   (push (make-ast-call :func (make-ast-var :name (%PARSER-PHP-RUNTIME-SYMBOL :spread))
                                         :args (list arg))
                          args)
                    (setf current rest2 kv kv2))))

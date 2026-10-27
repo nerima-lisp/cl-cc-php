@@ -14,15 +14,15 @@
    #:register-php-expression-constant-resolvers
    #:%php-consume-expected
    #:%php-cst-interior
-   #:%php-cst-parse-opaque-keyword-expression
-   #:%php-cst-parse-unary-keyword-expression
+   #:%PARSER-PHP-CST-PARSE-OPAQUE-KEYWORD-EXPRESSION
+   #:%PARSER-PHP-CST-PARSE-UNARY-KEYWORD-EXPRESSION
    #:%php-helper-call-p
    #:%php-keyword-p
    #:%php-name-absolute-p
    #:%php-named-arg-p
    #:%php-qualified-name-segment-string
    #:%php-reference-token-p
-   #:%php-runtime-symbol
+   #:%PARSER-PHP-RUNTIME-SYMBOL
    #:%php-strip-leading-namespace-separator
    #:%php-tok-to-cst
    #:%php-unsupported

@@ -21,8 +21,8 @@
       (setf current (cdr current)))
     ;; echo emits its arguments verbatim with NO trailing newline. Route through
     ;; the PHP output helper so ob_start/ob_get_* can capture emitted text.
-    (values (%php-call (%php-runtime-symbol :output-write)
-                       (apply #'%php-call (%php-runtime-symbol :concat) (nreverse exprs)))
+    (values (%php-call (%PARSER-PHP-RUNTIME-SYMBOL :output-write)
+                       (apply #'%php-call (%PARSER-PHP-RUNTIME-SYMBOL :concat) (nreverse exprs)))
             (php-skip-semis current) kv)))
 
 (define-php-stmt-parser :return (rest known-vars)
@@ -95,7 +95,7 @@
   (declare (ignore loop-tag))
   (let ((box-sym (gensym "FOREACH-BOX-"))
         (key-param (gensym "FOREACH-KEY-")))
-    (%php-call (%php-runtime-symbol :foreach-by-ref)
+    (%php-call (%PARSER-PHP-RUNTIME-SYMBOL :foreach-by-ref)
                arr-expr
                (make-ast-lambda
                 :params (list box-sym key-param)

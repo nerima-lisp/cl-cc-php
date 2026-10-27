@@ -184,7 +184,7 @@ to %php-parse-expr-stmt for expression statements."
         ((eq (php-peek-type stream) :T-INLINE-HTML)
          (multiple-value-bind (tok rest) (php-consume stream)
            (values (attach-attributes
-                    (%php-call (%php-runtime-symbol :output-write)
+                    (%php-call (%PARSER-PHP-RUNTIME-SYMBOL :output-write)
                                (make-ast-quote :value (php-tok-value tok))))
                    rest known-vars)))
         ((and (eq (php-peek-type stream) :T-IDENT)

@@ -275,7 +275,7 @@ OPS (a literal list of operator strings) over operands from NEXT-PARSER."
 
 ;;; ─── Extended CST Expression Parsers ─────────────────────────────────────
 
-(defun %php-cst-parse-unary-keyword-expression (ts)
+(defun %PARSER-PHP-CST-PARSE-UNARY-KEYWORD-EXPRESSION (ts)
   "Parse a keyword followed by one expression into a generic CST node."
   (let* ((keyword (php-ts-peek-value ts))
          (kw-tok (%php-tok-to-cst (php-ts-advance ts)))
@@ -286,6 +286,6 @@ OPS (a literal list of operator strings) over operands from NEXT-PARSER."
 
 ;;; ─── Extended CST Expression Parsers ─────────────────────────────────────
 
-(defun %php-cst-parse-opaque-keyword-expression (ts)
+(defun %PARSER-PHP-CST-PARSE-OPAQUE-KEYWORD-EXPRESSION (ts)
   "Consume a keyword as a conservative CST token."
   (%php-tok-to-cst (php-ts-advance ts)))

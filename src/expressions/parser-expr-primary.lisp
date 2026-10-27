@@ -75,12 +75,12 @@ T-TYPE.  Returns (values name-string rest)."
 (defun %php-cast-helper-symbol (kind)
   "Map a canonical cast KIND to the runtime helper used to perform it."
   (ecase kind
-    (:int (%php-runtime-symbol :intval))
-    (:float (%php-runtime-symbol :floatval))
-    (:string (%php-runtime-symbol :strval))
-    (:bool (%php-runtime-symbol :boolval))
-    (:array (%php-runtime-symbol :settype-array-value))
-    (:object (%php-runtime-symbol :settype-object-value))))
+    (:int (%PARSER-PHP-RUNTIME-SYMBOL :intval))
+    (:float (%PARSER-PHP-RUNTIME-SYMBOL :floatval))
+    (:string (%PARSER-PHP-RUNTIME-SYMBOL :strval))
+    (:bool (%PARSER-PHP-RUNTIME-SYMBOL :boolval))
+    (:array (%PARSER-PHP-RUNTIME-SYMBOL :settype-array-value))
+    (:object (%PARSER-PHP-RUNTIME-SYMBOL :settype-object-value))))
 
 (defun %php-deprecated-cast-name (tok)
   "Return TOK's PHP 8.5-deprecated cast spelling, or NIL."
@@ -107,7 +107,7 @@ T-TYPE.  Returns (values name-string rest)."
   (let ((cast-call (%php-call (%php-cast-helper-symbol kind) expr)))
     (if deprecated-name
         (make-ast-progn
-         :forms (list (%php-call (%php-runtime-symbol :trigger-error)
+         :forms (list (%php-call (%PARSER-PHP-RUNTIME-SYMBOL :trigger-error)
                                   (make-ast-quote
                                    :value (%php-deprecated-cast-message deprecated-name))
                                   (make-ast-int :value 8192))

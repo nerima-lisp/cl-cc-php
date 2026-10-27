@@ -141,7 +141,7 @@
 
 (defvar *php-runtime-symbols* (make-hash-table :test 'eq))
 
-(defun %php-runtime-symbol (key)
+(defun %PARSER-PHP-RUNTIME-SYMBOL (key)
   (check-type key keyword)
   (multiple-value-bind (symbol present-p)
       (gethash key *php-runtime-symbols*)

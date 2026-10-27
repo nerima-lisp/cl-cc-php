@@ -34,14 +34,14 @@
   (%php-seed-by-ref-param-registry)
   "Maps PHP function name strings to lists of by-reference parameter indices (0-based).")
 (progn
-  (defun %php-initialize-source-state ()
+  (defun %PARSER-PHP-INITIALIZE-SOURCE-STATE ()
     (list (cons '*php-by-ref-param-registry*
                 (%php-seed-by-ref-param-registry))
           (cons '*php-named-param-registry*
                 (make-hash-table :test #'equal))))
   (eval-when (:load-toplevel :execute)
     (register-php-source-state-initializer
-     (function %php-initialize-source-state))
+     (function %PARSER-PHP-INITIALIZE-SOURCE-STATE))
     (register-php-source-finalizer
      40
      (lambda (forms)
@@ -93,7 +93,7 @@ usort with a closure callback silently no-op (the resolver returned NIL)."
          (or (and *php-builtin-function-resolver* (funcall *php-builtin-function-resolver* callback)) (%php-callable-user-function callback)))
         (t nil)))
 
-(defun %php-closure-static-member-lowerer (object member args method-p)
+(defun %PARSER-PHP-CLOSURE-STATIC-MEMBER-LOWERER (object member args method-p)
   (if (and method-p
            (ast-var-p object)
            (string= (string-upcase (symbol-name (ast-var-name object))) "CLOSURE")
@@ -103,7 +103,7 @@ usort with a closure callback silently no-op (the resolver returned NIL)."
           (error "PHP parse error: Closure::getCurrent() expects no arguments"))
         (values
          (make-ast-call
-          :func (make-ast-var :name (%php-runtime-symbol :current-closure))
+          :func (make-ast-var :name (%PARSER-PHP-RUNTIME-SYMBOL :current-closure))
           :args nil)
          t))
       (values nil nil)))
@@ -122,12 +122,12 @@ usort with a closure callback silently no-op (the resolver returned NIL)."
 
 (defun register-php-parameter-modifier-parser (parser) (setf *php-parameter-modifier-parser* parser))
 
-(defun %php-parse-parameter-modifiers (stream) (if *php-parameter-modifier-parser* (funcall *php-parameter-modifier-parser* stream) (values nil stream)))
+(defun %PARSER-PHP-PARSE-PARAMETER-MODIFIERS (stream) (if *php-parameter-modifier-parser* (funcall *php-parameter-modifier-parser* stream) (values nil stream)))
 
 (eval-when (:load-toplevel :execute)
   (register-php-runtime-symbol :current-closure '%php-current-closure)
   (register-php-expression-static-member-lowerer
-   #'%php-closure-static-member-lowerer))
+   #'%PARSER-PHP-CLOSURE-STATIC-MEMBER-LOWERER))
 
 (eval-when (:load-toplevel :execute)
   (register-php-error-callable-resolver (function %php-callable-function))

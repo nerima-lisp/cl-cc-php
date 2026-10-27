@@ -12,7 +12,7 @@
   "Emit a PHP fatal error message and optionally include a VM backtrace."
   (format *error-output* "~&~A~%" message)
   (let ((state cl-cc/vm:*vm-state*))
-    (when (and (funcall (%php-runtime-symbol :truthy) (funcall (%php-runtime-symbol :ini-get) "fatal_error_backtraces"))
+    (when (and (funcall (%PARSER-PHP-RUNTIME-SYMBOL :truthy) (funcall (%PARSER-PHP-RUNTIME-SYMBOL :ini-get) "fatal_error_backtraces"))
                state)
       (cl-cc/vm:vm-print-backtrace state))
     (error 'cl-cc/vm:vm-fatal-error
@@ -92,7 +92,7 @@
 
 (defun %php-trigger-error (message &optional (error-type 256))
   "PHP trigger_error: generate a user-level error."
-  (let* ((errno (funcall (%php-runtime-symbol :parse-integer-setting) error-type 256))
+  (let* ((errno (funcall (%PARSER-PHP-RUNTIME-SYMBOL :parse-integer-setting) error-type 256))
          (handler-entry (%php-current-error-handler))
          (reportable-p (logtest errno *php-error-reporting-level*))
          (handled-p nil))
@@ -102,15 +102,15 @@
       (let ((fn (funcall *php-error-callable-resolver* (car handler-entry))))
         (when fn
           (setf handled-p
-                (funcall (%php-runtime-symbol :truthy) (funcall fn errno (funcall (%php-runtime-symbol :stringify) message) nil nil))))))
+                (funcall (%PARSER-PHP-RUNTIME-SYMBOL :truthy) (funcall fn errno (funcall (%PARSER-PHP-RUNTIME-SYMBOL :stringify) message) nil nil))))))
     (unless (or handled-p (not reportable-p))
       ;; User-triggered errors (E_USER_*) report to stdout so trigger_error() is
       ;; observable in program output; engine-generated diagnostics (E_DEPRECATED,
       ;; E_WARNING, …) go to stderr as PHP's CLI SAPI does, keeping them out of
       ;; captured program output (e.g. serialize() using __sleep()).
       (if (logtest errno (logior 256 512 1024 16384))
-          (format t "~A~%" (funcall (%php-runtime-symbol :stringify) message))
-          (format *error-output* "~A~%" (funcall (%php-runtime-symbol :stringify) message))))
+          (format t "~A~%" (funcall (%PARSER-PHP-RUNTIME-SYMBOL :stringify) message))
+          (format *error-output* "~A~%" (funcall (%PARSER-PHP-RUNTIME-SYMBOL :stringify) message))))
     t))
 
 (in-package #:cl-cc/php/errors)

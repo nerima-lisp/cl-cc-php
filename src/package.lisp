@@ -243,5 +243,10 @@
    #:php-generator-p
    #:php-ref-p
    #:tokenize-php-source
-  )
+   #:%php-array-pairs
+   #:%php-lookup-builtin
+   #:%php-lookup-builtin-symbol
+   #:%php-register-all-builtins
+   #:%php-register-builtin
+   #:*php-builtin-registry*)
 )

@@ -71,11 +71,11 @@
   (:import-from #:cl-cc/php/syntax
                 #:%php-consume-expected
                 #:%php-cst-interior
-                #:%php-cst-parse-opaque-keyword-expression
+                #:%PARSER-PHP-CST-PARSE-OPAQUE-KEYWORD-EXPRESSION
                 #:%php-helper-call-p
                 #:%php-name-absolute-p
                 #:%php-reference-token-p
-                #:%php-runtime-symbol
+                #:%PARSER-PHP-RUNTIME-SYMBOL
                 #:%php-strip-leading-namespace-separator
                 #:%php-tok-to-cst
                 #:*php-current-namespace*

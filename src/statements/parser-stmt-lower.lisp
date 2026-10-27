@@ -85,7 +85,7 @@
 (defun %php-switch-deprecation-warning-ast (message)
   "Emit E_DEPRECATED for a PHP 8.5 switch-label deprecation."
   (make-ast-progn
-   :forms (list (%php-call (%php-runtime-symbol :trigger-error)
+   :forms (list (%php-call (%PARSER-PHP-RUNTIME-SYMBOL :trigger-error)
                            (make-ast-quote :value message)
                            (make-ast-int :value 8192)))))
 
@@ -237,11 +237,11 @@ make `continue' skip the increment and loop forever."
 
 (defun %php-exception-object-cond (expr)
   "Build a predicate call testing whether EXPR is a PHP exception payload."
-  (%php-call (%php-runtime-symbol :exception-object-p) expr))
+  (%php-call (%PARSER-PHP-RUNTIME-SYMBOL :exception-object-p) expr))
 
 (defun %php-exception-match-cond (expr class-name)
   "Build a predicate call testing whether EXPR matches PHP catch CLASS-NAME."
-  (%php-call (%php-runtime-symbol :exception-matches-p)
+  (%php-call (%PARSER-PHP-RUNTIME-SYMBOL :exception-matches-p)
              expr
              (make-ast-quote :value class-name)))
 
@@ -254,7 +254,7 @@ make `continue' skip the increment and loop forever."
   "Return BODY with PHP catch variable VAR-SYM bound to EXCEPTION-SYM when present."
   (if var-sym
       (make-ast-let :bindings (list (cons var-sym
-                                          (%php-call (%php-runtime-symbol :exception-value)
+                                          (%php-call (%PARSER-PHP-RUNTIME-SYMBOL :exception-value)
                                                      (make-ast-var :name exception-sym))))
                      :body body)
       (make-ast-progn :forms body)))

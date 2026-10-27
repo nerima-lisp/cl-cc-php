@@ -72,9 +72,9 @@ flags/offset are bound to temps so each is evaluated once and the two helper
 calls never share arg AST nodes."
   (let* ((name (string-downcase (%php-strip-leading-namespace-separator qualified-name)))
          (all-p (string= name "preg_match_all"))
-         (matches-sym (if all-p (%php-runtime-symbol :preg-match-all-matches)
-                          (%php-runtime-symbol :preg-match-matches)))
-         (count-sym (if all-p (%php-runtime-symbol :preg-match-all) (%php-runtime-symbol :preg-match)))
+         (matches-sym (if all-p (%PARSER-PHP-RUNTIME-SYMBOL :preg-match-all-matches)
+                          (%PARSER-PHP-RUNTIME-SYMBOL :preg-match-matches)))
+         (count-sym (if all-p (%PARSER-PHP-RUNTIME-SYMBOL :preg-match-all) (%PARSER-PHP-RUNTIME-SYMBOL :preg-match)))
          (matches-var (cl-cc/ast:ast-var-name (third args)))
          (pat-tmp (gensym "PHP-PREG-PAT-"))
          (subj-tmp (gensym "PHP-PREG-SUBJ-"))
@@ -165,14 +165,14 @@ calls never share arg AST nodes."
 
 (defun %php-lower-sscanf-out-param (args)
   "Lower sscanf($str,$fmt,$a,...) into caller out-param assignments."
-  (%php-lower-scanf-like-out-param (%php-runtime-symbol :sscanf-values)
+  (%php-lower-scanf-like-out-param (%PARSER-PHP-RUNTIME-SYMBOL :sscanf-values)
                                    (list (first args) (second args))
                                    (cddr args)
                                    "PHP-SSCANF-VALUES-"))
 
 (defun %php-lower-scanf-out-param (args)
   "Lower scanf($fmt,$a,...) into caller out-param assignments."
-  (%php-lower-scanf-like-out-param (%php-runtime-symbol :scanf-values)
+  (%php-lower-scanf-like-out-param (%PARSER-PHP-RUNTIME-SYMBOL :scanf-values)
                                    (list (first args))
                                    (cdr args)
                                    "PHP-SCANF-VALUES-"))

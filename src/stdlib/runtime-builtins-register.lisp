@@ -60,7 +60,7 @@
   ;; (%php-lookup-builtin "STRLEN") => #<FUNCTION %PHP-STRLEN>
   (gethash (%php-normalize-builtin-name name) *php-builtin-registry*))
 
-(defun %php-registered-builtin-symbol (name)
+(defun %PARSER-PHP-REGISTERED-BUILTIN-SYMBOL (name)
   "Return the helper symbol registered for PHP builtin NAME, or NIL."
   (gethash (%php-normalize-builtin-name name) *php-builtin-symbol-registry*))
 
@@ -84,7 +84,7 @@
   (%php-register-vm-runtime-callables)
   (%php-register-all-builtins))
 
-(eval-when (:load-toplevel :execute) (register-php-builtin-function-resolver #'%php-lookup-builtin) (register-php-builtin-symbol-resolver #'%php-registered-builtin-symbol))
+(eval-when (:load-toplevel :execute) (register-php-builtin-function-resolver #'%php-lookup-builtin) (register-php-builtin-symbol-resolver #'%PARSER-PHP-REGISTERED-BUILTIN-SYMBOL))
 
 (in-package #:cl-cc/php/stdlib)
 

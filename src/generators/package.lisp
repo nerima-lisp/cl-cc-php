@@ -9,7 +9,7 @@
                 #:php-parse-expr
   )
   (:import-from #:cl-cc/php/syntax
-                #:%php-cst-parse-unary-keyword-expression
+                #:%PARSER-PHP-CST-PARSE-UNARY-KEYWORD-EXPRESSION
                 #:php-consume
                 #:php-peek-type
                 #:php-peek-value

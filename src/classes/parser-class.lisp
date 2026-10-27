@@ -426,7 +426,7 @@ multiple-extends and abstract method signatures."
 (eval-when (:load-toplevel :execute)
   (register-php-cst-keyword-expression-parser :new #'php-cst-parse-new)
   (register-php-cst-keyword-expression-parser
-   :clone #'%php-cst-parse-unary-keyword-expression)
+   :clone #'%PARSER-PHP-CST-PARSE-UNARY-KEYWORD-EXPRESSION)
   (register-php-cst-keyword-statement-parser :class #'%parse-php-class-def-stmt)
   (register-php-cst-keyword-statement-parser :trait #'%parse-php-classlike-stmt)
   (register-php-cst-keyword-statement-parser :interface #'%parse-php-classlike-stmt)

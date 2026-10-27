@@ -15,13 +15,13 @@
     (make-ast-let
      :bindings (list (cons clone-sym
                            (make-ast-call
-                            :func (make-ast-var :name (%php-runtime-symbol :clone))
+                            :func (make-ast-var :name (%PARSER-PHP-RUNTIME-SYMBOL :clone))
                             :args (list expr))))
      :body (append
             (list
              (make-ast-if
               :cond (make-ast-call
-                     :func (make-ast-var :name (%php-runtime-symbol :has-method))
+                     :func (make-ast-var :name (%PARSER-PHP-RUNTIME-SYMBOL :has-method))
                      :args (list (make-ast-var :name clone-sym)
                                  (make-ast-quote :value (php-ident-sym "__clone"))))
               :then (funcall *php-expression-method-call-lowerer* (make-ast-slot-value
@@ -34,7 +34,7 @@
             (when overrides
               (list
                (make-ast-call
-                :func (make-ast-var :name (%php-runtime-symbol :clone-with))
+                :func (make-ast-var :name (%PARSER-PHP-RUNTIME-SYMBOL :clone-with))
                 :args (list (make-ast-var :name clone-sym) overrides))))
             (list (make-ast-var :name clone-sym))))))
 
@@ -69,10 +69,10 @@
 
 (eval-when (:load-toplevel :execute)
   (register-php-cst-keyword-expression-parser
-   :throw #'%php-cst-parse-unary-keyword-expression))
+   :throw #'%PARSER-PHP-CST-PARSE-UNARY-KEYWORD-EXPRESSION))
 
 (progn
-  (defun %php-parse-throw-keyword-expression (stream known-vars)
+  (defun %PARSER-PHP-PARSE-THROW-KEYWORD-EXPRESSION (stream known-vars)
     "Parse a PHP throw keyword expression."
     (multiple-value-bind (token rest) (php-consume stream)
       (declare (ignore token))
@@ -83,4 +83,4 @@
                 rest2 kv2))))
   (eval-when (:load-toplevel :execute)
     (register-php-expression-keyword-parser
-     :throw #'%php-parse-throw-keyword-expression)))
+     :throw #'%PARSER-PHP-PARSE-THROW-KEYWORD-EXPRESSION)))

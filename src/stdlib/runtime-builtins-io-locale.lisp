@@ -63,7 +63,7 @@
                      (member subtag '("arab" "hebr" "nkoo" "syrc" "thaa")
                              :test #'string=))
                    subtags)))))
-(defun %php-locale-static-member-lowerer (object member args method-p)
+(defun %PARSER-PHP-LOCALE-STATIC-MEMBER-LOWERER (object member args method-p)
   (let ((class-p
           (and (ast-var-p object)
                (string= (string-upcase (symbol-name (ast-var-name object)))
@@ -90,7 +90,7 @@
                       "PHP parse error: Locale::minimizeSubtags() expects exactly 1 argument"))))
                 (values
                  (make-ast-call
-                  :func (make-ast-var :name (%php-runtime-symbol key))
+                  :func (make-ast-var :name (%PARSER-PHP-RUNTIME-SYMBOL key))
                   :args args)
                  t))
               (values nil nil)))
@@ -101,4 +101,4 @@
   (register-php-runtime-symbol :locale-add-likely-subtags '%php-locale-add-likely-subtags)
   (register-php-runtime-symbol :locale-minimize-subtags '%php-locale-minimize-subtags)
   (register-php-expression-static-member-lowerer
-   #'%php-locale-static-member-lowerer))
+   #'%PARSER-PHP-LOCALE-STATIC-MEMBER-LOWERER))

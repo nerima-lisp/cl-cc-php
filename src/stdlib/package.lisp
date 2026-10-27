@@ -74,7 +74,7 @@
   )
   (:import-from #:cl-cc/php/syntax
                 #:register-php-expression-constant-resolvers
-                #:%php-runtime-symbol
+                #:%PARSER-PHP-RUNTIME-SYMBOL
                 #:register-php-expression-static-member-lowerer
                 #:register-php-runtime-symbol)
   (:import-from #:cl-cc/php/types

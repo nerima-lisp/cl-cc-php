@@ -54,7 +54,7 @@ gensym-named class and makes an instance of it."
 
 (defun %php-spl-new-ast (class-name args)
   (make-ast-call
-   :func (make-ast-var :name (%php-runtime-symbol :spl-new))
+   :func (make-ast-var :name (%PARSER-PHP-RUNTIME-SYMBOL :spl-new))
    :args (cons (make-ast-quote :value (symbol-name class-name)) args)))
 
 (defun %php-fiber-class-p (class-name)
@@ -81,7 +81,7 @@ gensym-named class and makes an instance of it."
 
 (defun %php-fiber-new-ast (args)
   (make-ast-call
-   :func (make-ast-var :name (%php-runtime-symbol :fiber-make))
+   :func (make-ast-var :name (%PARSER-PHP-RUNTIME-SYMBOL :fiber-make))
    :args args))
 
 (defun %php-uri-class-kind (class-name)
@@ -97,28 +97,28 @@ gensym-named class and makes an instance of it."
 (defun %php-uri-new-ast (class-name args)
   (make-ast-call
    :func (make-ast-var :name (ecase (%php-uri-class-kind class-name)
-                               (:rfc3986 (%php-runtime-symbol :uri-rfc3986-new))
-                               (:whatwg (%php-runtime-symbol :uri-whatwg-new))))
+                               (:rfc3986 (%PARSER-PHP-RUNTIME-SYMBOL :uri-rfc3986-new))
+                               (:whatwg (%PARSER-PHP-RUNTIME-SYMBOL :uri-whatwg-new))))
    :args args))
 
 (defun %php-uri-parse-ast (kind args)
   (make-ast-call
    :func (make-ast-var :name (ecase kind
-                               (:rfc3986 (%php-runtime-symbol :uri-rfc3986-parse))
-                               (:whatwg (%php-runtime-symbol :uri-whatwg-parse))))
+                               (:rfc3986 (%PARSER-PHP-RUNTIME-SYMBOL :uri-rfc3986-parse))
+                               (:whatwg (%PARSER-PHP-RUNTIME-SYMBOL :uri-whatwg-parse))))
    :args args))
-(defun %php-class-static-member-lowerer (object member args method-p)
+(defun %PARSER-PHP-CLASS-STATIC-MEMBER-LOWERER (object member args method-p)
   (let ((member-name (string-upcase (symbol-name member))))
     (if (and method-p
              (member member-name '("CASES" "FROM" "TRYFROM") :test #'string=))
         (values
          (cond
            ((string= member-name "CASES")
-            (%php-call (%php-runtime-symbol :enum-cases) object))
+            (%php-call (%PARSER-PHP-RUNTIME-SYMBOL :enum-cases) object))
            ((string= member-name "FROM")
-            (%php-call (%php-runtime-symbol :enum-from) object (first args)))
+            (%php-call (%PARSER-PHP-RUNTIME-SYMBOL :enum-from) object (first args)))
            (t
-            (%php-call (%php-runtime-symbol :enum-try-from) object (first args))))
+            (%php-call (%PARSER-PHP-RUNTIME-SYMBOL :enum-try-from) object (first args))))
          t)
         (values nil nil))))
 
@@ -131,8 +131,8 @@ gensym-named class and makes an instance of it."
 (defun %php-reflection-new-ast (class-name args)
   (make-ast-call
    :func (make-ast-var :name (ecase (%php-reflection-object-class-kind class-name)
-                               (:constant (%php-runtime-symbol :reflection-constant-new))
-                               (:property (%php-runtime-symbol :reflection-property-new))))
+                               (:constant (%PARSER-PHP-RUNTIME-SYMBOL :reflection-constant-new))
+                               (:property (%PARSER-PHP-RUNTIME-SYMBOL :reflection-property-new))))
    :args args))
 
 (defun %php85-runtime-object-class-kind (class-name)
@@ -150,14 +150,14 @@ gensym-named class and makes an instance of it."
 (defun %php85-runtime-object-new-ast (class-name args)
   (make-ast-call
    :func (make-ast-var :name (ecase (%php85-runtime-object-class-kind class-name)
-                               (:dom-element (%php-runtime-symbol :dom-element-new))
-                               (:dom-html-document (%php-runtime-symbol :dom-html-document-new))
-                               (:pdo-sqlite (%php-runtime-symbol :pdo-sqlite-new))
-                               (:soap-client (%php-runtime-symbol :soap-client-new))
-                               (:soap-fault (%php-runtime-symbol :soap-fault-new))
-                               (:soap-server (%php-runtime-symbol :soap-server-new))
-                               (:sqlite3-stmt (%php-runtime-symbol :sqlite3-stmt-new))
-                               (:xslt-processor (%php-runtime-symbol :xslt-processor-new))))
+                               (:dom-element (%PARSER-PHP-RUNTIME-SYMBOL :dom-element-new))
+                               (:dom-html-document (%PARSER-PHP-RUNTIME-SYMBOL :dom-html-document-new))
+                               (:pdo-sqlite (%PARSER-PHP-RUNTIME-SYMBOL :pdo-sqlite-new))
+                               (:soap-client (%PARSER-PHP-RUNTIME-SYMBOL :soap-client-new))
+                               (:soap-fault (%PARSER-PHP-RUNTIME-SYMBOL :soap-fault-new))
+                               (:soap-server (%PARSER-PHP-RUNTIME-SYMBOL :soap-server-new))
+                               (:sqlite3-stmt (%PARSER-PHP-RUNTIME-SYMBOL :sqlite3-stmt-new))
+                               (:xslt-processor (%PARSER-PHP-RUNTIME-SYMBOL :xslt-processor-new))))
    :args args))
 
 (defun php-parse-new (stream known-vars)
@@ -206,7 +206,7 @@ gensym-named class and makes an instance of it."
                             ;; path, with the instance as the implicit $this first arg.
                             (make-ast-if
                              :cond (make-ast-call
-                                    :func (make-ast-var :name (%php-runtime-symbol :has-method))
+                                    :func (make-ast-var :name (%PARSER-PHP-RUNTIME-SYMBOL :has-method))
                                     :args (list (make-ast-var :name inst-sym)
                                                 (make-ast-quote
                                                  :value (php-ident-sym "__construct"))))
@@ -221,4 +221,4 @@ gensym-named class and makes an instance of it."
 (eval-when (:load-toplevel :execute)
   (register-php-expression-keyword-parser :new #'php-parse-new)
   (register-php-expression-static-member-lowerer
-   #'%php-class-static-member-lowerer))
+   #'%PARSER-PHP-CLASS-STATIC-MEMBER-LOWERER))
