@@ -6,6 +6,12 @@
     # release tests pass, so it is less likely to land a broken build.
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
+    # Shared static package and feature checks, pinned to cl-nix-forge 0.7.4.
+    cl-nix-forge = {
+      url = "github:nerima-lisp/cl-nix-forge/950a8224940539a97c112a6b872f0ae5b6c115db";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     # Compiler systems are pinned to their child-main snapshots from the
     # umbrella pinset so this flake consumes only the packages it needs.
     cl-cc-bootstrap = {
@@ -96,9 +102,8 @@
 
     # `inputs.nixpkgs.follows` is mandatory on every input that is itself a
     # flake: without it each one drags in its own nixpkgs, inflating flake.lock
-    # and rebuilding the same derivations. The sibling inputs above are all
-    # `flake = false` (plain source trees with no inputs of their own), so
-    # treefmt-nix is the only input that can carry a `follows`.
+    # and rebuilding the same derivations. The sibling source-tree inputs use
+    # `flake = false`; cl-nix-forge and treefmt-nix follow the root nixpkgs.
     treefmt-nix = {
       url = "github:numtide/treefmt-nix";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -126,6 +131,7 @@
       cl-date-kit,
       cl-json-kit,
       cl-host-kit,
+      cl-nix-forge,
       treefmt-nix,
     }:
     let
@@ -363,6 +369,28 @@
                 test "$orphaned" -eq 0
                 touch "$out"
               '';
+
+          feature-lint = cl-nix-forge.lib.${system}.mkFeatureLintCheck {
+            src = ./.;
+            featureDefinitions = "nix/feature-dependencies.sexp";
+            glossary = "docs/src/reference/glossary.md";
+            glossaryHeadingPrefix = "## ";
+            exportSurface = "t/export-surface.txt";
+            mode = "transition";
+            legacyInternalRefs = "t/legacy-internal-refs.sexp";
+            forbiddenNames = [
+              "phases"
+              "misc"
+              "utils"
+              "helpers"
+            ];
+            numberedPrefixes = [
+              "FR-"
+              "W"
+            ];
+            packagePrefix = "cl-cc/php/";
+            infraSuffix = "/infra";
+          };
 
           # Fails `nix flake check` when any tracked file is unformatted,
           # turning the formatter into an enforced CI gate.
