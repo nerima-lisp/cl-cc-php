@@ -6,10 +6,10 @@
     (%php-throw 'type-error "clone-with overrides must be an array"))
   (dolist (pair (%php-array-pairs overrides) instance)
     (let* ((slot (%php-clone-with-slot (car pair)))
-           (class (and (cl-cc/vm::%vm-vector-instance-p instance)
+           (class (and (cl-cc/vm:%vm-vector-instance-p instance)
                        (aref instance 0)))
            (index (and class
-                       (cl-cc/vm::%vm-slot-vector-index class slot))))
+                       (cl-cc/vm:%vm-slot-vector-index class slot))))
       (unless (and index (< index (length instance)))
         (%php-throw 'error
                     (format nil "The slot ~S is missing from the cloned object"
@@ -25,7 +25,7 @@
 class-defined __clone method on the copied object so the call stays inside the
 normal VM method-dispatch path."
   (handler-case
-      (cl-cc/vm::copy-instance instance)
+      (cl-cc/vm:copy-instance instance)
     (error (condition)
       (error "Cannot clone non-object value ~S: ~A" instance condition))))
 
@@ -34,10 +34,10 @@ normal VM method-dispatch path."
 the `new C(args)' lowering to call __construct only when it exists — the call
 itself runs through the normal method-dispatch (vm-call) path, so the constructor
 executes in the right VM context."
-  (and (cl-cc/vm::%vm-vector-instance-p instance)
+  (and (cl-cc/vm:%vm-vector-instance-p instance)
        (let ((class (aref instance 0)))
          (and (hash-table-p class)
-              (cl-cc/vm::%vm-slot-vector-index class name-sym)
+              (cl-cc/vm:%vm-slot-vector-index class name-sym)
               t))))
 
 (defun %php-enum-make-case (enum-name case-name value)

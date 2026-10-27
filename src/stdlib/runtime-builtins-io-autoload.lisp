@@ -43,7 +43,7 @@
   "Return true when CALLBACK is acceptable for spl_autoload_register."
   (or (stringp callback)
       (functionp callback)
-      (cl-cc/vm::%vm-closure-object-p callback)
+      (cl-cc/vm:%vm-closure-object-p callback)
       (and (hash-table-p callback)
            (plusp (%php-count callback)))))
 

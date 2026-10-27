@@ -5,15 +5,15 @@
   (let ((state cl-cc/vm:*vm-state*))
     (if state
         (let* ((depth (length (cl-cc/vm:vm-call-stack state)))
-               (stack (cl-cc/vm::vm-current-closure-stack state)))
+               (stack (cl-cc/vm:vm-current-closure-stack state)))
           (loop while (and stack (> (caar stack) depth))
                 do (pop stack))
-          (setf (cl-cc/vm::vm-current-closure-stack state) stack)
+          (setf (cl-cc/vm:vm-current-closure-stack state) stack)
           (or (loop for (entry-depth . closure) in stack
-                    for tag = (and (cl-cc/vm::%vm-closure-object-p closure)
-                                   (cl-cc/vm::vm-closure-dispatch-tag closure))
+                    for tag = (and (cl-cc/vm:%vm-closure-object-p closure)
+                                   (cl-cc/vm:vm-closure-dispatch-tag closure))
                     when (and (= entry-depth depth)
-                              (cl-cc/vm::%vm-closure-object-p closure)
+                              (cl-cc/vm:%vm-closure-object-p closure)
                               (not (and (consp tag) (eq (car tag) :known-function))))
                       return closure)
               (%php-throw 'error "Current function is not a closure.")))
@@ -65,9 +65,9 @@ wrapped in the same %vm-call-closure-sync trampoline used for Closure args."
                      (when (and (symbolp sym)
                                 (string= (symbol-name sym) target))
                        (return-from found
-                         (if (cl-cc/vm::%vm-closure-object-p fn)
+                         (if (cl-cc/vm:%vm-closure-object-p fn)
                              (lambda (&rest args)
-                               (cl-cc/vm::%vm-call-closure-sync fn state args))
+                               (cl-cc/vm:%vm-call-closure-sync fn state args))
                              fn))))
                    registry)
           nil)))))
@@ -83,9 +83,9 @@ execution for exactly this host-runtime -> VM-closure inverse bridge). Mirrors t
 JS *js-apply-fn* installer. Without this, array_map/array_filter/array_reduce/
 usort with a closure callback silently no-op (the resolver returned NIL)."
   (cond ((functionp callback) callback)
-        ((cl-cc/vm::%vm-closure-object-p callback)
+        ((cl-cc/vm:%vm-closure-object-p callback)
          (lambda (&rest args)
-           (cl-cc/vm::%vm-call-closure-sync callback cl-cc/vm:*vm-state* args)))
+           (cl-cc/vm:%vm-call-closure-sync callback cl-cc/vm:*vm-state* args)))
         ((and (symbolp callback) (fboundp callback)) (symbol-function callback))
         ((stringp callback)
          ;; A string callable names a global function.  Try builtins first, then

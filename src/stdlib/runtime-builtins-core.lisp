@@ -139,8 +139,8 @@ hash-table. Repeated calls with the same ID return the same handle."
   "Return OBJECT's underlying storage when OBJECT is a PHP object."
   (cond
     ((hash-table-p object) object)
-    ((typep object 'cl-cc/vm::vm-hash-table-object)
-     (cl-cc/vm::%vm-hashlike-storage object))
+    ((typep object 'cl-cc/vm:vm-hash-table-object)
+     (cl-cc/vm:%vm-hashlike-storage object))
     (t nil)))
 
 (defun %php-object-class-ht (object)
@@ -198,9 +198,9 @@ hash-table. Repeated calls with the same ID return the same handle."
              ;; the implicit $this, so callers pass the object as the first arg.
              (cond
                ((functionp value) value)
-               ((cl-cc/vm::%vm-closure-object-p value)
+               ((cl-cc/vm:%vm-closure-object-p value)
                 (lambda (&rest args)
-                  (cl-cc/vm::%vm-call-closure-sync value cl-cc/vm:*vm-state* args)))
+                  (cl-cc/vm:%vm-call-closure-sync value cl-cc/vm:*vm-state* args)))
                (t nil)))
            (%lookup-instance-method (obj class-ht)
              ;; PHP compiles methods to per-instance slots (see codegen-clos),
@@ -209,7 +209,7 @@ hash-table. Repeated calls with the same ID return the same handle."
              (when (hash-table-p class-ht)
                (let* ((method-symbol (intern (string-upcase (%php-stringify method-name))
                                              :cl-cc/php))
-                      (index (cl-cc/vm::%vm-slot-vector-index class-ht method-symbol)))
+                      (index (cl-cc/vm:%vm-slot-vector-index class-ht method-symbol)))
                  (when (and index
                             (vectorp obj)
                             (< index (length obj)))
@@ -217,7 +217,7 @@ hash-table. Repeated calls with the same ID return the same handle."
     (cond
       ((hash-table-p object)
        (%lookup-method object))
-      ((typep object 'cl-cc/vm::vm-hash-table-object)
+      ((typep object 'cl-cc/vm:vm-hash-table-object)
        (%lookup-class-methods (%php-object-hashlike-storage object)))
       ((and (vectorp object)
             (plusp (length object))
@@ -241,7 +241,7 @@ hash-table. Repeated calls with the same ID return the same handle."
                 object)
        (sort pairs #'string<
              :key (lambda (pair) (%php-stringify (car pair))))))
-    ((typep object 'cl-cc/vm::vm-hash-table-object)
+    ((typep object 'cl-cc/vm:vm-hash-table-object)
      (let ((storage (%php-object-hashlike-storage object)))
        (when storage
          (let ((pairs '()))
@@ -260,11 +260,11 @@ hash-table. Repeated calls with the same ID return the same handle."
           (hash-table-p (aref object 0)))
      (let* ((class-ht (aref object 0))
             (pairs nil))
-       (dolist (slot (cl-cc/vm::class-slots class-ht))
-         (let* ((slot-name (cl-cc/vm::slot-definition-name slot))
+       (dolist (slot (cl-cc/vm:class-slots class-ht))
+         (let* ((slot-name (cl-cc/vm:slot-definition-name slot))
                 (property-name (string-downcase (symbol-name slot-name)))
-                (allocation (cl-cc/vm::slot-definition-allocation slot))
-                (index (cl-cc/vm::%vm-slot-vector-index class-ht slot-name)))
+                (allocation (cl-cc/vm:slot-definition-allocation slot))
+                (index (cl-cc/vm:%vm-slot-vector-index class-ht slot-name)))
            (when (and (eq allocation :instance)
                       (not (and (stringp property-name)
                                 (> (length property-name) 2)
@@ -272,7 +272,7 @@ hash-table. Repeated calls with the same ID return the same handle."
                       index
                       (< index (length object)))
             (let ((value (aref object index)))
-               (unless (eq value cl-cc/vm::*unbound-slot-marker*)
+               (unless (eq value cl-cc/vm:*unbound-slot-marker*)
                  (push (cons property-name value) pairs))))))
        (sort pairs #'string<
              :key (lambda (pair) (%php-stringify (car pair))))))

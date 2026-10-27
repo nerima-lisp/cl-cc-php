@@ -21,7 +21,7 @@
   (cl-cc/vm:vm-register-host-bridge
    '%php-current-closure
    (lambda (&rest args)
-     (apply (cl-cc/vm::%vm-runtime-callable "PHP-CURRENT-CLOSURE") args))))
+     (apply (cl-cc/vm:%vm-runtime-callable "PHP-CURRENT-CLOSURE") args))))
 
 (defun %php-register-host-bridges ()
   "Register PHP-specific host bridge aliases that bypass VM instruction names."

@@ -96,10 +96,10 @@ class is unknown to the running program."
   "Assign VALUE to property KEY on a reconstructed OBJECT (a vector-backed
 instance or a __class__-tagged associative array)."
   (cond
-    ((cl-cc/vm::%vm-vector-instance-p object)
+    ((cl-cc/vm:%vm-vector-instance-p object)
      (let* ((class-ht (aref object 0))
             (sym (intern (string-upcase (%php-stringify key)) :cl-cc/php))
-            (index (cl-cc/vm::%vm-slot-vector-index class-ht sym)))
+            (index (cl-cc/vm:%vm-slot-vector-index class-ht sym)))
        (when (and index (< index (length object)))
          (setf (aref object index) value))))
     ((hash-table-p object)
@@ -116,8 +116,8 @@ property defaults.  Unknown classes fall back to a __class__-tagged array so
 malformed or foreign payloads still round-trip as data."
   (let ((class-ht (%php-unserialize-class-descriptor class-name)))
     (if (and (hash-table-p class-ht)
-             (cl-cc/vm::%vm-fixed-slot-layout-p class-ht))
-        (let* ((object (cl-cc/vm::%vm-raw-allocate-instance
+             (cl-cc/vm:%vm-fixed-slot-layout-p class-ht))
+        (let* ((object (cl-cc/vm:%vm-raw-allocate-instance
                         class-ht nil (%php-unserialize-runtime-state)))
                (unserialize-hook (%php-object-method object "__unserialize")))
           (if unserialize-hook
