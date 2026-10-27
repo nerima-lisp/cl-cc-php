@@ -192,7 +192,7 @@
   "PHP method_exists: check if method exists on object or runtime class name."
   (cond
     ((or (hash-table-p object)
-         (typep object 'cl-cc/vm::vm-hash-table-object)
+         (typep object 'cl-cc/vm:vm-hash-table-object)
          (and (vectorp object)
               (plusp (length object))
               (hash-table-p (aref object 0))))
@@ -205,7 +205,7 @@
   (let ((property-name (%php-stringify property)))
     (cond
       ((or (hash-table-p object)
-           (typep object 'cl-cc/vm::vm-hash-table-object)
+           (typep object 'cl-cc/vm:vm-hash-table-object)
            (and (vectorp object)
                 (plusp (length object))
                 (hash-table-p (aref object 0))))
@@ -216,9 +216,9 @@
        (let ((descriptor (%php-reflection-class-descriptor object)))
          (when descriptor
            (some (lambda (slot)
-                   (string= (%php-stringify (cl-cc/vm::slot-definition-name slot))
+                   (string= (%php-stringify (cl-cc/vm:slot-definition-name slot))
                             property-name))
-                 (cl-cc/vm::class-slots descriptor)))))
+                 (cl-cc/vm:class-slots descriptor)))))
        (t nil))))
 
 (defun %php-get-class (object)
@@ -315,7 +315,7 @@
     ((symbolp class) class)
     ((%php-reflection-class-descriptor-p class)
      (gethash :__name__ class))
-    ((and (cl-cc/vm::%vm-vector-instance-p class)
+    ((and (cl-cc/vm:%vm-vector-instance-p class)
           (%php-reflection-class-descriptor-p (aref class 0)))
      (gethash :__name__ (aref class 0)))
     ((hash-table-p class)
@@ -354,7 +354,7 @@
 (defun %php-reflection-class-descriptor (class)
   (cond
     ((%php-reflection-class-descriptor-p class) class)
-    ((and (cl-cc/vm::%vm-vector-instance-p class)
+    ((and (cl-cc/vm:%vm-vector-instance-p class)
           (%php-reflection-class-descriptor-p (aref class 0)))
      (aref class 0))
     ((hash-table-p class)
