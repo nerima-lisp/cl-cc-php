@@ -1,6 +1,6 @@
 ;;;; runtime-builtins-regex-array.lisp -- PHP array and natural-sort extra builtins
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/stdlib)
 
 (defun %php-array-walk-recursive (array callback &optional extra-data)
   "PHP array_walk_recursive: apply callback to all leaf values."

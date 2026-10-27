@@ -1,6 +1,6 @@
 ;;;; runtime-builtins-string-format.lisp -- Formatting and escaping PHP string operations
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/stdlib)
 
 (defun %php-sprintf (format-string &rest args)
   "Return a sprintf result supporting %s %d %f %e %o %x %X %b %c %u %% and width/precision."

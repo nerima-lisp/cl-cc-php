@@ -14,7 +14,7 @@
 ;;;; traits it names (with insteadof-resolved conflicts, and a clear error for conflicts
 ;;;; it does not resolve), so the marker itself never reaches codegen.
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/classes)
 
 ;;; ─── Trait Registry ─────────────────────────────────────────────────────────
 
@@ -365,3 +365,10 @@ The returned ast-slot-def carries:
                                     :php-insteadof    insteadof
                                     :php-alias        alias))))
           (values slot rest2 nil))))))
+;;; ─── Use-Trait Statement ────────────────────────────────────────────────────
+
+(eval-when (:load-toplevel :execute)
+  (register-php-source-finalizer
+   10 (function %php-merge-all-trait-members))
+  (register-php-source-finalizer
+   30 (function %php-validate-override-tree)))

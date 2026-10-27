@@ -17,7 +17,7 @@
 ;;;;   runtime-builtins-io-output.lisp    output buffering and headers
 ;;;;   runtime-builtins-io-cookie-session.lisp  cookies and sessions
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/stdlib)
 
 ;;; ─── Shared Utilities ────────────────────────────────────────────────────────
 
@@ -207,5 +207,5 @@
 (defun %php-iterator-count (iter)
   "PHP iterator_count: number of elements a Generator yields."
   (if (php-generator-p iter)
-      (length (php-gen-values iter))
+      (%php-generator-value-count iter)
       (%php-count iter)))

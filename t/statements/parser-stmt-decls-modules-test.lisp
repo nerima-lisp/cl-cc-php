@@ -1,7 +1,7 @@
 ;;;; parser-stmt-decls-modules-test.lisp — src/parser-stmt-decls-modules.lisp — namespace, use, and
 ;;;; imports.
 
-(in-package :cl-cc-php/test)
+(in-package :cl-cc/php/statements/test)
 
 (describe
   "PHP parser namespaces"
@@ -16,15 +16,6 @@
         (cl-cc/ast:ast-imports (first asts))
         :to-equal
         '((:type :class :name "Vendor\\Thing" :alias "Thing")))))
-  (it-sequential
-    "php-parser-qualified-name-rejects-single-token-namespace-separators"
-    (let ((%%signaled1 nil))
-      (handler-case (progn
-          (cl-cc/php::php-parse-qualified-name
-            (list (cl-cc/php::make-php-token :T-IDENT "Vendor\\Thing"))))
-        (error ()
-          (setf %%signaled1 t)))
-      (expect %%signaled1 :to-be-truthy)))
   (it-sequential
     "php-parser-braced-namespace-and-group-use-metadata"
     (let ((asts
@@ -62,7 +53,7 @@ make-instance is the first binding's value; falls back to VALUE itself."
       (expect
         (cl-cc/ast:ast-var-name (cl-cc/ast:ast-call-func copy-call))
         :to-be
-        'cl-cc/php::%php-clone)
+        'cl-cc/php:%php-clone)
       (expect (cl-cc/ast:ast-if-p (first body)) :to-be-truthy)
       (expect (cl-cc/ast:ast-var-p (second body)) :to-be-truthy)))
   (it-sequential

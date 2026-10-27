@@ -6,7 +6,7 @@
 ;;;; through the existing slot-value method dispatch unchanged, and suspension
 ;;;; is a CATCH/THROW pair rather than anything the compiler knows about.
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/fibers)
 
 ;;; PHP 8.1 Fibers provide cooperative multitasking:
 ;;;
@@ -168,13 +168,20 @@ Must be called from within a running Fiber body."
 (defun %php-fiber-terminated-p (fiber)
   "Return true when FIBER has finished execution."
   (php-fiber-terminated-p (%php-fiber-state fiber)))
+(defun %php-fiber-static-member-lowerer (object member args method-p)
+  (if (and method-p
+           (ast-var-p object)
+           (string= (string-upcase (symbol-name (ast-var-name object))) "FIBER")
+           (string= (string-upcase (symbol-name member)) "SUSPEND"))
+      (values
+       (apply #'%php-call (%php-runtime-symbol :fiber-suspend) args)
+       t)
+      (values nil nil)))
 
 ;;; ─── Late registrations (after php84 functions are defined) ─────────────────
 
 (eval-when (:load-toplevel :execute)
-  ;; PHP 8.1 Fiber builtins.
-  (%php-register-builtin "fiber_create"     '%php-fiber-make)
-  (%php-register-builtin "fiber_start"      '%php-fiber-start)
-  (%php-register-builtin "fiber_resume"     '%php-fiber-resume)
-  (%php-register-builtin "fiber_suspend"    '%php-fiber-suspend)
-  (%php-register-builtin "fiber_get_return" '%php-fiber-get-return))
+  (register-php-runtime-symbol :fiber-suspend '%php-fiber-suspend)
+  (register-php-runtime-symbol :fiber-make '%php-fiber-make)
+  (register-php-expression-static-member-lowerer
+   #'%php-fiber-static-member-lowerer))

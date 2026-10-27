@@ -1,7 +1,7 @@
 ;;;; parser-stmt-decls-control-test.lisp — src/parser-stmt-decls-control.lisp — switch, loops, and
 ;;;; arrays.
 
-(in-package :cl-cc-php/test)
+(in-package :cl-cc/php/statements/test)
 
 (describe "PHP parser control flow and arrays"
 

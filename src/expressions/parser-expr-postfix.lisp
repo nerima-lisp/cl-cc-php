@@ -2,7 +2,7 @@
 ;;;; postfix inc/dec.
 ;;;;
 ;;;; Split from parser-expr.lisp so expression domains stay independently reviewable.
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/expressions)
 
 ;;; ─── Postfix ++/-- lowering ──────────────────────────────────────────────────
 ;;;
@@ -10,7 +10,7 @@
 ;;; Yields the ORIGINAL value (captures it in a gensym) then mutates $var.
 
 (defparameter *php-postfix-incdec-ops*
-  '(("++" . cl-cc/php::%php-add) ("--" . cl-cc/php::%php-sub))
+  '(("++" . %php-add) ("--" . %php-sub))
   "Maps postfix operator string to the PHP arithmetic helper symbol.")
 
 (defun %php-lower-postfix-incdec (op obj &optional (var-known t))
@@ -51,7 +51,7 @@ increment/decrement base instead of reading an unbound Lisp variable."
                                       :value (plus1 (make-ast-var :name old)))
                                      (make-ast-var :name old)))))))
         ;; $a[k]++ : bind the array and key once, read the old element, write +1.
-        ((%php-array-ref-call-p obj)
+        ((call-php-array-expression-lowerer :ref-call-p obj)
          (destructuring-bind (arr-expr key-expr) (ast-call-args obj)
            (let ((arr (gensym "PHP-ARR-")) (key (gensym "PHP-KEY-")) (old (gensym "PHP-OLD-")))
              (make-ast-let
@@ -59,25 +59,13 @@ increment/decrement base instead of reading an unbound Lisp variable."
               :body (list (make-ast-let
                            :bindings (list (cons key key-expr))
                            :body (list (make-ast-let
-                                        :bindings (list (cons old (%php-array-ref-call
-                                                                   (make-ast-var :name arr)
+                                        :bindings (list (cons old (call-php-array-expression-lowerer :ref-call (make-ast-var :name arr)
                                                                    (make-ast-var :name key))))
-                                        :body (list (%php-array-set-call
-                                                     (make-ast-var :name arr)
+                                        :body (list (call-php-array-expression-lowerer :set-call (make-ast-var :name arr)
                                                      (make-ast-var :name key)
                                                      (plus1 (make-ast-var :name old)))
                                                     (make-ast-var :name old))))))))))
         (t obj)))))
-
-(defun %php-method-call-with-args (func method user-args &optional receiver-arg)
-  "Lower PHP method call arguments, including named and spread arguments.
-RECEIVER-ARG is the implicit $this argument for instance calls; named argument
-ordering only applies to user-visible parameters."
-  (let ((lowering-result
-          (if (%php-args-have-named-p user-args)
-              (%php-reorder-named-args-for-call method user-args)
-              (%php-static-call-lowering-result user-args))))
-    (%php-emit-lowered-call func lowering-result :receiver-arg receiver-arg)))
 
 (defun php-parse-postfix (stream known-vars)
   "Parse postfix expressions: method calls, property access, array access."
@@ -99,8 +87,7 @@ ordering only applies to user-visible parameters."
                        (let ((recv (gensym "PHP-RECV-")))
                          (setf obj (make-ast-let
                                     :bindings (list (cons recv obj))
-                                    :body (list (%php-method-call-with-args
-                                                 (make-ast-slot-value
+                                    :body (list (funcall *php-expression-method-call-lowerer* (make-ast-slot-value
                                                   :object (make-ast-var :name recv)
                                                   :slot prop)
                                                  prop
@@ -123,7 +110,7 @@ ordering only applies to user-visible parameters."
                (let* ((prop (php-ident-sym name-str))
                       (recv (gensym "PHP-NULLSAFE-"))
                       (recv-var (make-ast-var :name recv))
-                      (null-check (%php-call 'cl-cc/php::%php-null-p recv-var))
+                      (null-check (%php-call '%php-null-p recv-var))
                       (access (if (eq (php-peek-type rest3) :T-LPAREN)
                                   nil   ; computed below with the arglist
                                   (make-ast-slot-value :object recv-var :slot prop))))
@@ -135,8 +122,7 @@ ordering only applies to user-visible parameters."
                                   :body (list (make-ast-if
                                                :cond null-check
                                                :then (make-ast-quote :value +php-null+)
-                                               :else (%php-method-call-with-args
-                                                      (make-ast-slot-value
+                                               :else (funcall *php-expression-method-call-lowerer* (make-ast-slot-value
                                                        :object recv-var :slot prop)
                                                       prop
                                                       args
@@ -152,77 +138,27 @@ ordering only applies to user-visible parameters."
                            rest rest3))))))
           ;; :: static member/method access. Enum built-ins lower to PHP helpers.
           ((eq type :T-DOUBLE-COLON)
-           (multiple-value-bind (tok rest2) (php-consume rest)
-             (declare (ignore tok))
-             (multiple-value-bind (name-str rest3) (%php-member-name rest2)
-               (let ((member (php-ident-sym name-str)))
-                 (if (eq (php-peek-type rest3) :T-LPAREN)
-                     (multiple-value-bind (args rest4 kv4) (php-parse-arglist rest3 kv)
-                       (setf obj (cond
-                                   ((string= (symbol-name member) "CASES")
-                                    (%php-call 'cl-cc/php::%php-enum-cases obj))
-                                   ((string= (symbol-name member) "FROM")
-                                    (%php-call 'cl-cc/php::%php-enum-from obj (first args)))
-                                   ((string= (symbol-name member) "TRYFROM")
-                                    (%php-call 'cl-cc/php::%php-enum-try-from obj (first args)))
-                                   ((and (%php-closure-class-ast-p obj)
-                                         (string= (symbol-name member) "GETCURRENT"))
-                                    (when args
-                                      (error
-                                       (concatenate 'string
-                                                    "PHP parse error: Closure::getCurrent() "
-                                                    "expects no arguments")))
-                                    (%php-call 'cl-cc/php::%php-current-closure))
-                                   ((and (%php-locale-class-ast-p obj)
-                                         (string= (symbol-name member) "ISRIGHTTOLEFT"))
-                                    (unless (= (length args) 1)
-                                      (error
-                                       (concatenate 'string
-                                                    "PHP parse error: Locale::isRightToLeft() "
-                                                    "expects exactly 1 argument")))
-                                    (%php-call 'cl-cc/php::%php-locale-is-right-to-left
-                                               (first args)))
-                                   ((and (%php-locale-class-ast-p obj)
-                                         (string= (symbol-name member) "ADDLIKELYSUBTAGS"))
-                                    (unless (= (length args) 1)
-                                      (error
-                                       (concatenate 'string
-                                                    "PHP parse error: Locale::addLikelySubtags() "
-                                                    "expects exactly 1 argument")))
-                                    (%php-call 'cl-cc/php::%php-locale-add-likely-subtags
-                                               (first args)))
-                                   ((and (%php-locale-class-ast-p obj)
-                                         (string= (symbol-name member) "MINIMIZESUBTAGS"))
-                                    (unless (= (length args) 1)
-                                      (error
-                                       (concatenate 'string
-                                                    "PHP parse error: Locale::minimizeSubtags() "
-                                                    "expects exactly 1 argument")))
-                                    (%php-call 'cl-cc/php::%php-locale-minimize-subtags
-                                               (first args)))
-                                   ((and (%php-uri-class-ast-kind obj)
-                                         (string= (symbol-name member) "PARSE"))
-                                    (when (null args)
-                                      (error
-                                       "PHP parse error: Uri::parse() expects at least 1 argument"))
-                                    (%php-uri-parse-ast (%php-uri-class-ast-kind obj) args))
-                                   ((and (%php-fiber-class-ast-p obj)
-                                         (string= (symbol-name member) "SUSPEND"))
-                                    (apply #'%php-call 'cl-cc/php::%php-fiber-suspend args))
-                                   (t
-                                    (%php-method-call-with-args
-                                     (make-ast-slot-value :object obj :slot member)
-                                     member
-                                     args)))
-                             rest rest4
-                             kv kv4))
-                     (setf obj (if (%php-predefined-class-constant-class-ast-p obj)
-                                   (%php-call 'cl-cc/php::%php-predefined-class-constant
-                                              (make-ast-quote
-                                               :value (symbol-name (ast-var-name obj)))
-                                              (make-ast-quote :value (symbol-name member)))
-                                   (make-ast-slot-value :object obj :slot member))
-                           rest rest3))))))
+ (multiple-value-bind (tok rest2) (php-consume rest)
+   (declare (ignore tok))
+   (multiple-value-bind (name-str rest3) (%php-member-name rest2)
+     (let ((member (php-ident-sym name-str)))
+       (if (eq (php-peek-type rest3) :T-LPAREN)
+           (multiple-value-bind (args rest4 kv4) (php-parse-arglist rest3 kv)
+             (multiple-value-bind (special handled-p)
+                 (call-php-expression-static-member-lowerers obj member args t)
+               (setf obj (if handled-p
+                             special
+                             (funcall *php-expression-method-call-lowerer*
+                                      (make-ast-slot-value :object obj :slot member)
+                                      member args))
+                     rest rest4
+                     kv kv4)))
+           (multiple-value-bind (special handled-p)
+               (call-php-expression-static-member-lowerers obj member nil nil)
+             (setf obj (if handled-p
+                           special
+                           (make-ast-slot-value :object obj :slot member))
+                   rest rest3)))))))
           ;; Postfix ++/-- — yield the ORIGINAL value, then adjust by ±1.
           ((and (eq type :T-OP) (member (php-peek-value rest) '("++" "--") :test #'equal))
            (multiple-value-bind (tok rest2) (php-consume rest)
@@ -240,12 +176,12 @@ ordering only applies to user-visible parameters."
                   ;; Empty subscript $a[] — array append target (assignment LHS).
                   (multiple-value-bind (tok2 rest3) (php-consume rest2)
                     (declare (ignore tok2))
-                    (setf obj (%php-array-append-call obj)
+                    (setf obj (call-php-array-expression-lowerer :append-call obj)
                           rest rest3))
                   (multiple-value-bind (idx rest3 kv3) (php-parse-expr rest2 kv)
                     (multiple-value-bind (tok2 rest4) (php-expect :T-RBRACKET rest3)
                       (declare (ignore tok2))
-                      (setf obj (%php-array-ref-call obj idx)
+                      (setf obj (call-php-array-expression-lowerer :ref-call obj idx)
                             rest rest4
                             kv kv3))))))
            ;; Dynamic / variable call: $f(args), or a chained call such as
@@ -255,7 +191,7 @@ ordering only applies to user-visible parameters."
            ;; path JS uses for fn(args)).
            ((eq type :T-LPAREN)
             (multiple-value-bind (args rest2 kv2) (php-parse-arglist rest kv)
-              (setf obj (%php-call-with-spread obj args)
+              (setf obj (funcall *php-expression-dynamic-call-lowerer* obj args)
                     rest rest2
                     kv kv2)))
           (t (return)))))

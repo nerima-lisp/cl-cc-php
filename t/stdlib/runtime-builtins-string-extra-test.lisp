@@ -1,6 +1,6 @@
 ;;;; runtime-builtins-string-extra-test.lisp — src/runtime-builtins-string-extra.lisp.
 
-(in-package :cl-cc/php/strings/test)
+(in-package :cl-cc/php/stdlib/test)
 
 (describe
   "PHP extra string builtins"

@@ -1,6 +1,6 @@
 ;;;; parser-e2e-test.lisp — parser and runtime operator-helper tests.
 
-(in-package :cl-cc-php/test)
+(in-package :cl-cc/php/expressions/test)
 
 (describe
   "PHP parser and runtime helper tests: core language"

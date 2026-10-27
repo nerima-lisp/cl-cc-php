@@ -11,7 +11,7 @@
 ;;;;   runtime-builtins-array-reshape.lisp  — operations that build a new shape
 ;;;;   runtime-builtins-array-sort.lisp     — the sort family
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/stdlib)
 
 (defun %php-copy-array (array)
   "Return a shallow copy of PHP ARRAY preserving insertion order."
@@ -56,12 +56,6 @@
   (check-type array hash-table)
   (dolist (value values (%php-count array))
     (%php-array-set array (%php-array-next-auto-index array) value)))
-(defun %php-array-append-target (&rest _)
-  "Stub for the $a[] append marker reached in read context, which is a PHP fatal
-error (\"Cannot use [] for reading\"). Valid code consumes the marker at assignment
-time, so this only fires on misuse."
-  (declare (ignore _))
-  (%php-fatal-error "PHP fatal error: Cannot use [] for reading"))
 (defun %php-array-pop (array)
   "Remove and return ARRAY's last value, or PHP null for an empty array."
   (check-type array hash-table)

@@ -1,6 +1,6 @@
 ;;;; runtime-builtins-array-e2e-test.lisp — direct tests of PHP array runtime helpers.
 
-(in-package :cl-cc-php/test)
+(in-package :cl-cc/php/arrays/test)
 
 (describe
   "PHP array runtime helper tests"

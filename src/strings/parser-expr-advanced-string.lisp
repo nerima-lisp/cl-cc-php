@@ -2,21 +2,7 @@
 ;;;;
 ;;;; Split from parser-expr-advanced.lisp.
 
-(in-package :cl-cc/php)
-
-;;; ─── String / Exception Helpers ─────────────────────────────────────────────
-
-(defun %php-exception-class-from-expression (expr)
-  "Return the PHP class symbol visible in a throw expression, when known."
-  (when (and (ast-make-instance-p expr)
-             (ast-var-p (ast-make-instance-class expr)))
-    (ast-var-name (ast-make-instance-class expr))))
-
-(defun %php-exception-payload-call (expr)
-  "Wrap thrown PHP EXPR with class metadata for VM catch/throw lowering."
-  (%php-call 'cl-cc/php::%php-make-exception
-             (make-ast-quote :value (%php-exception-class-from-expression expr))
-             expr))
+(in-package #:cl-cc/php/strings)
 
 (defun %php-parse-interp-expr (text)
   "Parse a complex-interpolation expression TEXT (e.g. $a[\"k\"], $o->x, $o->m())
@@ -36,7 +22,15 @@ with php-parse-expr; %php-concat stringifies the resulting value."
                               (:expr (%php-parse-interp-expr (second segment)))))
                           (second value))))
         (if args
-            (make-ast-call :func (make-ast-var :name 'cl-cc/php::%php-concat)
+            (make-ast-call :func (make-ast-var :name (%php-runtime-symbol :concat))
                            :args args)
             (make-ast-quote :value "")))
       (make-ast-quote :value value)))
+(progn
+  (defun %php-parse-string-primary (stream known-vars)
+    "Parse and lower a PHP string token."
+    (multiple-value-bind (token rest) (php-consume stream)
+      (values (%php-string-token-ast (php-tok-value token)) rest known-vars)))
+  (eval-when (:load-toplevel :execute)
+    (register-php-expression-primary-parser
+     :T-STRING (function %php-parse-string-primary))))

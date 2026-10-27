@@ -8,7 +8,7 @@
 ;;;; Entry order matters only where a name appears twice — the last
 ;;;; registration wins — so entries are appended rather than sorted.
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/stdlib)
 
 (defparameter +php-builtin-name-table+
   ;; PHP builtin name -> Common Lisp implementation symbol, registered before

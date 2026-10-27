@@ -1,7 +1,7 @@
 ;;;; runtime-builtins-string-ctype-test.lisp — src/runtime-builtins-string-ctype.lisp — the ctype_*
 ;;;; predicates.
 
-(in-package :cl-cc/php/strings/test)
+(in-package :cl-cc/php/stdlib/test)
 
 ;;; Table-driven via cl-weave's IT-SEQUENTIAL-EACH: every ctype_* predicate
 ;;; shares the exact same (predicate input expected) shape, so one data table

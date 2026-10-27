@@ -1,4 +1,4 @@
-(in-package :cl-cc/php/arrays/test)
+(in-package :cl-cc/php/stdlib/test)
 
 (describe "PHP array tests"
   (it-sequential

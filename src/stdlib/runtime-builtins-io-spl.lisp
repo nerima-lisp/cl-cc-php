@@ -1,6 +1,6 @@
 ;;;; PHP SPL runtime object helpers and data structures.
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/stdlib)
 
 ;;; ─── SPL data structures ────────────────────────────────────────────────────
 
@@ -301,3 +301,5 @@
     (:SPLMAXHEAP (%php-spl-max-heap))
     (:SPLFIXEDARRAY (apply #'%php-spl-fixed-array args))
     (otherwise (error "Unknown SPL class: ~A" class-name))))
+(eval-when (:load-toplevel :execute)
+  (register-php-runtime-symbol :spl-new '%php-spl-new))

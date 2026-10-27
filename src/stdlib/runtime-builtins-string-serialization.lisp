@@ -1,6 +1,6 @@
 ;;;; PHP serialization string builtins.
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/stdlib)
 
 ;;; ─── serialize / unserialize (PHP's native serialization format) ────────────
 ;;;

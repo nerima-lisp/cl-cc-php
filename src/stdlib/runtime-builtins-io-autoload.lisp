@@ -12,7 +12,7 @@
 ;;;; there. They used to sit in runtime-builtins-io.lisp, which is compiled
 ;;;; first, so every one of them was a forward reference.
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/stdlib)
 
 (defun %php-class-implements (class &optional autoload)
   "PHP class_implements: return implemented interfaces keyed by interface name."

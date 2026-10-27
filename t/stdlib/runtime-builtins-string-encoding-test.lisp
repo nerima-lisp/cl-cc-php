@@ -1,7 +1,7 @@
 ;;;; runtime-builtins-string-encoding-test.lisp — src/runtime-builtins-string-encoding.lisp — HTML
 ;;;; and byte encoding.
 
-(in-package :cl-cc/php/strings/test)
+(in-package :cl-cc/php/stdlib/test)
 
 (describe
   "PHP HTML and byte string encoding builtins"

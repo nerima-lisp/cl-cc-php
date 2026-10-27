@@ -1,6 +1,6 @@
 ;;;; PHP string digest builtins.
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/stdlib)
 
 (defun %php-u32 (value)
   (logand value #xffffffff))

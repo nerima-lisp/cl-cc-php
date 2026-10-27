@@ -2,7 +2,7 @@
 ;;;;
 ;;;; Split from parser-expr-advanced.lisp.
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/functions)
 
 ;;; ─── Capture / Closure Helpers ───────────────────────────────────────────────
 
@@ -141,7 +141,7 @@ REF-CAPTURES from the use-list) instead of the arrow function's one."
                                   (mapcar (lambda (sym)
                                             (when (gethash sym by-ref)
                                               (cons sym
-                                                    (%php-call 'cl-cc/php::%php-make-ref
+                                                    (%php-call '%php-make-ref
                                                                (make-ast-var :name sym)))))
                                           captures))))
                        (lambda-ast
@@ -160,3 +160,22 @@ REF-CAPTURES from the use-list) instead of the arrow function's one."
                                                   :body (list lambda-ast))
                                     lambda-ast)))
               (values (%php-capture-wrapper captures wrapped) rest4 kv4)))))))))))
+(eval-when (:load-toplevel :execute)
+  (register-php-cst-keyword-expression-parser
+   :fn #'%php-cst-parse-opaque-keyword-expression)
+  (register-php-cst-keyword-expression-parser
+   :function #'%php-cst-parse-opaque-keyword-expression))
+(progn
+  (defun %php-parse-function-keyword-expression (stream known-vars)
+    "Parse a PHP function or arrow-function expression keyword."
+    (let ((keyword (php-peek-value stream)))
+      (multiple-value-bind (token rest) (php-consume stream)
+        (declare (ignore token))
+        (if (eq keyword :fn)
+            (%php-parse-arrow-function rest known-vars)
+            (%php-parse-anonymous-function rest known-vars)))))
+  (eval-when (:load-toplevel :execute)
+    (register-php-expression-keyword-parser
+     :fn #'%php-parse-function-keyword-expression)
+    (register-php-expression-keyword-parser
+     :function #'%php-parse-function-keyword-expression)))

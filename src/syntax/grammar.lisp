@@ -4,7 +4,7 @@
 ;;;; to the CL token-stream. Covers expressions, statements, and
 ;;;; class/function declarations.
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/syntax)
 
 ;;; ─── PHP Token Stream ────────────────────────────────────────────────────────
 
@@ -97,7 +97,7 @@
 ;;; ─── Expression Parsers ──────────────────────────────────────────────────────
 
 (defun php-cst-parse-primary (ts)
-  "Parse a primary expression: literal, variable, identifier, parenthesized, new."
+  "Parse a primary expression using syntax-owned registries for extensions."
   (let ((type (php-ts-peek-type ts)))
     (case type
       (:T-INT    (%php-tok-to-cst (php-ts-advance ts)))
@@ -109,10 +109,7 @@
          (cond
            ((member kw '(:null :true :false))
             (%php-tok-to-cst (php-ts-advance ts)))
-           ((eq kw :new)
-            (php-cst-parse-new ts))
-           ;; Extended keyword expressions (parse conservatively)
-           ((member kw '(:clone :fn :match :yield :throw :array :list :function))
+           ((gethash kw *php-cst-keyword-expression-parsers*)
             (%php-cst-parse-keyword-expr ts kw))
            (t
             (push (make-parse-error
@@ -120,9 +117,16 @@
                    (cons 0 0))
                   (php-token-stream-diagnostics ts))
             nil))))
-      ;; Short array syntax: [1, 2, 3]
       (:T-LBRACKET
-       (%php-parse-bracket-expr ts))
+       (let ((parser (gethash type *php-cst-primary-parsers*)))
+         (if parser
+             (funcall parser ts)
+             (progn
+               (push (make-parse-error
+                      "no parser registered for short array syntax"
+                      (cons 0 0))
+                     (php-token-stream-diagnostics ts))
+               nil))))
       (:T-LPAREN
        (php-ts-advance ts)
        (let ((inner (php-cst-parse-expr ts)))
@@ -131,23 +135,10 @@
       (:T-IDENT
        (let ((tok (php-ts-advance ts)))
          (if (php-ts-at-type-p ts :T-LPAREN)
-             ;; Function call
              (let ((args (php-cst-parse-arglist ts)))
                (%php-cst-interior :call (cons (%php-tok-to-cst tok) args)))
              (%php-tok-to-cst tok))))
       (otherwise nil))))
-
-(defun php-cst-parse-new (ts)
-  "Parse 'new ClassName(args...)'."
-  (let ((new-tok (php-ts-advance ts)))
-    (let ((class-tok (php-ts-expect ts :T-IDENT nil "new")))
-      (let ((args (if (php-ts-at-type-p ts :T-LPAREN)
-                      (php-cst-parse-arglist ts)
-                      nil)))
-        (%php-cst-interior :new
-                           (append (list (%php-tok-to-cst new-tok))
-                                   (when class-tok (list (%php-tok-to-cst class-tok)))
-                                   args))))))
 
 (defun php-cst-parse-arglist (ts)
   "Parse (arg1, arg2, ...). Returns list of CST nodes."
@@ -269,57 +260,32 @@ OPS (a literal list of operator strings) over operands from NEXT-PARSER."
 ;;; ─── Extended CST Expression Parsers ─────────────────────────────────────
 
 (defun %php-cst-parse-keyword-expr (ts kw)
-  "Parse a keyword-led expression (clone, fn, match, yield, throw, array, list, function)."
-  (let ((kw-tok (%php-tok-to-cst (php-ts-advance ts))))
-    (case kw
-      ((:clone :yield :throw)
-       (let ((inner (php-cst-parse-expr ts)))
-         (%php-cst-interior kw (list kw-tok inner))))
-      ((:fn :function)
-       ;; Skip the rest conservatively
-       kw-tok)
-      (:match
-       (let ((lp (%php-tok-to-cst (php-ts-expect ts :T-LPAREN "match(")))
-             (subject (php-cst-parse-expr ts))
-             (rp (%php-tok-to-cst (php-ts-expect ts :T-RPAREN "match(expr)")))
-             (lb (%php-tok-to-cst (php-ts-expect ts :T-LBRACE "match{")))
-             (arms (loop while (not (php-ts-at-type-p ts :T-RBRACE))
-                         for arm = (php-cst-parse-expr ts)
-                         when arm collect arm
-                         when (php-ts-at-type-p ts :T-COMMA)
-                         do (php-ts-advance ts)))
-             (rb (%php-tok-to-cst (php-ts-expect ts :T-RBRACE "match}"))))
-         (%php-cst-interior :match (list* kw-tok lp subject rp lb (append arms (list rb))))))
-      (:array
-       (if (php-ts-at-type-p ts :T-LPAREN)
-           (let ((lp (%php-tok-to-cst (php-ts-advance ts)))
-                 (items (loop while (not (php-ts-at-type-p ts :T-RPAREN))
-                              for item = (php-cst-parse-expr ts)
-                              when item collect item
-                              when (php-ts-at-type-p ts :T-COMMA)
-                              do (php-ts-advance ts)))
-                 (rp (%php-tok-to-cst (php-ts-advance ts))))
-             (%php-cst-interior :array (list* kw-tok lp (append items (list rp)))))
-           kw-tok))
-      (:list
-       (if (php-ts-at-type-p ts :T-LPAREN)
-           (let ((lp (%php-tok-to-cst (php-ts-advance ts)))
-                 (vars (loop while (not (php-ts-at-type-p ts :T-RPAREN))
-                             for var = (php-cst-parse-expr ts)
-                             when var collect var
-                             when (php-ts-at-type-p ts :T-COMMA)
-                             do (php-ts-advance ts)))
-                 (rp (%php-tok-to-cst (php-ts-advance ts))))
-             (%php-cst-interior :list (list* kw-tok lp (append vars (list rp)))))
-           kw-tok)))))
+  "Dispatch a feature keyword expression through the syntax registry."
+  (let ((parser (gethash kw *php-cst-keyword-expression-parsers*)))
+    (if parser
+        (funcall parser ts)
+        (progn
+          (push (make-parse-error
+                 (format nil "unexpected keyword ~S in expression" kw)
+                 (cons 0 0))
+                (php-token-stream-diagnostics ts))
+          nil))))
+;;; Statement parsers and top-level entry point (parse-php-source-to-cst)
+;;; are in grammar-stmt.lisp (loads after this file).
 
-(defun %php-parse-bracket-expr (ts)
-  "Parse short array syntax [expr, ...]."
-  (let ((lb (%php-tok-to-cst (php-ts-advance ts)))
-        (items (loop while (not (php-ts-at-type-p ts :T-RBRACKET))
-                     for item = (php-cst-parse-expr ts)
-                     when item collect item
-                     when (php-ts-at-type-p ts :T-COMMA)
-                     do (php-ts-advance ts)))
-        (rb (%php-tok-to-cst (php-ts-advance ts))))
-    (%php-cst-interior :array (list* lb (append items (list rb))))))
+;;; ─── Extended CST Expression Parsers ─────────────────────────────────────
+
+(defun %php-cst-parse-unary-keyword-expression (ts)
+  "Parse a keyword followed by one expression into a generic CST node."
+  (let* ((keyword (php-ts-peek-value ts))
+         (kw-tok (%php-tok-to-cst (php-ts-advance ts)))
+         (inner (php-cst-parse-expr ts)))
+    (%php-cst-interior keyword (list kw-tok inner))))
+;;; Statement parsers and top-level entry point (parse-php-source-to-cst)
+;;; are in grammar-stmt.lisp (loads after this file).
+
+;;; ─── Extended CST Expression Parsers ─────────────────────────────────────
+
+(defun %php-cst-parse-opaque-keyword-expression (ts)
+  "Consume a keyword as a conservative CST token."
+  (%php-tok-to-cst (php-ts-advance ts)))

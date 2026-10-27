@@ -2,7 +2,7 @@
 ;;;; parsing.
 ;;;;
 ;;;; Split from parser-expr.lisp so expression domains stay independently reviewable.
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/expressions)
 
 ;;; ─── Binary Op AST Builder (data-driven) ────────────────────────────────────
 ;;;
@@ -10,29 +10,29 @@
 ;;; falls through to a plain ast-binop.  Adding a new operator = one data line.
 
 (defparameter *php-binary-op-helper-table*
-  '(("."   . cl-cc/php::%php-concat)
+  '(("."   . %php-concat)
     ;; Arithmetic + - * coerce their operands (null->0, true->1, numeric string
     ;; ->number) — lowering them to raw CL +,-,* errored on any non-number
     ;; operand (null + 3, "5" + 3). %, /, ** already route to helpers / handle
     ;; their own coercion.
-    ("+"   . cl-cc/php::%php-add)
-    ("-"   . cl-cc/php::%php-sub)
-    ("*"   . cl-cc/php::%php-mul)
-    ("/"   . cl-cc/php::%php-div)
-    ("%"   . cl-cc/php::%php-modulo)
-    ("<<"  . cl-cc/php::%php-shift-left)
-    (">>"  . cl-cc/php::%php-shift-right)
-    ("<=>" . cl-cc/php::%php-spaceship)
+    ("+"   . %php-add)
+    ("-"   . %php-sub)
+    ("*"   . %php-mul)
+    ("/"   . %php-div)
+    ("%"   . %php-modulo)
+    ("<<"  . %php-shift-left)
+    (">>"  . %php-shift-right)
+    ("<=>" . %php-spaceship)
     ;; Relational ops must yield a PHP boolean, not the VM's integer 1/0 (which
     ;; broke gettype(5>3), (5>3)===true and match(true){$cond=>…}). %php-lt/gt/le/ge
     ;; derive from %php-spaceship for correct PHP comparison semantics.
-    ("<"   . cl-cc/php::%php-lt)
-    (">"   . cl-cc/php::%php-gt)
-    ("<="  . cl-cc/php::%php-le)
-    (">="  . cl-cc/php::%php-ge)
-    ("&"   . cl-cc/php::%php-bitwise-and)
-    ("^"   . cl-cc/php::%php-bitwise-xor)
-    ("|"   . cl-cc/php::%php-bitwise-or)
+    ("<"   . %php-lt)
+    (">"   . %php-gt)
+    ("<="  . %php-le)
+    (">="  . %php-ge)
+    ("&"   . %php-bitwise-and)
+    ("^"   . %php-bitwise-xor)
+    ("|"   . %php-bitwise-or)
     ;; Equality / identity. PHP == and === carry type-juggling semantics that no
     ;; single VM compare instruction expresses, so they lower to runtime helpers
     ;; rather than a plain ast-binop. Without these, (intern "==") produced an
@@ -41,11 +41,11 @@
     ;; compile and was dropped (then "Undefined function" at the call site).
     ;; Relational ops (< > <= >=) work because (intern "<") returns the inherited
     ;; CL:< that codegen already handles.
-    ("=="  . cl-cc/php::%php-eq-loose)
-    ("===" . cl-cc/php::%php-eq-strict)
-    ("!="  . cl-cc/php::%php-neq-loose)
-    ("!==" . cl-cc/php::%php-neq-strict)
-    ("|>"  . cl-cc/php::%php-pipe))
+    ("=="  . %php-eq-loose)
+    ("===" . %php-eq-strict)
+    ("!="  . %php-neq-loose)
+    ("!==" . %php-neq-strict)
+    ("|>"  . %php-pipe))
   "Alist mapping PHP binary operator strings to runtime helper symbols.")
 
 (defun %php-binary-op-ast (op lhs rhs)
@@ -93,8 +93,8 @@ to simple variables and avoids reading an unbound variable on first use."
     (cond
       ((ast-var-p operand)
        (let ((value (%php-call (if (equal op "++")
-                                   'cl-cc/php::%php-add
-                                   'cl-cc/php::%php-sub)
+                                   '%php-add
+                                   '%php-sub)
                                (if var-known operand (make-ast-int :value 0))
                                (make-ast-int :value 1))))
          (if var-known
@@ -103,7 +103,7 @@ to simple variables and avoids reading an unbound variable on first use."
               (ast-var-name operand)
               value
               operand))))
-      ((%php-array-ref-call-p operand)
+      ((call-php-array-expression-lowerer :ref-call-p operand)
        (%php-lower-compound-assign cop operand (make-ast-int :value 1) :array))
       ((ast-slot-value-p operand)
        (%php-lower-compound-assign cop operand (make-ast-int :value 1) :property))
@@ -116,12 +116,12 @@ to simple variables and avoids reading an unbound variable on first use."
   (let ((old-level (gensym "PHP-ERROR-REPORTING-")))
     (make-ast-let
      :bindings (list (cons old-level
-                           (%php-call 'cl-cc/php::%php-error-reporting
+                           (%php-call (%php-runtime-symbol :error-reporting)
                                       (make-ast-int :value 0))))
      :body (list
             (make-ast-unwind-protect
              :protected expr
-             :cleanup (list (%php-call 'cl-cc/php::%php-error-reporting
+             :cleanup (list (%php-call (%php-runtime-symbol :error-reporting)
                                        (make-ast-var :name old-level))))))))
 
 (defun php-parse-unary (stream known-vars)
@@ -157,7 +157,7 @@ to simple variables and avoids reading an unbound variable on first use."
         (multiple-value-bind (expr rest2 kv2) (php-parse-unary rest known-vars)
           (values (cond
                     ((equal "~" (php-tok-value tok))
-                     (%php-call 'cl-cc/php::%php-bitwise-not expr))
+                     (%php-call '%php-bitwise-not expr))
                     ;; Logical NOT: yield PHP false (nil) when EXPR is truthy, else
                     ;; PHP true (t). Was lowered to a call on an undefined cl-cc/php::!
                     ;; function, so any expression with ! failed.
@@ -166,9 +166,9 @@ to simple variables and avoids reading an unbound variable on first use."
                                   :then (make-ast-quote :value nil)
                                   :else (make-ast-quote :value t)))
                     ((equal "+" (php-tok-value tok))
-                     (%php-call 'cl-cc/php::%php-unary-plus expr))
+                     (%php-call '%php-unary-plus expr))
                     ((equal "-" (php-tok-value tok))
-                     (%php-call 'cl-cc/php::%php-unary-minus expr))
+                     (%php-call '%php-unary-minus expr))
                     ((equal "@" (php-tok-value tok))
                      (%php-lower-error-suppression expr)))
                   rest2 kv2))))
@@ -279,15 +279,15 @@ to simple variables and avoids reading an unbound variable on first use."
                   new-kv)))
               ;; $a[] = v  — append. The array is a mutable hash-table held by
               ;; reference, so pushing onto it is the whole effect (no reassign).
-              ((%php-array-append-call-p lhs)
+              ((call-php-array-expression-lowerer :append-call-p lhs)
                (let ((arr (first (ast-call-args lhs))))
                  (unless (equal op "=")
                    (error "PHP parse error: ~A not allowed on [] append target" op))
-                 (values (%php-call 'cl-cc/php::%php-array-push arr val) rest3 kv3)))
-              ((%php-array-ref-call-p lhs)
+                 (values (call-php-array-expression-lowerer :append-assignment-call arr val) rest3 kv3)))
+              ((call-php-array-expression-lowerer :ref-call-p lhs)
                (destructuring-bind (arr key) (ast-call-args lhs)
                  (values (if (equal op "=")
-                             (%php-array-set-call arr key val)
+                             (call-php-array-expression-lowerer :set-call arr key val)
                              (%php-lower-compound-assign op lhs val :array))
                          rest3 kv3)))
               ((ast-slot-value-p lhs)
@@ -300,8 +300,8 @@ to simple variables and avoids reading an unbound variable on first use."
                        rest3 kv3))
               ;; List/array destructuring assignment: [$a, $b] = expr (and the
               ;; list($a, $b) = expr, which lowers to the same array LHS).
-              ((and (equal op "=") (%php-array-literal-call-p lhs))
-               (values (%php-lower-list-assign lhs val) rest3 kv3))
+              ((and (equal op "=") (call-php-array-expression-lowerer :literal-call-p lhs))
+               (values (call-php-array-expression-lowerer :lower-list-assign lhs val) rest3 kv3))
               (t
                (error "PHP parse error: unsupported assignment target ~S" lhs))))))
       ((%php-reference-token-p rest)
@@ -340,7 +340,7 @@ to simple variables and avoids reading an unbound variable on first use."
                (multiple-value-bind (_tok rest-after) (php-consume current)
                  (declare (ignore _tok))
                  (multiple-value-bind (arg rest2 kv2) (php-parse-expr rest-after kv)
-                   (push (make-ast-call :func (make-ast-var :name '%php-spread)
+                   (push (make-ast-call :func (make-ast-var :name (%php-runtime-symbol :spread))
                                         :args (list arg))
                          args)
                    (setf current rest2 kv kv2))))
@@ -366,3 +366,20 @@ to simple variables and avoids reading an unbound variable on first use."
           (multiple-value-bind (tok2 rest2) (php-expect :T-RPAREN current)
             (declare (ignore tok2))
             (values (nreverse args) rest2 kv))))))
+
+(in-package #:cl-cc/php/expressions)
+
+(defun %php-assignment-op-p (stream)
+  "Return true when STREAM begins with a PHP assignment operator."
+  (not (null (%php-assignment-op stream))))
+
+(in-package #:cl-cc/php/expressions)
+
+(defun %php-assignment-op (stream)
+  "Return the PHP assignment operator string at STREAM, or NIL."
+  (when (eq (php-peek-type stream) :T-OP)
+    (let ((op (php-peek-value stream)))
+      (when (member op '("=" "+=" "-=" "*=" "/=" ".=" "%=" "**="
+                         "&=" "|=" "^=" "<<=" ">>=" "??=")
+                    :test #'equal)
+        op))))

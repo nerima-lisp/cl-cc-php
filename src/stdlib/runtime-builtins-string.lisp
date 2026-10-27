@@ -4,4 +4,4 @@
 ;;;; core search/join helpers, formatting, multibyte handling, encoding,
 ;;;; transforms/comparison, analysis/output, ctype predicates, and extras.
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/stdlib)

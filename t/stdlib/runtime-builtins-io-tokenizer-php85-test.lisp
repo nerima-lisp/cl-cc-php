@@ -6,7 +6,7 @@
 ;;;; partitioned session cookie (src/runtime-builtins-io-cookie-session.lisp), and
 ;;;; FILTER_THROW_ON_FAILURE.
 
-(in-package :cl-cc-php/test)
+(in-package :cl-cc/php/stdlib/test)
 
 (describe
   "PHP 8.5 runtime tokenizer"
@@ -93,24 +93,24 @@
           "T_NAME_QUALIFIED"
           "T_NAME_RELATIVE"
           "T_BAD_CHARACTER"))
-      (multiple-value-bind (token-id found) (cl-cc/php::%php-lookup-constant name)
+      (multiple-value-bind (token-id found) (cl-cc/php/stdlib:%php-lookup-constant name)
         (expect found :to-be-truthy)
-        (expect (cl-cc/php::%php-token-name token-id) :to-equal name)))
-    (expect (cl-cc/php::%php-token-name -1) :to-equal "UNKNOWN"))
+        (expect (cl-cc/php/stdlib:%php-token-name token-id) :to-equal name)))
+    (expect (cl-cc/php/stdlib:%php-token-name -1) :to-equal "UNKNOWN"))
   (it-sequential
     "PHP 8.5 token_get_all exposes pipe and void-cast tokens."
-    (multiple-value-bind (pipe-id pipe-found) (cl-cc/php::%php-lookup-constant "T_PIPE")
+    (multiple-value-bind (pipe-id pipe-found) (cl-cc/php/stdlib:%php-lookup-constant "T_PIPE")
       (expect pipe-found :to-be-truthy)
-      (multiple-value-bind (void-id void-found) (cl-cc/php::%php-lookup-constant "T_VOID_CAST")
+      (multiple-value-bind (void-id void-found) (cl-cc/php/stdlib:%php-lookup-constant "T_VOID_CAST")
         (expect void-found :to-be-truthy)
-        (let* ((tokens (cl-cc/php::%php-token-get-all "<?php $x = (VOID) $y |> strlen;"))
-               (entries (cl-cc/php::%php-array-values-list tokens)))
+        (let* ((tokens (cl-cc/php/stdlib:%php-token-get-all "<?php $x = (VOID) $y |> strlen;"))
+               (entries (cl-cc/php/arrays:%php-array-values-list tokens)))
           (flet ((entry-id (entry)
-                   (and (hash-table-p entry) (cl-cc/php::%php-array-ref entry 0)))
+                   (and (hash-table-p entry) (cl-cc/php:%php-array-ref entry 0)))
                  (entry-text (entry)
-                   (cl-cc/php::%php-array-ref entry 1))
+                   (cl-cc/php:%php-array-ref entry 1))
                  (entry-line (entry)
-                   (cl-cc/php::%php-array-ref entry 2)))
+                   (cl-cc/php:%php-array-ref entry 2)))
             (let ((pipe-token
                   (find-if
                     (lambda (entry)
@@ -129,18 +129,18 @@
               (expect (entry-line void-token) :to-equal 1)))))))
   (it-sequential
     "PHP 8.5 token_get_all models inline HTML and PHP close tags."
-    (multiple-value-bind (inline-id inline-found) (cl-cc/php::%php-lookup-constant "T_INLINE_HTML")
+    (multiple-value-bind (inline-id inline-found) (cl-cc/php/stdlib:%php-lookup-constant "T_INLINE_HTML")
       (expect inline-found :to-be-truthy)
-      (multiple-value-bind (close-id close-found) (cl-cc/php::%php-lookup-constant "T_CLOSE_TAG")
+      (multiple-value-bind (close-id close-found) (cl-cc/php/stdlib:%php-lookup-constant "T_CLOSE_TAG")
         (expect close-found :to-be-truthy)
-        (let* ((tokens (cl-cc/php::%php-token-get-all "hello <?php echo 1; ?> world"))
-               (entries (cl-cc/php::%php-array-values-list tokens)))
+        (let* ((tokens (cl-cc/php/stdlib:%php-token-get-all "hello <?php echo 1; ?> world"))
+               (entries (cl-cc/php/arrays:%php-array-values-list tokens)))
           (flet ((entry-id (entry)
-                   (and (hash-table-p entry) (cl-cc/php::%php-array-ref entry 0)))
+                   (and (hash-table-p entry) (cl-cc/php:%php-array-ref entry 0)))
                  (entry-text (entry)
-                   (cl-cc/php::%php-array-ref entry 1))
+                   (cl-cc/php:%php-array-ref entry 1))
                  (entry-line (entry)
-                   (cl-cc/php::%php-array-ref entry 2)))
+                   (cl-cc/php:%php-array-ref entry 2)))
             (let ((inline-tokens
                   (remove-if-not
                     (lambda (entry)
@@ -160,21 +160,21 @@
   (it-sequential
     "PHP 8.5 token_get_all models open-tag trivia, keywords, and TOKEN_PARSE context."
     (labels ((entry-id (entry)
-               (and (hash-table-p entry) (cl-cc/php::%php-array-ref entry 0)))
+               (and (hash-table-p entry) (cl-cc/php:%php-array-ref entry 0)))
              (entry-text (entry)
-               (and (hash-table-p entry) (cl-cc/php::%php-array-ref entry 1)))
+               (and (hash-table-p entry) (cl-cc/php:%php-array-ref entry 1)))
              (entry-name (entry)
-               (and (hash-table-p entry) (cl-cc/php::%php-token-name (entry-id entry)))))
-      (let* ((tokens (cl-cc/php::%php-token-get-all "<?php echo; ?>"))
-             (entries (cl-cc/php::%php-array-values-list tokens)))
+               (and (hash-table-p entry) (cl-cc/php/stdlib:%php-token-name (entry-id entry)))))
+      (let* ((tokens (cl-cc/php/stdlib:%php-token-get-all "<?php echo; ?>"))
+             (entries (cl-cc/php/arrays:%php-array-values-list tokens)))
         (expect (entry-name (first entries)) :to-equal "T_OPEN_TAG")
         (expect (entry-text (first entries)) :to-equal "<?php ")
         (expect (find "T_ECHO" entries :key #'entry-name :test #'string=) :to-be-truthy)
         (expect
           (find "T_CLOSE_TAG" entries :key #'entry-name :test #'string=)
           :to-be-truthy))
-      (let* ((tokens (cl-cc/php::%php-token-get-all "/* comment */"))
-             (entries (cl-cc/php::%php-array-values-list tokens)))
+      (let* ((tokens (cl-cc/php/stdlib:%php-token-get-all "/* comment */"))
+             (entries (cl-cc/php/arrays:%php-array-values-list tokens)))
         (expect (length entries) :to-equal 1)
         (expect (entry-name (first entries)) :to-equal "T_INLINE_HTML")
         (expect (entry-text (first entries)) :to-equal "/* comment */"))
@@ -252,23 +252,23 @@
             ("and" . "T_LOGICAL_AND")
             ("or" . "T_LOGICAL_OR")
             ("xor" . "T_LOGICAL_XOR")))
-        (let* ((tokens (cl-cc/php::%php-token-get-all (format nil "<?php ~A" (car item))))
-               (entries (cl-cc/php::%php-array-values-list tokens)))
+        (let* ((tokens (cl-cc/php/stdlib:%php-token-get-all (format nil "<?php ~A" (car item))))
+               (entries (cl-cc/php/arrays:%php-array-values-list tokens)))
           (expect
             (find (cdr item) entries :key #'entry-name :test #'string=)
             :to-be-truthy)))
       (let* ((tokens
-            (cl-cc/php::%php-token-get-all
+            (cl-cc/php/stdlib:%php-token-get-all
               (concatenate 'string "<?php " (string (code-char 0)))))
-             (entries (cl-cc/php::%php-array-values-list tokens)))
+             (entries (cl-cc/php/arrays:%php-array-values-list tokens)))
         (expect
           (find "T_BAD_CHARACTER" entries :key #'entry-name :test #'string=)
           :to-be-truthy))
       (let* ((source "<?php class A { const PUBLIC = 1; function f() {} }")
              (regular
-            (cl-cc/php::%php-array-values-list (cl-cc/php::%php-token-get-all source)))
+            (cl-cc/php/arrays:%php-array-values-list (cl-cc/php/stdlib:%php-token-get-all source)))
              (parsed
-            (cl-cc/php::%php-array-values-list (cl-cc/php::%php-token-get-all source 1))))
+            (cl-cc/php/arrays:%php-array-values-list (cl-cc/php/stdlib:%php-token-get-all source 1))))
         (expect
           (find "T_CLASS" regular :key #'entry-name :test #'string=)
           :to-be-truthy)
@@ -297,7 +297,7 @@
           "enchant_dict_remove"
           "pg_close_stmt"
           "pg_service"))
-      (expect (cl-cc/php::%php-function-exists function-name) :to-be-truthy)))
+      (expect (cl-cc/php/stdlib:%php-function-exists function-name) :to-be-truthy)))
   (it-sequential
     "Cookie and session helpers affected by PHP 8.5 are registered as builtins."
     (dolist (function-name
@@ -308,7 +308,7 @@
           "session_set_cookie_params"
           "session_get_cookie_params"
           "session_start"))
-      (expect (cl-cc/php::%php-function-exists function-name) :to-be-truthy)))
+      (expect (cl-cc/php/stdlib:%php-function-exists function-name) :to-be-truthy)))
   (it-sequential
     "PHP 8.5 enchant and pgsql compatibility helpers update modeled runtime state."
     (let ((dict (make-hash-table :test #'equal))
@@ -327,7 +327,7 @@
       (expect (gethash "stmt1" statements) :to-be-falsy)))
   (it-sequential
     "PHP 8.5 defines FILTER_THROW_ON_FAILURE for filter functions."
-    (multiple-value-bind (value found) (cl-cc/php::%php-lookup-constant "FILTER_THROW_ON_FAILURE")
+    (multiple-value-bind (value found) (cl-cc/php/stdlib:%php-lookup-constant "FILTER_THROW_ON_FAILURE")
       (expect found :to-be-truthy)
       (expect (= 268435456 value) :to-be-truthy)))
   (it-sequential
@@ -366,6 +366,6 @@
     ;; anywhere, so heredoc/nowdoc has no dedicated case in this tokenizer — confirmed here:
     ;; it still returns a well-formed token array (individual tokens will not match real PHP's
     ;; heredoc/nowdoc token shape, but nothing signals an error or hangs).
-    (let ((tokens (cl-cc/php::%php-token-get-all
+    (let ((tokens (cl-cc/php/stdlib:%php-token-get-all
                    (format nil "<?php $x = <<<EOT~%hello~%EOT;~%"))))
       (expect (hash-table-p tokens) :to-be-truthy))))

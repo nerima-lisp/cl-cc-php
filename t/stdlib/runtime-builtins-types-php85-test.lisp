@@ -1,4 +1,4 @@
-(in-package :cl-cc/php/types/test)
+(in-package :cl-cc/php/stdlib/test)
 
 (describe "PHP type and reference tests"
   (it-sequential

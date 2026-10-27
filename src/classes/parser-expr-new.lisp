@@ -1,7 +1,7 @@
 ;;;; parser-expr-new.lisp -- New-expression parsing and special runtime-backed class constructors.
 ;;;;
 ;;;; Split from parser-expr.lisp so expression domains stay independently reviewable.
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/classes)
 
 (defun %php-parse-anonymous-class (stream known-vars)
   "Parse an anonymous class expression after `new class` (the `class` keyword is
@@ -54,7 +54,7 @@ gensym-named class and makes an instance of it."
 
 (defun %php-spl-new-ast (class-name args)
   (make-ast-call
-   :func (make-ast-var :name 'cl-cc/php::%php-spl-new)
+   :func (make-ast-var :name (%php-runtime-symbol :spl-new))
    :args (cons (make-ast-quote :value (symbol-name class-name)) args)))
 
 (defun %php-fiber-class-p (class-name)
@@ -81,7 +81,7 @@ gensym-named class and makes an instance of it."
 
 (defun %php-fiber-new-ast (args)
   (make-ast-call
-   :func (make-ast-var :name 'cl-cc/php::%php-fiber-make)
+   :func (make-ast-var :name (%php-runtime-symbol :fiber-make))
    :args args))
 
 (defun %php-uri-class-kind (class-name)
@@ -97,16 +97,30 @@ gensym-named class and makes an instance of it."
 (defun %php-uri-new-ast (class-name args)
   (make-ast-call
    :func (make-ast-var :name (ecase (%php-uri-class-kind class-name)
-                               (:rfc3986 'cl-cc/php::%php-uri-rfc3986-new)
-                               (:whatwg 'cl-cc/php::%php-uri-whatwg-new)))
+                               (:rfc3986 (%php-runtime-symbol :uri-rfc3986-new))
+                               (:whatwg (%php-runtime-symbol :uri-whatwg-new))))
    :args args))
 
 (defun %php-uri-parse-ast (kind args)
   (make-ast-call
    :func (make-ast-var :name (ecase kind
-                               (:rfc3986 'cl-cc/php::%php-uri-rfc3986-parse)
-                               (:whatwg 'cl-cc/php::%php-uri-whatwg-parse)))
+                               (:rfc3986 (%php-runtime-symbol :uri-rfc3986-parse))
+                               (:whatwg (%php-runtime-symbol :uri-whatwg-parse))))
    :args args))
+(defun %php-class-static-member-lowerer (object member args method-p)
+  (let ((member-name (string-upcase (symbol-name member))))
+    (if (and method-p
+             (member member-name '("CASES" "FROM" "TRYFROM") :test #'string=))
+        (values
+         (cond
+           ((string= member-name "CASES")
+            (%php-call (%php-runtime-symbol :enum-cases) object))
+           ((string= member-name "FROM")
+            (%php-call (%php-runtime-symbol :enum-from) object (first args)))
+           (t
+            (%php-call (%php-runtime-symbol :enum-try-from) object (first args))))
+         t)
+        (values nil nil))))
 
 (defun %php-reflection-object-class-kind (class-name)
   (let ((name (string-upcase (symbol-name class-name))))
@@ -117,8 +131,8 @@ gensym-named class and makes an instance of it."
 (defun %php-reflection-new-ast (class-name args)
   (make-ast-call
    :func (make-ast-var :name (ecase (%php-reflection-object-class-kind class-name)
-                               (:constant 'cl-cc/php::%php-reflection-constant-new)
-                               (:property 'cl-cc/php::%php-reflection-property-new)))
+                               (:constant (%php-runtime-symbol :reflection-constant-new))
+                               (:property (%php-runtime-symbol :reflection-property-new))))
    :args args))
 
 (defun %php85-runtime-object-class-kind (class-name)
@@ -136,14 +150,14 @@ gensym-named class and makes an instance of it."
 (defun %php85-runtime-object-new-ast (class-name args)
   (make-ast-call
    :func (make-ast-var :name (ecase (%php85-runtime-object-class-kind class-name)
-                               (:dom-element 'cl-cc/php::%php-dom-element-new)
-                               (:dom-html-document 'cl-cc/php::%php-dom-html-document-new)
-                               (:pdo-sqlite 'cl-cc/php::%php-pdo-sqlite-new)
-                               (:soap-client 'cl-cc/php::%php-soap-client-new)
-                               (:soap-fault 'cl-cc/php::%php-soap-fault-new)
-                               (:soap-server 'cl-cc/php::%php-soap-server-new)
-                               (:sqlite3-stmt 'cl-cc/php::%php-sqlite3-stmt-new)
-                               (:xslt-processor 'cl-cc/php::%php-xslt-processor-new)))
+                               (:dom-element (%php-runtime-symbol :dom-element-new))
+                               (:dom-html-document (%php-runtime-symbol :dom-html-document-new))
+                               (:pdo-sqlite (%php-runtime-symbol :pdo-sqlite-new))
+                               (:soap-client (%php-runtime-symbol :soap-client-new))
+                               (:soap-fault (%php-runtime-symbol :soap-fault-new))
+                               (:soap-server (%php-runtime-symbol :soap-server-new))
+                               (:sqlite3-stmt (%php-runtime-symbol :sqlite3-stmt-new))
+                               (:xslt-processor (%php-runtime-symbol :xslt-processor-new))))
    :args args))
 
 (defun php-parse-new (stream known-vars)
@@ -192,7 +206,7 @@ gensym-named class and makes an instance of it."
                             ;; path, with the instance as the implicit $this first arg.
                             (make-ast-if
                              :cond (make-ast-call
-                                    :func (make-ast-var :name 'cl-cc/php::%php-has-method)
+                                    :func (make-ast-var :name (%php-runtime-symbol :has-method))
                                     :args (list (make-ast-var :name inst-sym)
                                                 (make-ast-quote
                                                  :value (php-ident-sym "__construct"))))
@@ -204,3 +218,7 @@ gensym-named class and makes an instance of it."
                              :else (make-ast-quote :value nil))
                             (make-ast-var :name inst-sym)))
                     rest3 kv3)))))))
+(eval-when (:load-toplevel :execute)
+  (register-php-expression-keyword-parser :new #'php-parse-new)
+  (register-php-expression-static-member-lowerer
+   #'%php-class-static-member-lowerer))

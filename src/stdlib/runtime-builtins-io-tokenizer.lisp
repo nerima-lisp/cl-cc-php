@@ -1,6 +1,6 @@
 ;;;; PHP tokenizer runtime builtins.
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/stdlib)
 
 (defun %php-token-id (name)
   (%php-lookup-constant name))

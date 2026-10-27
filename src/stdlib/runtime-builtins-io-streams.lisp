@@ -11,7 +11,7 @@
 ;;;; that locks and unlocks correctly behaves, without pretending to coordinate
 ;;;; across processes.
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/stdlib)
 
 (defun %php-standard-stream-handle (stream path mode)
   "Return a PHP stream handle for a dynamically bound CL standard stream."

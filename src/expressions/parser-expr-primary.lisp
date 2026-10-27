@@ -2,7 +2,7 @@
 ;;;; and class-relative names.
 ;;;;
 ;;;; Split from parser-expr.lisp so expression domains stay independently reviewable.
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/expressions)
 
 ;;; ─── Member-name helper ──────────────────────────────────────────────────────
 ;;; PHP permits reserved keywords (from, list, class, print, default, ...) and
@@ -75,12 +75,12 @@ T-TYPE.  Returns (values name-string rest)."
 (defun %php-cast-helper-symbol (kind)
   "Map a canonical cast KIND to the runtime helper used to perform it."
   (ecase kind
-    (:int 'cl-cc/php::%php-intval)
-    (:float 'cl-cc/php::%php-floatval)
-    (:string 'cl-cc/php::%php-strval)
-    (:bool 'cl-cc/php::%php-boolval)
-    (:array 'cl-cc/php::%php-settype-array-value)
-    (:object 'cl-cc/php::%php-settype-object-value)))
+    (:int (%php-runtime-symbol :intval))
+    (:float (%php-runtime-symbol :floatval))
+    (:string (%php-runtime-symbol :strval))
+    (:bool (%php-runtime-symbol :boolval))
+    (:array (%php-runtime-symbol :settype-array-value))
+    (:object (%php-runtime-symbol :settype-object-value))))
 
 (defun %php-deprecated-cast-name (tok)
   "Return TOK's PHP 8.5-deprecated cast spelling, or NIL."
@@ -107,7 +107,7 @@ T-TYPE.  Returns (values name-string rest)."
   (let ((cast-call (%php-call (%php-cast-helper-symbol kind) expr)))
     (if deprecated-name
         (make-ast-progn
-         :forms (list (%php-call 'cl-cc/php::%php-trigger-error
+         :forms (list (%php-call (%php-runtime-symbol :trigger-error)
                                   (make-ast-quote
                                    :value (%php-deprecated-cast-message deprecated-name))
                                   (make-ast-int :value 8192))
@@ -127,8 +127,10 @@ T-TYPE.  Returns (values name-string rest)."
        (multiple-value-bind (tok rest) (php-consume stream)
          (values (make-ast-quote :value (php-tok-value tok)) rest known-vars)))
       ((eq type :T-STRING)
-       (multiple-value-bind (tok rest) (php-consume stream)
-         (values (%php-string-token-ast (php-tok-value tok)) rest known-vars)))
+       (let ((parser (gethash type *php-expression-primary-parsers*)))
+         (unless parser
+           (error "PHP parse error: no primary parser is registered for ~S" type))
+         (funcall parser stream known-vars)))
       ((eq type :T-VAR)
        (multiple-value-bind (tok rest) (php-consume stream)
          (values (make-ast-var :name (php-var-sym (php-tok-value tok))) rest known-vars)))
@@ -148,12 +150,15 @@ T-TYPE.  Returns (values name-string rest)."
               (declare (ignore tok))
               (values (make-ast-quote :value nil) rest known-vars)))
            ((eq kw :new)
-            (php-parse-new stream known-vars))
+            (%php-parse-keyword-expr stream kw known-vars))
            ((member kw '(:clone :fn :match :yield :throw :array :list :function))
             (%php-parse-keyword-expr stream kw known-vars))
            (t (error "PHP parse error: unexpected keyword ~S in expression" kw)))))
       ((eq type :T-LBRACKET)
-       (%php-parse-array-expr stream known-vars))
+       (let ((parser (gethash type *php-expression-primary-parsers*)))
+         (unless parser
+           (error "PHP parse error: no primary parser is registered for ~S" type))
+         (funcall parser stream known-vars)))
       ((eq type :T-LPAREN)
        (multiple-value-bind (tok rest) (php-consume stream)
          (declare (ignore tok))
@@ -179,22 +184,23 @@ T-TYPE.  Returns (values name-string rest)."
           (let ((const-name (php-resolve-qualified-name qualified-name :const)))
             (if (eq (php-peek-type rest) :T-LPAREN)
                 (multiple-value-bind (call rest2 kv2)
-                    (%php-parse-function-call qualified-name
-                                              (php-ident-sym
-                                               (php-resolve-qualified-name qualified-name
-                                                            :function))
-                                              rest known-vars)
+                    (funcall (or *php-expression-function-call-parser*
+                             (error "PHP parse error: function-call parser is not registered"))
+                         qualified-name
+                         (php-ident-sym
+                          (php-resolve-qualified-name qualified-name :function))
+                         rest known-vars)
                   (values call rest2 kv2))
                 ;; Bare identifier: dynamic predefined constants lower to their
                 ;; runtime helper; literal predefined constants lower to values.
                 ;; Anything else stays an ast-var so user define()/const values
                 ;; still resolve at runtime.
                 (multiple-value-bind (helper dynamic-found)
-                    (%php-lookup-dynamic-constant const-name)
+                    (funcall *php-expression-dynamic-constant-resolver* const-name)
                   (if dynamic-found
                       (values (make-ast-call :func (make-ast-var :name helper) :args nil)
                               rest known-vars)
-                      (multiple-value-bind (value found) (%php-lookup-constant const-name)
+                      (multiple-value-bind (value found) (funcall *php-expression-constant-resolver* const-name)
                         (if found
                             (values (make-ast-quote :value value) rest known-vars)
                             (values (make-ast-var :name (php-ident-sym const-name))

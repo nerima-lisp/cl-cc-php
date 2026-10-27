@@ -2,7 +2,7 @@
 ;;;;
 ;;;; Split from parser-expr-advanced.lisp.
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/arrays)
 
 ;;; ─── Array / Collection Helpers ─────────────────────────────────────────────
 
@@ -14,27 +14,27 @@
 
 (defun %php-array-ref-call (array key)
   "Lower ARRAY[KEY] to the PHP ordered-array reference helper."
-  (make-ast-call :func (%php-helper-var 'cl-cc/php::%php-array-ref)
+  (make-ast-call :func (%php-helper-var '%php-array-ref)
                  :args (list array key)))
 
 (defun %php-destructure-ref-call (array key)
   "Lower destructuring ARRAY[KEY] to the PHP 8.5 warning-aware helper."
-  (make-ast-call :func (%php-helper-var 'cl-cc/php::%php-destructure-ref)
+  (make-ast-call :func (%php-helper-var '%php-destructure-ref)
                  :args (list array key)))
 
 (defun %php-array-ref-call-p (node)
   "Return true when NODE is a %php-array-ref helper call."
-  (%php-helper-call-p node 'cl-cc/php::%php-array-ref 2))
+  (%php-helper-call-p node '%php-array-ref 2))
 
 (defun %php-array-literal-call-p (node)
   "Return true when NODE is a %php-array constructor call (an array literal),
 i.e. a valid destructuring-assignment target like [$a, $b] or list($a, $b)."
-  (%php-helper-call-p node 'cl-cc/php::%php-array))
+  (%php-helper-call-p node '%php-array))
 
 (defun %php-list-constructor-p (node)
   "True when NODE is a [..] / list(..) constructor (a %php-array call) — i.e. a
 nested destructuring target."
-  (%php-helper-call-p node 'cl-cc/php::%php-array))
+  (%php-helper-call-p node '%php-array))
 
 (defun %php-collect-list-bindings (lhs val bindings)
   "Accumulate destructuring bindings for LHS (a %php-array constructor) pulling
@@ -73,7 +73,7 @@ VAL per element, which is correct for the common variable RHS."
 
 (defun %php-array-set-call (array key value)
   "Lower ARRAY[KEY] = VALUE to the PHP ordered-array mutation helper."
-  (make-ast-call :func (%php-helper-var 'cl-cc/php::%php-array-set)
+  (make-ast-call :func (%php-helper-var '%php-array-set)
                   :args (list array key value)))
 
 (defun %php-array-append-call (array)
@@ -81,16 +81,16 @@ VAL per element, which is correct for the common variable RHS."
 valid assignment LHS; the assignment parser turns `$a[] = v' into a push. Using []
 to read is a PHP fatal error, represented here by the %php-array-append-target
 marker."
-  (make-ast-call :func (%php-helper-var 'cl-cc/php::%php-array-append-target)
+  (make-ast-call :func (%php-helper-var '%php-array-append-target)
                  :args (list array)))
 
 (defun %php-array-append-call-p (node)
   "Return true when NODE is an ARRAY[] append-target marker."
-  (%php-helper-call-p node 'cl-cc/php::%php-array-append-target))
+  (%php-helper-call-p node '%php-array-append-target))
 
 (defun %php-array-unset-call (array key)
   "Lower unset(ARRAY[KEY]) to the PHP ordered-array deletion helper."
-  (make-ast-call :func (%php-helper-var 'cl-cc/php::%php-array-unset)
+  (make-ast-call :func (%php-helper-var '%php-array-unset)
                  :args (list array key)))
 
 (defun %php-array-entry (key-present-p key value)
@@ -101,7 +101,7 @@ marker."
 
 (defun %php-array-call (entries)
   "Build the %php-array constructor call for ENTRIES."
-  (make-ast-call :func (%php-helper-var 'cl-cc/php::%php-array)
+  (make-ast-call :func (%php-helper-var '%php-array)
                  :args entries))
 
 (defun %php-parse-array-expr (stream known-vars &key (open :T-LBRACKET) (close :T-RBRACKET))
@@ -149,3 +149,90 @@ marker."
           (multiple-value-bind (tok2 rest2) (php-expect close current)
             (declare (ignore tok2))
             (values (%php-array-call (nreverse entries)) rest2 kv))))))
+
+(defun %php-parse-bracket-expr (ts)
+  "Parse short array syntax [expr, ...]."
+  (let ((lb (%php-tok-to-cst (php-ts-advance ts)))
+        (items (loop while (not (php-ts-at-type-p ts :T-RBRACKET))
+                     for item = (php-cst-parse-expr ts)
+                     when item collect item
+                     when (php-ts-at-type-p ts :T-COMMA)
+                     do (php-ts-advance ts)))
+        (rb (%php-tok-to-cst (php-ts-advance ts))))
+    (%php-cst-interior :array (list* lb (append items (list rb))))))
+(progn
+  (defun %php-cst-parse-array-keyword-expression (ts)
+    "Parse PHP array and list keyword expressions into conservative CST nodes."
+    (let* ((keyword (php-ts-peek-value ts))
+           (kw-tok (%php-tok-to-cst (php-ts-advance ts))))
+      (case keyword
+        (:array
+         (if (php-ts-at-type-p ts :T-LPAREN)
+             (let ((lp (%php-tok-to-cst (php-ts-advance ts)))
+                   (items (loop while (not (php-ts-at-type-p ts :T-RPAREN))
+                                for item = (php-cst-parse-expr ts)
+                                when item collect item
+                                when (php-ts-at-type-p ts :T-COMMA)
+                                do (php-ts-advance ts)))
+                   (rp (%php-tok-to-cst (php-ts-advance ts))))
+               (%php-cst-interior :array (list* kw-tok lp (append items (list rp)))))
+             kw-tok))
+        (:list
+         (if (php-ts-at-type-p ts :T-LPAREN)
+             (let ((lp (%php-tok-to-cst (php-ts-advance ts)))
+                   (vars (loop while (not (php-ts-at-type-p ts :T-RPAREN))
+                               for var = (php-cst-parse-expr ts)
+                               when var collect var
+                               when (php-ts-at-type-p ts :T-COMMA)
+                               do (php-ts-advance ts)))
+                   (rp (%php-tok-to-cst (php-ts-advance ts))))
+               (%php-cst-interior :list (list* kw-tok lp (append vars (list rp)))))
+             kw-tok)))))
+  (eval-when (:load-toplevel :execute)
+    (register-php-cst-primary-parser :T-LBRACKET #'%php-parse-bracket-expr)
+    (register-php-cst-keyword-expression-parser
+     :array #'%php-cst-parse-array-keyword-expression)
+    (register-php-cst-keyword-expression-parser
+     :list #'%php-cst-parse-array-keyword-expression)))
+(progn
+  (defun %php-parse-array-keyword-expression (stream known-vars)
+    "Parse PHP array/list keyword expressions into array AST nodes."
+    (multiple-value-bind (token rest) (php-consume stream)
+      (declare (ignore token))
+      (if (eq (php-peek-type rest) :T-LPAREN)
+          (%php-parse-array-expr rest known-vars
+                                 :open :T-LPAREN :close :T-RPAREN)
+          (values (make-ast-quote :value nil) rest known-vars))))
+  (eval-when (:load-toplevel :execute)
+    (register-php-expression-primary-parser
+     :T-LBRACKET #'%php-parse-array-expr)
+    (register-php-expression-keyword-parser
+     :array #'%php-parse-array-keyword-expression)
+    (register-php-expression-keyword-parser
+     :list #'%php-parse-array-keyword-expression)
+    (register-php-array-expression-lowerer
+     :ref-call #'%php-array-ref-call)
+    (register-php-array-expression-lowerer
+     :ref-call-p #'%php-array-ref-call-p)
+    (register-php-array-expression-lowerer
+     :set-call #'%php-array-set-call)
+    (register-php-array-expression-lowerer
+     :append-call #'%php-array-append-call)))
+(progn
+  (defun %php-array-append-assignment-call (array value)
+    "Build an AST call that appends a value for `$array[] = value`."
+    (make-ast-call :func (%php-helper-var (quote %php-array-append-assignment))
+                   :args (list array value)))
+  (eval-when (:load-toplevel :execute)
+    (register-php-array-expression-lowerer
+     :append-call-p (function %php-array-append-call-p))
+    (register-php-array-expression-lowerer
+     :literal-call-p (function %php-array-literal-call-p))
+    (register-php-array-expression-lowerer
+     :lower-list-assign (function %php-lower-list-assign))
+    (register-php-array-expression-lowerer
+     :append-assignment-call (function %php-array-append-assignment-call))
+    (register-php-array-expression-lowerer
+     :empty-p (function %php-array-empty-p))
+    (register-php-array-expression-lowerer
+     :union (function %php-array-union))))

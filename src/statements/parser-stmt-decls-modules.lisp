@@ -1,7 +1,7 @@
 ;;;; parser-stmt-decls-modules.lisp — PHP Parser: include/declare/namespace/use/const/trait/function
 ;;;; statement parsers
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/statements)
 
 ;;; ─── Registered statement parsers (declarations and modules) ─────────────
 
@@ -107,66 +107,134 @@
 (define-php-stmt-parser :const (rest known-vars)
   (%php-parse-top-level-const rest known-vars))
 
-(define-php-stmt-parser :trait (rest known-vars)
-  (%php-parse-classlike rest known-vars :kind :trait))
+(in-package #:cl-cc/php/statements)
 
-(define-php-stmt-parser :interface (rest known-vars)
-  (%php-parse-classlike rest known-vars :kind :interface))
+(defun %php-parse-declare-alternative-body (stream known-vars)
+  "Parse declare(...): stmt* enddeclare; and return its body forms."
+  (let ((current (%php-consume-expected :T-COLON stream))
+        (stmts nil)
+        (kv known-vars))
+    (loop
+      (setf current (php-skip-semis current))
+      (cond
+        ((php-at-eof-p current)
+         (error "PHP parse error: unterminated declare alternative syntax"))
+        ((%php-keyword-p current :enddeclare)
+         (return))
+        (t
+         (multiple-value-bind (stmt rest2 kv2) (php-parse-statement current kv)
+           (when stmt (push stmt stmts))
+           (setf current rest2
+                 kv kv2)))))
+    (values (php-finish-let-bindings
+             (%php-lower-reference-assignments (nreverse stmts) known-vars))
+            (php-skip-semis (cdr current))
+            kv)))
 
-(define-php-stmt-parser :enum (rest known-vars) (%php-parse-classlike rest known-vars :enum-p t))
+(defun %php-declare-body-ast (forms)
+  "Return the AST node representing a declare body form list."
+  (cond ((rest forms) (make-ast-progn :forms forms))
+        ((first forms))
+        (t (make-ast-progn :forms nil))))
 
-(define-php-stmt-parser :function (rest known-vars)
-  (let* ((returns-by-ref (%php-reference-token-p rest))
-         (rest (if returns-by-ref (cdr rest) rest)))
-  (multiple-value-bind (name-tok rest) (php-expect :T-IDENT rest)
-    (let ((fn-name (php-ident-sym
-                    (php-resolve-qualified-name (php-tok-value name-tok) :function))))
-      (multiple-value-bind (params rest param-types param-attributes by-ref-indices
-                            param-defaults variadic-param)
-          (php-parse-param-list rest)
-        (multiple-value-bind (return-type rest) (php-parse-return-type rest)
-          ;; Register by-reference parameter info for call-site lowering
-          (when by-ref-indices
-            (setf (gethash (symbol-name fn-name) *php-by-ref-param-registry*)
-                  by-ref-indices))
-          (%php-register-named-callable-params fn-name params param-defaults variadic-param)
-          ;; Parameters with `= default` become &optional params so a call that
-          ;; omits them binds the default instead of leaving them unset.
-          (multiple-value-bind (required optionals)
-              (%php-split-params-by-defaults params param-defaults)
-            ;; Abstract / interface method signature: `function f(...): T;` with no
-            ;; body. Produce a body-less ast-defun (a signature) instead of
-            ;; requiring a brace block.
-            (if (eq (php-peek-type rest) :T-SEMI)
-                (values (make-ast-defun :name fn-name
-                                         :params required
-                                         :optional-params optionals
-                                         :declarations (%php-function-declarations
-                                                        param-types return-type param-attributes nil
-                                                        :function returns-by-ref)
-                                         :body nil)
-                        (php-skip-semis rest) known-vars)
-                (multiple-value-bind (body-stmts rest _)
-                    (php-parse-block rest (append params
-                                                  (when variadic-param (list variadic-param))
-                                                  known-vars))
-                  (declare (ignore _))
-                  (let* ((by-ref-params (remove nil
-                                                (mapcar (lambda (idx) (nth idx params))
-                                                        by-ref-indices)))
-                         (callable-body (%php-callable-body body-stmts))
-                         (callable-body (if by-ref-params
-                                            (%php-rewrite-ref-vars callable-body by-ref-params)
-                                            callable-body)))
-                    (multiple-value-bind (rest-param wrapped-body)
-                        (%php-variadic-rest-binding variadic-param callable-body)
-                    (values (make-ast-defun :name fn-name
-                                             :params required
-                                             :optional-params optionals
-                                             :rest-param rest-param
-                                             :declarations (%php-function-declarations
-                                                            param-types return-type param-attributes
-                                                            nil
-                                                            :function returns-by-ref)
-                                             :body wrapped-body)
-                            rest known-vars))))))))))))
+;;; ─── Declare parsing helpers ───────────────────────────────────────────────
+
+(defun %php-skip-declare-directives (stream)
+  "Skip the parenthesized directive list after declare and return the next token."
+  (let ((current (%php-consume-expected :T-LPAREN stream))
+        (depth 1))
+    (loop
+      (when (php-at-eof-p current)
+        (error "PHP parse error: unterminated declare directive list"))
+      (let ((type (php-peek-type current)))
+        (cond
+          ((eq type :T-LPAREN)
+           (incf depth)
+           (setf current (cdr current)))
+          ((eq type :T-RPAREN)
+           (decf depth)
+           (setf current (cdr current))
+           (when (zerop depth)
+             (return)))
+          (t
+           (setf current (cdr current))))))
+    current))
+
+(defun %php-parse-use-imports (stream kind)
+  "Parse one PHP use statement body and return import descriptors/rest."
+  (let ((current stream)
+        (imports nil))
+    (loop
+      (multiple-value-bind (name rest) (php-parse-qualified-name current)
+        (cond
+          ((and (eq (php-peek-type rest) :T-BACKSLASH)
+                (eq (php-peek-type (cdr rest)) :T-LBRACE))
+           (multiple-value-bind (group-imports rest2)
+               (%php-parse-group-use-items (cdr rest) name kind)
+             (setf imports (append imports group-imports)
+                   current rest2)))
+          ((eq (php-peek-type rest) :T-LBRACE)
+           (multiple-value-bind (group-imports rest2)
+               (%php-parse-group-use-items rest name kind)
+             (setf imports (append imports group-imports)
+                   current rest2)))
+          (t
+           (multiple-value-bind (alias rest2) (%php-parse-use-alias rest)
+             (setf imports (append imports (list (%php-make-import kind name alias))))
+             (setf current rest2)))))
+      (cond ((eq (php-peek-type current) :T-COMMA)
+             (setf current (cdr current)))
+            (t (return))))
+    (values imports
+            (%php-consume-expected :T-SEMI current))))
+
+(defun %php-parse-group-use-items (stream prefix default-kind)
+  "Parse `{A, B as C}` group-use items after PREFIX."
+  (let ((current (%php-consume-expected :T-LBRACE stream))
+        (imports nil))
+    (loop
+      (multiple-value-bind (kind rest) (%php-optional-use-kind current)
+        (multiple-value-bind (name rest2) (php-parse-qualified-name rest)
+          (multiple-value-bind (alias rest3) (%php-parse-use-alias rest2)
+            (push (%php-make-import (or kind default-kind)
+                                    (%php-join-qualified-prefix prefix name)
+                                    alias)
+                  imports)
+            (setf current rest3))))
+      (cond ((eq (php-peek-type current) :T-COMMA)
+             (setf current (cdr current))
+             (when (eq (php-peek-type current) :T-RBRACE) (return)))
+            (t (return))))
+    (values (nreverse imports) (%php-consume-expected :T-RBRACE current))))
+
+(defun %php-join-qualified-prefix (prefix name)
+  "Join import PREFIX and NAME with a PHP namespace separator."
+  (cond ((or (null prefix) (string= prefix "")) name)
+        ((or (null name) (string= name "")) prefix)
+        ((char= (char prefix (1- (length prefix))) #\\) (concatenate 'string prefix name))
+        (t (format nil "~A\\~A" prefix name))))
+
+(defun %php-make-import (kind name alias)
+  "Build a PHP import descriptor plist."
+  (list :type kind :name name :alias alias))
+
+(defun %php-parse-use-alias (stream)
+  "Parse optional `as Alias` and return alias/rest."
+  (if (%php-keyword-p stream :as)
+      (multiple-value-bind (alias-name rest) (php-parse-qualified-name (cdr stream))
+        (values alias-name rest))
+      (values nil stream)))
+
+(defun %php-optional-use-kind (stream)
+  "Return optional group-use kind qualifier and stream after it."
+  (cond ((%php-keyword-p stream :function) (values :function (cdr stream)))
+        ((%php-keyword-p stream :const) (values :const (cdr stream)))
+        (t (values nil stream))))
+
+;;; ─── Use/import parsing helpers ──────────────────────────────────────────
+
+(defun %php-use-kind (stream)
+  "Return use kind and stream after optional function/const qualifier."
+  (cond ((%php-keyword-p stream :function) (values :function (cdr stream)))
+        ((%php-keyword-p stream :const) (values :const (cdr stream)))
+        (t (values :class stream))))

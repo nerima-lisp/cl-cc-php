@@ -1,7 +1,7 @@
 ;;;; runtime-builtins-string-transform-test.lisp — src/runtime-builtins-string-transform.lisp —
 ;;;; transform and compare.
 
-(in-package :cl-cc/php/strings/test)
+(in-package :cl-cc/php/stdlib/test)
 
 (describe
   "PHP string transform / compare builtins"

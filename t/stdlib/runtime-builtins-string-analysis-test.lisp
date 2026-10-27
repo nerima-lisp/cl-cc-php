@@ -4,7 +4,7 @@
 ;;;; This file directly tests string-analysis and formatting helpers; compiler-driven cases are
 ;;;; reserved for umbrella-level integration.
 
-(in-package :cl-cc/php/strings/test)
+(in-package :cl-cc/php/stdlib/test)
 
 (describe "PHP strstr/stristr/strchr"
 

@@ -1,6 +1,6 @@
 ;;;; PHP image metadata builtins.
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/stdlib)
 
 ;;; ─── Image Metadata ─────────────────────────────────────────────────────────
 

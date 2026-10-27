@@ -3,7 +3,7 @@
 ;;;; Tokenisation of every PHP lexeme class, plus a closing group of smoke checks that the token
 ;;;; stream this produces reaches the parser intact.
 
-(in-package :cl-cc-php/test)
+(in-package :cl-cc/php/syntax/test)
 
 (describe "PHP lexer and parser"
 

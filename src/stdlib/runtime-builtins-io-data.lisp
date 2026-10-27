@@ -1,6 +1,6 @@
 ;;;; PHP IO/runtime builtin data tables.
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/stdlib)
 
 (defparameter *php-ini-defaults*
   '(("display_errors" . "1")

@@ -11,51 +11,7 @@
 ;;;; the VM closure trampoline (cl-cc/vm) that the plain sequence operations
 ;;;; have no business knowing about.
 
-(in-package :cl-cc/php)
-
-(defun %php-callable-function (callback)
-  "Resolve CALLBACK to a Common Lisp function, or NIL.
-
-A compiled-PHP closure (Closure object / arrow fn) is a vm-closure-object, which
-host CL:FUNCALL cannot call. Wrap it in a trampoline that routes back into the VM
-via %vm-call-closure-sync, using *vm-state* (dynamically bound around VM
-execution for exactly this host-runtime -> VM-closure inverse bridge). Mirrors the
-JS *js-apply-fn* installer. Without this, array_map/array_filter/array_reduce/
-usort with a closure callback silently no-op (the resolver returned NIL)."
-  (cond ((functionp callback) callback)
-        ((cl-cc/vm::%vm-closure-object-p callback)
-         (lambda (&rest args)
-           (cl-cc/vm::%vm-call-closure-sync callback cl-cc/vm:*vm-state* args)))
-        ((and (symbolp callback) (fboundp callback)) (symbol-function callback))
-        ((stringp callback)
-         ;; A string callable names a global function.  Try builtins first, then
-         ;; the VM function registry for USER functions (function foo(){...}).
-         (or (and (fboundp '%php-lookup-builtin)
-                  (funcall (symbol-function '%php-lookup-builtin) callback))
-             (%php-callable-user-function callback)))
-        (t nil)))
-(defun %php-callable-user-function (name)
-  "Resolve PHP user-function NAME (a string) to a callable via the VM function
-registry, or NIL.  PHP function names are case-insensitive; the compiler interns
-each into whatever *package* was current at parse time, so matching by EQ symbol
-is fragile across the host/VM boundary.  Match by SYMBOL-NAME (upcased) instead,
-which is package-independent.  A registry hit that is a vm-closure-object is
-wrapped in the same %vm-call-closure-sync trampoline used for Closure args."
-  (let ((state cl-cc/vm:*vm-state*))
-    (when (and state (stringp name))
-      (let ((target (string-upcase name))
-            (registry (cl-cc/vm:vm-function-registry state)))
-        (block found
-          (maphash (lambda (sym fn)
-                     (when (and (symbolp sym)
-                                (string= (symbol-name sym) target))
-                       (return-from found
-                         (if (cl-cc/vm::%vm-closure-object-p fn)
-                             (lambda (&rest args)
-                               (cl-cc/vm::%vm-call-closure-sync fn state args))
-                             fn))))
-                   registry)
-          nil)))))
+(in-package #:cl-cc/php/stdlib)
 (defun %php-call-user-func (callback &rest args)
   "PHP call_user_func: invoke CALLBACK (Closure, function-name string, or a host
 function) with ARGS and return the result."

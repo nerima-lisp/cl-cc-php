@@ -8,23 +8,23 @@
 ;;;; already applied once before to pull runtime-builtins-io-uri-php85-test.lisp out of the same
 ;;;; parent file.
 
-(in-package :cl-cc-php/test)
+(in-package :cl-cc/php/stdlib/test)
 
 (describe
   "PHP 8.5 Dom\\* runtime objects"
   (it-sequential
     "PHP 8.5 Dom\\ParentNode children property returns an owner-linked HTMLCollection shim."
-    (let* ((element (cl-cc/php::%php-dom-element-new "article"))
+    (let* ((element (cl-cc/php/stdlib:%php-dom-element-new "article"))
            (children (gethash "children" element)))
       (expect (gethash "outerHTML" element) :to-equal "<article></article>")
       (expect (gethash "outerhtml" element) :to-equal "<article></article>")
-      (expect (cl-cc/php::%php-get-class children) :to-equal "Dom\\HTMLCollection")
+      (expect (cl-cc/php/stdlib:%php-get-class children) :to-equal "Dom\\HTMLCollection")
       (expect (gethash "__owner__" children) :to-be element)
       (expect (gethash "__property__" children) :to-equal "children")))
   (it-sequential
     "PHP 8.5 Dom\\HTMLDocument::getElementsByName records the query in the collection shim."
-    (let* ((doc (cl-cc/php::%php-dom-html-document-new "<input name=\"q\">"))
-           (items (cl-cc/php::%php-dom-html-document-get-elements-by-name doc "q")))
-      (expect (cl-cc/php::%php-get-class items) :to-equal "Dom\\HTMLCollection")
+    (let* ((doc (cl-cc/php/stdlib:%php-dom-html-document-new "<input name=\"q\">"))
+           (items (cl-cc/php/stdlib:%php-dom-html-document-get-elements-by-name doc "q")))
+      (expect (cl-cc/php/stdlib:%php-get-class items) :to-equal "Dom\\HTMLCollection")
       (expect (gethash "__name__" items) :to-equal "q")
       (expect (gethash "__owner__" items) :to-be doc))))

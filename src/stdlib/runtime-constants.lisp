@@ -1,6 +1,6 @@
 ;;;; PHP runtime constants and predefined constant lookup.
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/stdlib)
 
 ;;; ─── Predefined constants ──────────────────────────────────────────────────
 ;;; PHP magic/predefined constants (PHP_EOL, M_PI, STR_PAD_LEFT, SORT_*, ...)
@@ -316,6 +316,25 @@ else (values NIL NIL)."
     (if foundp
         value
         (error "Undefined PHP class constant ~A::~A" class-name constant-name))))
+(defun %php-predefined-class-constant-static-member-lowerer
+    (object member args method-p)
+  (declare (ignore args))
+  (let ((class-name (and (ast-var-p object)
+                         (ast-var-name object))))
+    (if (and (not method-p)
+             class-name
+             (member (string-upcase (symbol-name class-name))
+                     '("INTLLISTFORMATTER" "NUMBERFORMATTER" "PDO\\SQLITE"
+                       "URI\\URICOMPARISONMODE")
+                     :test #'string=))
+        (values
+         (make-ast-call
+          :func
+          (make-ast-var :name (%php-runtime-symbol :predefined-class-constant))
+          :args (list (make-ast-quote :value (symbol-name class-name))
+                      (make-ast-quote :value (symbol-name member))))
+         t)
+        (values nil nil))))
 
 (dolist (entry '(("IntlListFormatter" "TYPE_AND" 0)
                  ("IntlListFormatter" "TYPE_OR" 1)
@@ -350,3 +369,10 @@ else (values NIL NIL)."
                  ("Uri\\UriComparisonMode" "IncludeFragment" :include-fragment)))
   (destructuring-bind (class-name constant-name value) entry
     (%php-register-predefined-class-constant class-name constant-name value)))
+
+(eval-when (:load-toplevel :execute)
+  (register-php-runtime-symbol :predefined-class-constant '%php-predefined-class-constant)
+  (register-php-expression-static-member-lowerer #'%php-predefined-class-constant-static-member-lowerer)
+  (register-php-expression-constant-resolvers
+   (function %php-lookup-constant)
+   (function %php-lookup-dynamic-constant)))

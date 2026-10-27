@@ -1,6 +1,6 @@
 ;;;; parser-class-e2e-test.lisp — class parsing and enum runtime helper tests.
 
-(in-package :cl-cc-php/test)
+(in-package :cl-cc/php/classes/test)
 
 (describe "PHP class parser and enum helper tests"
 

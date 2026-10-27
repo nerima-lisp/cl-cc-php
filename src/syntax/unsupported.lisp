@@ -1,6 +1,6 @@
 ;;;; unsupported.lisp — PHP unsupported-form validation
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/syntax)
 
 (defun %php-unsupported-call-p (ast)
   "Return true when AST is a PHP unsupported-form marker call."
@@ -42,3 +42,8 @@ Returns NIL when the kind is supported (:class, :trait, :interface, :enum)."
                (t nil))))
     (walk forms)
     forms))
+
+(in-package #:cl-cc/php/syntax)
+
+(defun %php-unsupported (message)
+  (error "Unsupported PHP parse form: ~A" message))

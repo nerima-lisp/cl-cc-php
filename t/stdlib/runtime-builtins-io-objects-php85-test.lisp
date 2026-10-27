@@ -5,7 +5,7 @@
 ;;;; cURL share handle, the Locale static methods, and which classes PHP 8.5 makes visible to
 ;;;; class_exists. Also touches src/runtime-builtins-io-uri.lisp and -io-compat-objects.lisp.
 
-(in-package :cl-cc-php/test)
+(in-package :cl-cc/php/stdlib/test)
 
 (describe
   "PHP 8.5 runtime objects"
@@ -16,7 +16,7 @@
       :to-be-falsy))
   (it-sequential
     "PHP 8.5 gc_collect_cycles() returns an integer 0 in cl-cc's no-GC PHP model."
-    (expect (= 0 (cl-cc/php::%php-gc-collect-cycles)) :to-be-truthy))
+    (expect (= 0 (cl-cc/php/stdlib:%php-gc-collect-cycles)) :to-be-truthy))
   (it-sequential
     "curl_share_init_persistent() returns a stable persistent handle for each ID."
     (let ((a (cl-cc/php:%php-curl-share-init-persistent "cache"))
@@ -68,22 +68,22 @@
           "Uri\\WhatWg\\UrlValidationError"
           "Uri\\WhatWg\\Url"
           "XSLTProcessor"))
-      (expect (cl-cc/php::%php-class-exists class-name) :to-be-truthy)))
+      (expect (cl-cc/php/stdlib:%php-class-exists class-name) :to-be-truthy)))
   (it-sequential
     "PHP 8.5 class_alias registers aliases for runtime-visible classes."
     (let ((alias (format nil "Php85AliasRuntimeUri~A" (symbol-name (gensym)))))
-      (expect (cl-cc/php::%php-class-alias "Uri\\Rfc3986\\Uri" alias) :to-be-truthy)
-      (expect (cl-cc/php::%php-class-exists alias) :to-be-truthy)
-      (expect (cl-cc/php::%php-method-exists alias "parse") :to-be-truthy)
+      (expect (cl-cc/php/stdlib:%php-class-alias "Uri\\Rfc3986\\Uri" alias) :to-be-truthy)
+      (expect (cl-cc/php/stdlib:%php-class-exists alias) :to-be-truthy)
+      (expect (cl-cc/php/stdlib:%php-method-exists alias "parse") :to-be-truthy)
       (let ((methods
-            (cl-cc/php::%php-array-values-list (cl-cc/php::%php-get-class-methods alias))))
+            (cl-cc/php/arrays:%php-array-values-list (cl-cc/php/stdlib:%php-get-class-methods alias))))
         (expect (find "toRawString" methods :test #'string=) :to-be-truthy))))
   (it-sequential
     "PHP 8.5 class_alias rejects array and callable aliases."
     (dolist (alias '("array" "callable" "ARRAY" "Callable"))
       (let ((condition
             (handler-case (progn
-                (cl-cc/php::%php-class-alias "Uri\\Rfc3986\\Uri" alias)
+                (cl-cc/php/stdlib:%php-class-alias "Uri\\Rfc3986\\Uri" alias)
                 nil)
               (cl-cc/php:php-exception (e)
                 e))))
@@ -123,7 +123,7 @@
           ("Uri\\WhatWg\\Url" "withUsername")
           ("Uri\\WhatWg\\UrlValidationError" "__construct")))
       (destructuring-bind (class method) case
-        (expect (cl-cc/php::%php-method-exists class method) :to-be-truthy))))
+        (expect (cl-cc/php/stdlib:%php-method-exists class method) :to-be-truthy))))
   (it-sequential
     "PHP 8.5 predefined constants are available through constant lookup."
     (dolist (constant
@@ -263,6 +263,6 @@
           "IMAGETYPE_HEIF"
           "IMAGETYPE_SVG"
           "IMAGETYPE_COUNT"))
-      (multiple-value-bind (value found) (cl-cc/php::%php-lookup-constant constant)
+      (multiple-value-bind (value found) (cl-cc/php/stdlib:%php-lookup-constant constant)
         (declare (ignore value))
         (expect found :to-be-truthy)))))

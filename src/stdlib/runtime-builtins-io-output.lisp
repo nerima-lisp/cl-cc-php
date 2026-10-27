@@ -1,6 +1,6 @@
 ;;;; PHP output buffering and response-model builtins.
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/stdlib)
 
 ;;; ─── Output buffering and headers ───────────────────────────────────────────
 
@@ -136,3 +136,5 @@
   "PHP mail: accept a mail request in the CLI compatibility model."
   (declare (ignore to subject message additional-headers additional-params))
   t)
+(eval-when (:load-toplevel :execute)
+  (register-php-runtime-symbol :output-write '%php-output-write))

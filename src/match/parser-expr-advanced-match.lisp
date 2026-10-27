@@ -2,7 +2,7 @@
 ;;;;
 ;;;; Split from parser-expr-advanced.lisp.
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/match)
 
 ;;; ─── Match Expression Lowering ───────────────────────────────────────────────
 
@@ -16,7 +16,7 @@ Lowered as a short-circuit nested if rather than (ast-binop :op 'or ...) — cod
 has no emitter for an :or binop, so a multi-condition arm (1, 2 => …) silently
 failed to compile and the whole match produced nothing."
   (labels ((eq-test (test)
-             (%php-call 'cl-cc/php::%php-eq-strict
+             (%php-call '%php-eq-strict
                         (make-ast-var :name subject-sym) test))
            (build (ts)
              ;; Single (or final) test: the bare strict-equality call, which is
@@ -102,3 +102,32 @@ failed to compile and the whole match produced nothing."
 (defun %php-match-error ()
   "Signal an UnhandledMatchError equivalent for a non-exhaustive PHP match."
   (%php-fatal-error "PHP UnhandledMatchError: Unhandled match case"))
+;;; ─── Exhaustiveness failure ─────────────────────────────────────────────────
+
+(progn
+  (defun %php-cst-parse-match-expression (ts)
+    "Parse match(expr) { arms } into a conservative CST node."
+    (let* ((kw-tok (%php-tok-to-cst (php-ts-advance ts)))
+           (lp (%php-tok-to-cst (php-ts-expect ts :T-LPAREN "match(")))
+           (subject (php-cst-parse-expr ts))
+           (rp (%php-tok-to-cst (php-ts-expect ts :T-RPAREN "match(expr)")))
+           (lb (%php-tok-to-cst (php-ts-expect ts :T-LBRACE "match{")))
+           (arms (loop while (not (php-ts-at-type-p ts :T-RBRACE))
+                       for arm = (php-cst-parse-expr ts)
+                       when arm collect arm
+                       when (php-ts-at-type-p ts :T-COMMA)
+                       do (php-ts-advance ts)))
+           (rb (%php-tok-to-cst (php-ts-expect ts :T-RBRACE "match}"))))
+      (%php-cst-interior :match
+                         (list* kw-tok lp subject rp lb (append arms (list rb))))))
+  (eval-when (:load-toplevel :execute)
+    (register-php-cst-keyword-expression-parser
+     :match #'%php-cst-parse-match-expression))
+  (defun %php-parse-match-keyword-expression (stream known-vars)
+    "Parse a PHP match keyword expression."
+    (multiple-value-bind (token rest) (php-consume stream)
+      (declare (ignore token))
+      (%php-parse-match-expression rest known-vars)))
+  (eval-when (:load-toplevel :execute)
+    (register-php-expression-keyword-parser
+     :match #'%php-parse-match-keyword-expression)))

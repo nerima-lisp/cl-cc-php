@@ -1,6 +1,6 @@
 ;;;; runtime-builtins-string-transform.lisp -- Transform and compare PHP string operations
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/stdlib)
 
 ;;; ─── String padding / splitting ──────────────────────────────────────────────
 

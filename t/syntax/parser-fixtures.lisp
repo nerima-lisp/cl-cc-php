@@ -3,7 +3,7 @@
 ;;;; Not a suite: %php-first and friends are used by every parser-*-test.lisp file, which is why
 ;;;; this is named helpers-* rather than *-test.
 
-(in-package :cl-cc/php/test-support)
+(in-package :cl-cc/php/syntax/test)
 
 
 (defun %php-first (src)

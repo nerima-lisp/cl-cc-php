@@ -1,6 +1,6 @@
 ;;;; runtime-builtins-regex-callback.lisp -- PHP preg_replace_callback builtins
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/stdlib)
 
 (defun %php-preg-replace-callback (pattern callback subject &optional (limit -1) count-var)
   "PHP preg_replace_callback: replace regex matches in SUBJECT using CALLBACK.

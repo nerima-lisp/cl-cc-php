@@ -10,7 +10,7 @@
 ;;;; separate concerns: nothing here holds state between calls, while the
 ;;;; stream file owns open handles, their read position, and the flock table.
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/stdlib)
 
 ;;; ─── File I/O ────────────────────────────────────────────────────────────────
 

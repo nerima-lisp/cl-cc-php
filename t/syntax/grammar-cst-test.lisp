@@ -1,6 +1,6 @@
 ;;;; grammar-cst-test.lisp — CST expression parsers in src/grammar.lisp.
 
-(in-package :cl-cc/php/expressions/test)
+(in-package :cl-cc/php/syntax/test)
 
 (describe "PHP grammar CST expression parsers"
 

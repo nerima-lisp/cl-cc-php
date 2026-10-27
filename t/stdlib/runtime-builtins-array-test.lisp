@@ -1,6 +1,6 @@
 ;;;; runtime-builtins-array-test.lisp — src/runtime-builtins-array*.lisp — the array builtin family.
 
-(in-package :cl-cc/php/arrays/test)
+(in-package :cl-cc/php/stdlib/test)
 
 (describe
   "PHP array_* builtins"

@@ -1,6 +1,6 @@
 ;;;; PHP JSON string builtins.
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/stdlib)
 
 ;;; ─── JSON functions ───────────────────────────────────────────────────────────
 

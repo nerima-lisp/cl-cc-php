@@ -1,6 +1,6 @@
 ;;;; PHP object-model, type metadata, SPL, and reflection builtins.
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/stdlib)
 
 ;;; ─── Type / class helpers ─────────────────────────────────────────────────────
 

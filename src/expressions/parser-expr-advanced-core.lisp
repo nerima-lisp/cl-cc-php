@@ -2,7 +2,7 @@
 ;;;;
 ;;;; Split from parser-expr-advanced.lisp.
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/expressions)
 
 ;;; ─── Tiny AST Builders ───────────────────────────────────────────────────────
 
@@ -16,7 +16,7 @@
 
 (defun %php-truthy-call (expr)
   "Build a PHP truthiness helper call for conditional contexts."
-  (%php-call 'cl-cc/php::%php-truthy expr))
+  (%php-call '%php-truthy expr))
 
 (defun %php-shadow-ref-vars (ref-vars bound-vars)
   "Remove BOUND-VARS from REF-VARS for recursive body rewriting."
@@ -133,13 +133,13 @@
                ((ast-var-p node)
                 (let ((name (ast-var-name node)))
                   (if (ref-var-p name refs)
-                      (call 'cl-cc/php::%php-deref node)
+                      (call '%php-deref node)
                       node)))
                ((ast-setq-p node)
                 (let ((var (ast-setq-var node))
                       (value (walk (ast-setq-value node) refs)))
                   (if (ref-var-p var refs)
-                      (call 'cl-cc/php::%php-ref-set! (make-ast-var :name var) value)
+                      (call '%php-ref-set! (make-ast-var :name var) value)
                       (make-ast-setq :var var :value value))))
                ((ast-let-p node)
                 (let* ((bindings (ast-let-bindings node))
@@ -151,7 +151,7 @@
                                                   bindings))
                        (body-refs (%php-shadow-ref-vars refs (mapcar #'car plain-bindings)))
                        (ref-sets (mapcar (lambda (binding)
-                                           (call 'cl-cc/php::%php-ref-set!
+                                           (call '%php-ref-set!
                                                  (make-ast-var :name (car binding))
                                                  (walk (cdr binding) refs)))
                                          ref-bindings)))
@@ -415,7 +415,7 @@ the PHP block."
             (unless (member source ref-vars :test #'eq)
               (push (%php-bind-or-set
                      source
-                     (%php-call 'cl-cc/php::%php-make-ref
+                     (%php-call '%php-make-ref
                                 (if (member source bound-vars :test #'eq)
                                     (make-ast-var :name source)
                                     (%php-null-quote)))
@@ -438,3 +438,36 @@ the PHP block."
               (pushnew var bound-vars :test #'eq))
               (push lowered out)))))
     (nreverse out)))
+
+(in-package #:cl-cc/php/expressions)
+
+;;; ─── String / Exception Helpers ─────────────────────────────────────────────
+
+(defun %php-exception-class-from-expression (expr)
+  "Return the PHP class symbol visible in a throw expression, when known."
+  (when (and (ast-make-instance-p expr)
+             (ast-var-p (ast-make-instance-class expr)))
+    (ast-var-name (ast-make-instance-class expr))))
+
+(defun %php-exception-payload-call (expr)
+  "Wrap thrown PHP EXPR with class metadata for VM catch/throw lowering."
+  (%php-call (%php-runtime-symbol :make-exception)
+             (make-ast-quote :value (%php-exception-class-from-expression expr))
+             expr))
+
+(in-package #:cl-cc/php/expressions)
+
+(defun %php-param-name (param)
+  (etypecase param
+    (symbol (symbol-name param))
+    (string param)))
+
+(in-package #:cl-cc/php/expressions)
+
+(defun %php-void-cast-progn-p (node)
+  "Return true when NODE is the lowering of PHP's `(void) EXPR` cast."
+  (and (ast-progn-p node)
+       (= (length (ast-progn-forms node)) 2)
+       (let ((last-form (second (ast-progn-forms node))))
+         (and (ast-quote-p last-form)
+              (eq (ast-quote-value last-form) +php-null+)))))

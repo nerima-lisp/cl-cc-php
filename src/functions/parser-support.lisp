@@ -1,40 +1,6 @@
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/functions)
 
 (declaim (ftype function %php-call))
-
-(defun %php-assignment-op (stream)
-  "Return the PHP assignment operator string at STREAM, or NIL."
-  (when (eq (php-peek-type stream) :T-OP)
-    (let ((op (php-peek-value stream)))
-      (when (member op '("=" "+=" "-=" "*=" "/=" ".=" "%=" "**="
-                         "&=" "|=" "^=" "<<=" ">>=" "??=")
-                    :test #'equal)
-        op))))
-
-(defun %php-assignment-op-p (stream)
-  "Return true when STREAM begins with a PHP assignment operator."
-  (not (null (%php-assignment-op stream))))
-
-(defun %php-reference-token-p (stream)
-  "Return true when STREAM begins with PHP's single ampersand token."
-  (and (eq (php-peek-type stream) :T-OP)
-       (equal "&" (php-peek-value stream))))
-
-(defun %php-helper-var (name)
-  (make-ast-var :name (intern (string-upcase name) (find-package '#:cl-cc/php))))
-
-(defun %php-unsupported (message)
-  (error "Unsupported PHP parse form: ~A" message))
-
-(defun %php-helper-call-p (node symbol &optional arity)
-  "Return true when NODE is a call to the PHP runtime helper named SYMBOL.
-When ARITY is non-nil, also require exactly that many positional args."
-  (and (ast-call-p node)
-       (let ((func (ast-call-func node)))
-         (and (ast-var-p func)
-              (eq (ast-var-name func) symbol)))
-       (or (null arity)
-           (= (length (ast-call-args node)) arity))))
 
 (defvar *php-by-ref-param-registry* (make-hash-table :test #'equal))
 
@@ -46,16 +12,11 @@ When ARITY is non-nil, also require exactly that many positional args."
 property, method, or promoted-constructor-parameter slot."
   (if (member :static modifiers :test #'eq) :class :instance))
 
-(defun %php-param-name (param)
-  (etypecase param
-    (symbol (symbol-name param))
-    (string param)))
-
 (defun %php-param-string-name (param)
   (string-downcase (%php-param-name param)))
 
 (defun %php-spread-call-p (node)
-  (%php-helper-call-p node 'cl-cc/php::%php-spread))
+  (%php-helper-call-p node '%php-spread))
 
 (defun %php-args-have-spread-p (args)
   (some #'%php-spread-call-p args))
@@ -64,7 +25,7 @@ property, method, or promoted-constructor-parameter slot."
   (labels ((%fragment (a)
              (if (%php-spread-call-p a)
                  (make-ast-call
-                  :func (make-ast-var :name 'cl-cc/php::%php-array-values-list)
+                  :func (make-ast-var :name '%php-array-values-list)
                   :args (list (first (ast-call-args a))))
                  (make-ast-call :func (make-ast-var :name 'list)
                                 :args (list a)))))
@@ -137,7 +98,7 @@ property, method, or promoted-constructor-parameter slot."
               :variadic variadic-param)))
 
 (defun %php-named-arg-call-p (node)
-  (%php-helper-call-p node 'cl-cc/php::%php-named-arg))
+  (%php-helper-call-p node '%php-named-arg))
 
 (defun %php-args-have-named-p (args)
   (some #'%php-named-arg-call-p args))
@@ -161,7 +122,7 @@ property, method, or promoted-constructor-parameter slot."
   (cdr (assoc param defaults :test #'eq)))
 
 (defun %php-array-constructor-call-p (node)
-  (%php-helper-call-p node 'cl-cc/php::%php-array))
+  (%php-helper-call-p node '%php-array))
 
 (defun %php-array-auto-entry-p (entry)
   (let ((elements (and (ast-list-p entry) (ast-list-elements entry))))
@@ -207,7 +168,7 @@ property, method, or promoted-constructor-parameter slot."
 
 (defun %php-dynamic-named-spread-arglist-expr (fn-sym params defaults args)
   (apply #'%php-call
-         'cl-cc/php::%php-call-args-with-named-spread
+         '%php-call-args-with-named-spread
          (append (list (make-ast-quote :value fn-sym)
                        (make-ast-quote :value (mapcar #'%php-param-string-name params))
                        (make-ast-quote :value (mapcar (lambda (param)
@@ -413,7 +374,7 @@ expression, which lowers `yield' to a %php-yield / %php-yield-from call)."
        (let ((func (ast-call-func node)))
          (and (ast-var-p func)
               (member (ast-var-name func)
-                      '(cl-cc/php::%php-yield cl-cc/php::%php-yield-from)
+                      (list (%php-runtime-symbol :yield) (%php-runtime-symbol :yield-from))
                       :test #'eq)))))
 
 (defun %php-body-contains-yield-p (node)
@@ -458,10 +419,10 @@ return value."
                      :bindings (list (cons gen-sym
                                            (make-ast-call
                                             :func (make-ast-var
-                                                   :name 'cl-cc/php::%php-generator-enter)
+                                                   :name (%php-runtime-symbol :generator-enter))
                                             :args nil)))
                      :body (list (make-ast-call
-                                  :func (make-ast-var :name 'cl-cc/php::%php-generator-exit)
+                                  :func (make-ast-var :name (%php-runtime-symbol :generator-exit))
                                   :args (list (make-ast-var :name gen-sym) block))
                                  (make-ast-var :name gen-sym)))))
             (list block)))

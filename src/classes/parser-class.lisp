@@ -1,5 +1,5 @@
 ;;;; parser-class.lisp — PHP class body parser and top-level parser entry point
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/classes)
 
 (declaim (special *php-interface-registry*))
 
@@ -338,109 +338,98 @@ Returns (values superclass-list remaining-stream)."
   "%php-parse-interface-decl handles the full interface syntax including
 multiple-extends and abstract method signatures."
   (%php-parse-interface-decl rest known-vars))
+;;; ─── Statement sub-parsers ──────────────────────────────────────────────────
 
-;;; ─── Statement Dispatcher ────────────────────────────────────────────────────
-
-(defun php-parse-statement (stream known-vars)
-  "Parse a single PHP statement. Returns (values ast rest known-vars).
-Dispatches keyword statements through *php-stmt-parsers*; falls through
-to %php-parse-expr-stmt for expression statements."
-  (multiple-value-bind (attributes stream) (%php-parse-attributes stream)
-  (cond
-    ((eq (php-peek-type stream) :T-INLINE-HTML)
-      (multiple-value-bind (tok rest) (php-consume stream)
-        ;; Inline HTML is emitted verbatim with NO trailing newline and must
-        ;; participate in PHP output buffering.
-        (values (%php-attach-attributes-to-node
-                 (%php-call 'cl-cc/php::%php-output-write
-                            (make-ast-quote :value (php-tok-value tok)))
-                 attributes)
-                rest known-vars)))
-    ((and (eq (php-peek-type stream) :T-IDENT)
-          (let ((next (second stream)))
-            (and next (eq (php-tok-type next) :T-COLON))))
-      ;; A bare identifier immediately followed by `:' is a labeled statement — goto's jump
-      ;; target. There is no label-statement AST representation or TAGBODY-aware block
-      ;; lowering for it yet (see the release notes), so this reports a clear, honest diagnostic
-      ;; instead of falling through to %PHP-PARSE-EXPR-STMT, where the same input produces a
-      ;; confusing "unexpected token T-COLON in expression" error with no indication of what
-      ;; PHP construct was actually being attempted.
-      (%php-unsupported
-       (format nil "labeled statement `~A:` (goto's jump target) is not yet supported"
-               (php-peek-value stream))))
-    (t
-      (let ((handler (when (eq (php-peek-type stream) :T-KEYWORD)
-                       (gethash (php-peek-value stream) *php-stmt-parsers*))))
-        (if handler
-            (multiple-value-bind (_ rest) (php-consume stream)
-              (multiple-value-bind (stmt rest2 kv2) (funcall handler rest known-vars)
-                (let ((target-type (case (php-tok-value _)
-                                     ((:class :readonly) :class)
-                                     (:const :constant)
-                                     (:function :function)
-                                     ((:trait :interface :enum) :class)
-                                     (otherwise nil))))
-                  (when (and attributes
-                             (eq (php-tok-value _) :const)
-                             (ast-progn-p stmt))
-                    (error
-                     (concatenate 'string
-                                  "PHP parse error: attributes on grouped const "
-                                  "declarations require exactly one constant")))
-                  (values (%php-attach-attributes-to-node
-                           stmt attributes target-type)
-                          rest2 kv2))))
-            (multiple-value-bind (stmt rest2 kv2) (%php-parse-expr-stmt stream known-vars)
-              (values (%php-attach-attributes-to-node stmt attributes)
-                      rest2 kv2))))))))
-
-;;; ─── Top-Level Entry Point ───────────────────────────────────────────────────
-
-(defun php-finish-let-bindings (stmts)
-  "Wrap each `ast-let' with an empty body around the statements that follow it.
-
-PHP's first assignment to a variable lowers to (ast-let ((var . value)) :body nil)
-— a declaration whose scope must cover every later statement in the same block.
-Walking STMTS backwards, each empty-bodied let absorbs the already-nested tail as
-its body, so `$x = 10; echo $x;' becomes (let (($x 10)) (echo $x)) rather than two
-siblings where echo sees an unbound $x. Statements that are not empty-bodied lets
-(including lets that already carry a body) pass through as siblings.
-
-This pass is applied at top level and in every braced block (see
-php-parse-block), keeping each first assignment visible to the later statements
-that share the same PHP block scope."
-  (let ((tail nil))
-    (dolist (stmt (reverse stmts) tail)
-      (if (and (ast-let-p stmt) (null (ast-let-body stmt)))
-          (progn
-            (setf (ast-let-body stmt) tail)
-            (setf tail (list stmt)))
-          (push stmt tail)))))
-
-(defun parse-php-source (source)
-  "Parse PHP SOURCE string and return a list of top-level AST nodes.
-Analogous to parse-all-forms for CL."
-  (let ((stream (tokenize-php-source source))
-        (stmts nil) (kv nil)
-        (*php-current-namespace* nil)
-        (*php-current-imports* nil)
-        (*php-pending-top-level-forms* nil)
-        (*php-by-ref-param-registry* (%php-seed-by-ref-param-registry))
-        (*php-named-param-registry* (make-hash-table :test #'equal)))
+(defun %parse-php-class-body-members (ts)
+  "Parse class member declarations until '}'. Returns list of CST nodes (reversed)."
+  (let ((members nil))
     (loop
-      (setf stream (php-skip-semis stream))
-      (when (php-at-eof-p stream) (return))
-      (multiple-value-bind (stmt rest2 kv2) (php-parse-statement stream kv)
-        (cond
-          (*php-pending-top-level-forms*
-           (dolist (form (reverse *php-pending-top-level-forms*))
-             (push form stmts))
-           (setf *php-pending-top-level-forms* nil))
-          (stmt
-           (push (php-annotate-top-level-node stmt) stmts)))
-        (setf stream rest2 kv kv2)))
-    (php-finish-let-bindings
-     (%php-lower-reference-assignments
-      (%php-validate-override-tree
-       (%php-apply-no-discard-warnings (%php-merge-all-trait-members (nreverse stmts))))
-      nil))))
+      (php-ts-skip-semis ts)
+      (when (or (php-ts-at-end-p ts) (php-ts-at-type-p ts :T-RBRACE)) (return))
+      (loop while (and (not (php-ts-at-end-p ts))
+                       (php-ts-at-type-p ts :T-KEYWORD)
+                       (member (php-ts-peek-value ts)
+                               '(:public :private :protected :static
+                                 :abstract :final :readonly)))
+            do (php-ts-advance ts))
+      (cond
+        ((php-ts-at-type-p ts :T-VAR)
+         (push (%php-tok-to-cst (php-ts-advance ts)) members)
+         (php-ts-skip-semis ts))
+        ((member (php-ts-peek-type ts) '(:T-TYPE :T-NULLABLE))
+         (php-ts-advance ts)
+         (when (member (php-ts-peek-type ts) '(:T-TYPE :T-IDENT)) (php-ts-advance ts))
+         (when (php-ts-at-type-p ts :T-VAR)
+           (push (%php-tok-to-cst (php-ts-advance ts)) members))
+         (php-ts-skip-semis ts))
+        ((and (php-ts-at-type-p ts :T-KEYWORD) (php-ts-at-value-p ts :function))
+         (let ((method (php-cst-parse-statement ts)))
+           (when method (push method members))))
+        (t (php-ts-advance ts))))
+    members))
+
+(defun %parse-php-class-def (ts kw-tok)
+"Parse `class Name [extends Base] [implements ...] { members }` starting after the 'class' keyword."
+  (let ((name-tok (php-ts-expect ts :T-IDENT nil "class name"))
+        (extends nil))
+    (when (and (not (php-ts-at-end-p ts))
+               (php-ts-at-type-p ts :T-KEYWORD)
+               (php-ts-at-value-p ts :extends))
+      (php-ts-advance ts)
+      (let ((super-tok (php-ts-expect ts :T-IDENT nil "superclass")))
+        (when super-tok (setf extends (%php-tok-to-cst super-tok)))))
+    (when (and (not (php-ts-at-end-p ts))
+               (php-ts-at-type-p ts :T-KEYWORD)
+               (php-ts-at-value-p ts :implements))
+      (php-ts-advance ts)
+      (loop (php-ts-expect ts :T-IDENT nil "interface")
+            (unless (php-ts-at-type-p ts :T-COMMA) (return))
+            (php-ts-advance ts)))
+    (php-ts-expect ts :T-LBRACE nil "class body")
+    (let ((members (%parse-php-class-body-members ts)))
+      (php-ts-expect ts :T-RBRACE nil "class body")
+      (%php-cst-interior :class-def
+                         (append (list (%php-tok-to-cst kw-tok))
+                                 (when name-tok (list (%php-tok-to-cst name-tok)))
+                                 (when extends (list extends))
+                                 (nreverse members))))))
+
+(defun %parse-php-class-def-stmt (ts)
+  (%parse-php-class-def ts (php-ts-advance ts)))
+
+(defun %parse-php-classlike-stmt (ts)
+  (let ((kw-tok (php-ts-advance ts))
+        (children nil))
+    (loop while (and (not (php-ts-at-end-p ts))
+                     (not (php-ts-at-type-p ts :T-LBRACE)))
+          do (push (%php-tok-to-cst (php-ts-advance ts)) children))
+    (php-ts-expect ts :T-LBRACE nil "class-like")
+    (loop until (or (php-ts-at-end-p ts) (php-ts-at-type-p ts :T-RBRACE))
+          do (push (%php-tok-to-cst (php-ts-advance ts)) children))
+    (php-ts-expect ts :T-RBRACE nil "class-like")
+    (%php-cst-interior :class-like (cons (%php-tok-to-cst kw-tok) (nreverse children)))))
+
+(progn)
+
+(defun php-cst-parse-new (ts)
+  "Parse 'new ClassName(args...)'."
+  (let ((new-tok (php-ts-advance ts)))
+    (let ((class-tok (php-ts-expect ts :T-IDENT nil "new")))
+      (let ((args (if (php-ts-at-type-p ts :T-LPAREN)
+                      (php-cst-parse-arglist ts)
+                      nil)))
+        (%php-cst-interior :new
+                           (append (list (%php-tok-to-cst new-tok))
+                                   (when class-tok (list (%php-tok-to-cst class-tok)))
+                                   args))))))
+
+(eval-when (:load-toplevel :execute)
+  (register-php-cst-keyword-expression-parser :new #'php-cst-parse-new)
+  (register-php-cst-keyword-expression-parser
+   :clone #'%php-cst-parse-unary-keyword-expression)
+  (register-php-cst-keyword-statement-parser :class #'%parse-php-class-def-stmt)
+  (register-php-cst-keyword-statement-parser :trait #'%parse-php-classlike-stmt)
+  (register-php-cst-keyword-statement-parser :interface #'%parse-php-classlike-stmt)
+  (register-php-cst-keyword-statement-parser :enum #'%parse-php-classlike-stmt))
+
+(eval-when (:load-toplevel :execute) (register-php-parameter-modifier-parser #'%php-parse-visibility-modifiers))

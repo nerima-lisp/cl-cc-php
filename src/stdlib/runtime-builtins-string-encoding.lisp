@@ -1,6 +1,6 @@
 ;;;; runtime-builtins-string-encoding.lisp -- HTML and byte encoding PHP string operations
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/stdlib)
 
 ;;; ─── HTML string functions ────────────────────────────────────────────────────
 

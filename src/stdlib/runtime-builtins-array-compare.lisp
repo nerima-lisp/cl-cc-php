@@ -7,7 +7,7 @@
 ;;;; runtime-builtins-array-callable.lisp instead, because what they exercise is
 ;;;; the callable resolver, not the comparison rule.
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/stdlib)
 
 ;;; ─── By value ───────────────────────────────────────────────────────────────
 

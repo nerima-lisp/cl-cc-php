@@ -1,6 +1,6 @@
 ;;;; PHP cookie and session response-model builtins.
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/stdlib)
 
 ;;; --- Cookie / session response model ---------------------------------------
 

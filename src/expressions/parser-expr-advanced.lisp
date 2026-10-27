@@ -9,4 +9,4 @@
 ;;;; this anchor. The split files are loaded immediately after this file and
 ;;;; before parser-stmt-lowering.lisp.
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/expressions)

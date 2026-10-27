@@ -6,7 +6,7 @@
 ;;;;
 ;;;; Load order: after grammar.lisp.
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/statements)
 
 ;;; ─── Statement Parsers ──────────────────────────────────────────────────────
 
@@ -22,88 +22,6 @@
         (when stmt (push stmt stmts))))
     (php-ts-expect ts :T-RBRACE nil "block")
     (nreverse stmts)))
-
-(defun php-cst-parse-param-list (ts)
-  "Parse (type? $param, ...) for function/method definitions. Returns list of CST tokens."
-  (php-ts-expect ts :T-LPAREN nil "parameter list")
-  (if (php-ts-at-type-p ts :T-RPAREN)
-      (progn (php-ts-advance ts) nil)
-      (let ((params nil))
-        (loop
-          ;; Skip optional type annotation
-          (when (member (php-ts-peek-type ts) '(:T-TYPE :T-IDENT :T-NULLABLE))
-            (php-ts-advance ts)
-            (when (member (php-ts-peek-type ts) '(:T-TYPE :T-IDENT))
-              (php-ts-advance ts)))
-          ;; Expect $var
-          (let ((var-tok (php-ts-expect ts :T-VAR nil "parameter")))
-            (when var-tok (push (%php-tok-to-cst var-tok) params)))
-          ;; Skip optional default value
-          (when (and (php-ts-at-type-p ts :T-OP)
-                     (equal "=" (php-ts-peek-value ts)))
-            (php-ts-advance ts)
-            (php-cst-parse-expr ts)) ; parse and discard default
-          (if (php-ts-at-type-p ts :T-COMMA)
-              (php-ts-advance ts)
-              (return)))
-        (php-ts-expect ts :T-RPAREN nil "parameter list")
-        (nreverse params))))
-
-;;; ─── Statement sub-parsers ──────────────────────────────────────────────────
-
-(defun %parse-php-class-body-members (ts)
-  "Parse class member declarations until '}'. Returns list of CST nodes (reversed)."
-  (let ((members nil))
-    (loop
-      (php-ts-skip-semis ts)
-      (when (or (php-ts-at-end-p ts) (php-ts-at-type-p ts :T-RBRACE)) (return))
-      (loop while (and (not (php-ts-at-end-p ts))
-                       (php-ts-at-type-p ts :T-KEYWORD)
-                       (member (php-ts-peek-value ts)
-                               '(:public :private :protected :static
-                                 :abstract :final :readonly)))
-            do (php-ts-advance ts))
-      (cond
-        ((php-ts-at-type-p ts :T-VAR)
-         (push (%php-tok-to-cst (php-ts-advance ts)) members)
-         (php-ts-skip-semis ts))
-        ((member (php-ts-peek-type ts) '(:T-TYPE :T-NULLABLE))
-         (php-ts-advance ts)
-         (when (member (php-ts-peek-type ts) '(:T-TYPE :T-IDENT)) (php-ts-advance ts))
-         (when (php-ts-at-type-p ts :T-VAR)
-           (push (%php-tok-to-cst (php-ts-advance ts)) members))
-         (php-ts-skip-semis ts))
-        ((and (php-ts-at-type-p ts :T-KEYWORD) (php-ts-at-value-p ts :function))
-         (let ((method (php-cst-parse-statement ts)))
-           (when method (push method members))))
-        (t (php-ts-advance ts))))
-    members))
-
-(defun %parse-php-class-def (ts kw-tok)
-"Parse `class Name [extends Base] [implements ...] { members }` starting after the 'class' keyword."
-  (let ((name-tok (php-ts-expect ts :T-IDENT nil "class name"))
-        (extends nil))
-    (when (and (not (php-ts-at-end-p ts))
-               (php-ts-at-type-p ts :T-KEYWORD)
-               (php-ts-at-value-p ts :extends))
-      (php-ts-advance ts)
-      (let ((super-tok (php-ts-expect ts :T-IDENT nil "superclass")))
-        (when super-tok (setf extends (%php-tok-to-cst super-tok)))))
-    (when (and (not (php-ts-at-end-p ts))
-               (php-ts-at-type-p ts :T-KEYWORD)
-               (php-ts-at-value-p ts :implements))
-      (php-ts-advance ts)
-      (loop (php-ts-expect ts :T-IDENT nil "interface")
-            (unless (php-ts-at-type-p ts :T-COMMA) (return))
-            (php-ts-advance ts)))
-    (php-ts-expect ts :T-LBRACE nil "class body")
-    (let ((members (%parse-php-class-body-members ts)))
-      (php-ts-expect ts :T-RBRACE nil "class body")
-      (%php-cst-interior :class-def
-                         (append (list (%php-tok-to-cst kw-tok))
-                                 (when name-tok (list (%php-tok-to-cst name-tok)))
-                                 (when extends (list extends))
-                                 (nreverse members))))))
 
 ;;; ─── Named keyword-statement parsers ───────────────────────────────────────
 
@@ -181,26 +99,6 @@
                          (list (%php-tok-to-cst kw-tok) arr-expr
                                (when var-tok (%php-tok-to-cst var-tok))
                                (%php-cst-interior :body body-stmts))))))
-
-(defun %parse-php-function-def-stmt (ts)
-  (let* ((kw-tok   (php-ts-advance ts))
-         (name-tok (php-ts-expect ts :T-IDENT nil "function name"))
-         (params   (php-cst-parse-param-list ts)))
-    (when (php-ts-at-type-p ts :T-COLON)
-      (php-ts-advance ts)
-      (when (member (php-ts-peek-type ts) '(:T-TYPE :T-IDENT :T-NULLABLE))
-        (php-ts-advance ts)
-        (when (member (php-ts-peek-type ts) '(:T-TYPE :T-IDENT))
-          (php-ts-advance ts))))
-    (let ((body-stmts (php-cst-parse-block ts)))
-      (%php-cst-interior :function-def
-                         (append (list (%php-tok-to-cst kw-tok))
-                                 (when name-tok (list (%php-tok-to-cst name-tok)))
-                                 (list (%php-cst-interior :params params))
-                                 (list (%php-cst-interior :body body-stmts)))))))
-
-(defun %parse-php-class-def-stmt (ts)
-  (%parse-php-class-def ts (php-ts-advance ts)))
 
 (defun %parse-php-break-stmt (ts)
   (let ((tok (php-ts-advance ts)))
@@ -345,18 +243,6 @@
     (php-ts-expect ts :T-COLON nil "label")
     (%php-cst-interior :label (list (%php-tok-to-cst label)))))
 
-(defun %parse-php-classlike-stmt (ts)
-  (let ((kw-tok (php-ts-advance ts))
-        (children nil))
-    (loop while (and (not (php-ts-at-end-p ts))
-                     (not (php-ts-at-type-p ts :T-LBRACE)))
-          do (push (%php-tok-to-cst (php-ts-advance ts)) children))
-    (php-ts-expect ts :T-LBRACE nil "class-like")
-    (loop until (or (php-ts-at-end-p ts) (php-ts-at-type-p ts :T-RBRACE))
-          do (push (%php-tok-to-cst (php-ts-advance ts)) children))
-    (php-ts-expect ts :T-RBRACE nil "class-like")
-    (%php-cst-interior :class-like (cons (%php-tok-to-cst kw-tok) (nreverse children)))))
-
 (defun %parse-php-expr-stmt (ts)
   (let ((expr (php-cst-parse-expr ts)))
     (php-ts-skip-semis ts)
@@ -364,39 +250,14 @@
 
 ;;; ─── Keyword → parser dispatch table ───────────────────────────────────────
 
-(defvar *php-keyword-statement-parsers*
-  '((:echo     . %parse-php-echo-stmt)
-     (:return   . %parse-php-return-stmt)
-     (:if       . %parse-php-if-stmt)
-     (:while    . %parse-php-while-stmt)
-     (:for      . %parse-php-for-stmt)
-     (:foreach  . %parse-php-foreach-stmt)
-     (:do       . %parse-php-do-while-stmt)
-     (:switch   . %parse-php-switch-stmt)
-     (:function . %parse-php-function-def-stmt)
-     (:class    . %parse-php-class-def-stmt)
-     (:trait    . %parse-php-classlike-stmt)
-     (:interface . %parse-php-classlike-stmt)
-     (:enum     . %parse-php-classlike-stmt)
-     (:break    . %parse-php-break-stmt)
-     (:continue . %parse-php-continue-stmt)
-     (:try      . %parse-php-try-catch-stmt)
-     (:include  . %parse-php-include-like-stmt)
-     (:require  . %parse-php-include-like-stmt)
-     (:include-once . %parse-php-include-like-stmt)
-     (:require-once . %parse-php-include-like-stmt)
-     (:declare  . %parse-php-noop-keyword-stmt)
-     (:goto     . %parse-php-goto-stmt)
-     (:namespace . %parse-php-noop-keyword-stmt)
-     (:use      . %parse-php-noop-keyword-stmt))
-  "Keyword → parser function alist for PHP statement dispatch.")
+(eval-when (:load-toplevel :execute) (register-php-cst-keyword-statement-parser :echo #'%parse-php-echo-stmt) (register-php-cst-keyword-statement-parser :return #'%parse-php-return-stmt) (register-php-cst-keyword-statement-parser :if #'%parse-php-if-stmt) (register-php-cst-keyword-statement-parser :while #'%parse-php-while-stmt) (register-php-cst-keyword-statement-parser :for #'%parse-php-for-stmt) (register-php-cst-keyword-statement-parser :foreach #'%parse-php-foreach-stmt) (register-php-cst-keyword-statement-parser :do #'%parse-php-do-while-stmt) (register-php-cst-keyword-statement-parser :switch #'%parse-php-switch-stmt) (register-php-cst-keyword-statement-parser :break #'%parse-php-break-stmt) (register-php-cst-keyword-statement-parser :continue #'%parse-php-continue-stmt) (register-php-cst-keyword-statement-parser :try #'%parse-php-try-catch-stmt) (register-php-cst-keyword-statement-parser :include #'%parse-php-include-like-stmt) (register-php-cst-keyword-statement-parser :require #'%parse-php-include-like-stmt) (register-php-cst-keyword-statement-parser :include-once #'%parse-php-include-like-stmt) (register-php-cst-keyword-statement-parser :require-once #'%parse-php-include-like-stmt) (register-php-cst-keyword-statement-parser :declare #'%parse-php-noop-keyword-stmt) (register-php-cst-keyword-statement-parser :goto #'%parse-php-goto-stmt) (register-php-cst-keyword-statement-parser :namespace #'%parse-php-noop-keyword-stmt) (register-php-cst-keyword-statement-parser :use #'%parse-php-noop-keyword-stmt))
 
 (defun php-cst-parse-statement (ts)
   "Parse a single PHP statement, dispatching on keyword via *php-keyword-statement-parsers*."
   (cond
     ((php-ts-at-type-p ts :T-KEYWORD)
      (let* ((value  (php-ts-peek-value ts))
-            (parser (cdr (assoc value *php-keyword-statement-parsers*))))
+            (parser (gethash value *php-keyword-statement-parsers*)))
        (if parser (funcall parser ts) (%parse-php-expr-stmt ts))))
     ((and (php-ts-at-type-p ts :T-IDENT)
           (let ((next (second (php-token-stream-tokens ts))))
@@ -404,25 +265,11 @@
      (%parse-php-label-stmt ts))
     ((and (php-ts-at-type-p ts :T-IDENT)
           (%php-include-keyword-value (php-ts-peek-value ts)))
-     (let ((parser (cdr (assoc (%php-include-keyword-value (php-ts-peek-value ts))
-                               *php-keyword-statement-parsers*))))
+     (let ((parser (gethash (%php-include-keyword-value (php-ts-peek-value ts)) *php-keyword-statement-parsers*)))
        (if parser (funcall parser ts) (%parse-php-expr-stmt ts))))
     (t (%parse-php-expr-stmt ts))))
+(eval-when (:load-toplevel :execute)
+  (register-php-cst-statement-parser (function php-cst-parse-statement)))
 
 ;;; ─── Top-Level Entry Point ──────────────────────────────────────────────────
 
-(defun parse-php-source-to-cst (source &optional source-file)
-  "Parse PHP SOURCE string into CST nodes.
-   Returns (values cst-list diagnostics)."
-  (let* ((tokens (tokenize-php-source source))
-         (ts (make-php-token-stream :tokens tokens
-                                    :source source
-                                    :source-file source-file))
-         (forms nil))
-    (loop
-      (php-ts-skip-semis ts)
-      (when (php-ts-at-end-p ts) (return))
-      (let ((form (php-cst-parse-statement ts)))
-        (when form (push form forms))))
-    (values (nreverse forms)
-            (nreverse (php-token-stream-diagnostics ts)))))

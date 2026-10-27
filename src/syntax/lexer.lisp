@@ -29,7 +29,7 @@
 ;;;;   :T-COLON          - :
 ;;;;   :T-BACKSLASH      - \\ namespace separator
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/syntax)
 
 ;;; PHP keyword sets
 

@@ -3,7 +3,7 @@
 ;;;; The foundational string builtins: str_replace, substr, the trim family, explode/implode, the
 ;;;; strpos family, str_contains/starts_with/ends_with, strrev, str_repeat.
 
-(in-package :cl-cc/php/strings/test)
+(in-package :cl-cc/php/stdlib/test)
 
 (describe "PHP core string builtins"
 

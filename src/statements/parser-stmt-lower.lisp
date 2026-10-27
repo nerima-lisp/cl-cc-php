@@ -1,6 +1,6 @@
 ;;;; parser-stmt-lower.lisp — PHP Parser: compound-statement parsing and AST lowering
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/statements)
 
 (defun %php-parse-if-tail (stream known-vars)
   "Parse the then/body plus elseif/else tail after an if condition."
@@ -85,7 +85,7 @@
 (defun %php-switch-deprecation-warning-ast (message)
   "Emit E_DEPRECATED for a PHP 8.5 switch-label deprecation."
   (make-ast-progn
-   :forms (list (%php-call 'cl-cc/php::%php-trigger-error
+   :forms (list (%php-call (%php-runtime-symbol :trigger-error)
                            (make-ast-quote :value message)
                            (make-ast-int :value 8192)))))
 
@@ -237,11 +237,11 @@ make `continue' skip the increment and loop forever."
 
 (defun %php-exception-object-cond (expr)
   "Build a predicate call testing whether EXPR is a PHP exception payload."
-  (%php-call 'cl-cc/php::%php-exception-object-p expr))
+  (%php-call (%php-runtime-symbol :exception-object-p) expr))
 
 (defun %php-exception-match-cond (expr class-name)
   "Build a predicate call testing whether EXPR matches PHP catch CLASS-NAME."
-  (%php-call 'cl-cc/php::%php-exception-matches-p
+  (%php-call (%php-runtime-symbol :exception-matches-p)
              expr
              (make-ast-quote :value class-name)))
 
@@ -254,7 +254,7 @@ make `continue' skip the increment and loop forever."
   "Return BODY with PHP catch variable VAR-SYM bound to EXCEPTION-SYM when present."
   (if var-sym
       (make-ast-let :bindings (list (cons var-sym
-                                          (%php-call 'cl-cc/php::%php-exception-value
+                                          (%php-call (%php-runtime-symbol :exception-value)
                                                      (make-ast-var :name exception-sym))))
                      :body body)
       (make-ast-progn :forms body)))

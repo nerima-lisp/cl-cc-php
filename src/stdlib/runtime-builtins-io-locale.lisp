@@ -5,7 +5,7 @@
 ;;;; locale identifier and none of them touch the host locale, so this is a
 ;;;; pure table lookup over the data in runtime-builtins-io-data.lisp.
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/stdlib)
 
 (defun %php-nl-langinfo (item)
   "PHP nl_langinfo: return deterministic locale metadata for ITEM."
@@ -63,3 +63,42 @@
                      (member subtag '("arab" "hebr" "nkoo" "syrc" "thaa")
                              :test #'string=))
                    subtags)))))
+(defun %php-locale-static-member-lowerer (object member args method-p)
+  (let ((class-p
+          (and (ast-var-p object)
+               (string= (string-upcase (symbol-name (ast-var-name object)))
+                        "LOCALE")))
+        (member-name (string-upcase (symbol-name member))))
+    (if (and method-p class-p)
+        (let ((key (cond
+                     ((string= member-name "ISRIGHTTOLEFT")
+                      :locale-is-right-to-left)
+                     ((string= member-name "ADDLIKELYSUBTAGS")
+                      :locale-add-likely-subtags)
+                     ((string= member-name "MINIMIZESUBTAGS")
+                      :locale-minimize-subtags))))
+          (if key
+              (progn
+                (unless (= (length args) 1)
+                  (error
+                   (cond
+                     ((eq key :locale-is-right-to-left)
+                      "PHP parse error: Locale::isRightToLeft() expects exactly 1 argument")
+                     ((eq key :locale-add-likely-subtags)
+                      "PHP parse error: Locale::addLikelySubtags() expects exactly 1 argument")
+                     (t
+                      "PHP parse error: Locale::minimizeSubtags() expects exactly 1 argument"))))
+                (values
+                 (make-ast-call
+                  :func (make-ast-var :name (%php-runtime-symbol key))
+                  :args args)
+                 t))
+              (values nil nil)))
+        (values nil nil))))
+
+(eval-when (:load-toplevel :execute)
+  (register-php-runtime-symbol :locale-is-right-to-left '%php-locale-is-right-to-left)
+  (register-php-runtime-symbol :locale-add-likely-subtags '%php-locale-add-likely-subtags)
+  (register-php-runtime-symbol :locale-minimize-subtags '%php-locale-minimize-subtags)
+  (register-php-expression-static-member-lowerer
+   #'%php-locale-static-member-lowerer))

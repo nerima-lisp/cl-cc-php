@@ -2,7 +2,7 @@
 ;;;;
 ;;;; Type predicates, the scalar conversions (intval/floatval/strval/boolval), and settype.
 
-(in-package :cl-cc/php/types/test)
+(in-package :cl-cc/php/stdlib/test)
 
 (describe
   "PHP type predicates"

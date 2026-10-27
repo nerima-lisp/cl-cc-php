@@ -7,7 +7,7 @@
 ;;;;
 ;;;; Load order: after lexer.lisp.
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/syntax)
 
 ;;; Operator / punctuation lexer
 

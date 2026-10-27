@@ -1,6 +1,6 @@
 ;;;; PHP runtime compatibility objects.
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/stdlib)
 
 ;;; ─── PHP 8.5 runtime compatibility objects ────────────────────────────────
 
@@ -222,4 +222,13 @@
      obj
      '(("busy" %php-sqlite3-stmt-busy)))
     obj))
+(eval-when (:load-toplevel :execute)
+  (register-php-runtime-symbol :dom-element-new '%php-dom-element-new)
+  (register-php-runtime-symbol :dom-html-document-new '%php-dom-html-document-new)
+  (register-php-runtime-symbol :pdo-sqlite-new '%php-pdo-sqlite-new)
+  (register-php-runtime-symbol :soap-client-new '%php-soap-client-new)
+  (register-php-runtime-symbol :soap-fault-new '%php-soap-fault-new)
+  (register-php-runtime-symbol :soap-server-new '%php-soap-server-new)
+  (register-php-runtime-symbol :sqlite3-stmt-new '%php-sqlite3-stmt-new)
+  (register-php-runtime-symbol :xslt-processor-new '%php-xslt-processor-new))
 

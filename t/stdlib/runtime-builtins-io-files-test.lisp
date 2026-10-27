@@ -1,7 +1,7 @@
 ;;;; runtime-builtins-io-files-test.lisp — src/runtime-builtins-io-files.lisp and
 ;;;; src/runtime-builtins-io-streams.lisp.
 
-(in-package :cl-cc-php/test)
+(in-package :cl-cc/php/stdlib/test)
 
 (defun %io-test-path (&optional (tag "file"))
   "Return a fresh, unique temp-file path string for I/O tests."
@@ -16,54 +16,54 @@
     "file_put_contents writes and returns the byte count; file_get_contents reads it back"
     (let ((path (%io-test-path "rt")))
       (unwind-protect (progn
-          (expect (cl-cc/php::%php-file-put-contents path "hello world") :to-be 11)
-          (expect (cl-cc/php::%php-file-get-contents path) :to-equal "hello world"))
+          (expect (cl-cc/php/stdlib:%php-file-put-contents path "hello world") :to-be 11)
+          (expect (cl-cc/php/stdlib:%php-file-get-contents path) :to-equal "hello world"))
         (ignore-errors (delete-file path)))))
   (it-sequential
     "file_get_contents honors offset and length, and returns nil for a missing file"
     (let ((path (%io-test-path "ol")))
       (unwind-protect (progn
-          (cl-cc/php::%php-file-put-contents path "hello world")
-          (expect (cl-cc/php::%php-file-get-contents path nil nil 6) :to-equal "world")
-          (expect (cl-cc/php::%php-file-get-contents path nil nil 0 5) :to-equal "hello"))
+          (cl-cc/php/stdlib:%php-file-put-contents path "hello world")
+          (expect (cl-cc/php/stdlib:%php-file-get-contents path nil nil 6) :to-equal "world")
+          (expect (cl-cc/php/stdlib:%php-file-get-contents path nil nil 0 5) :to-equal "hello"))
         (ignore-errors (delete-file path)))
       (expect
-        (cl-cc/php::%php-file-get-contents (%io-test-path "missing"))
+        (cl-cc/php/stdlib:%php-file-get-contents (%io-test-path "missing"))
         :to-be
         nil)))
   (it-sequential
     "file_put_contents with the append flag concatenates instead of truncating"
     (let ((path (%io-test-path "app")))
       (unwind-protect (progn
-          (cl-cc/php::%php-file-put-contents path "abc")
-          (cl-cc/php::%php-file-put-contents path "def" 8)
-          (expect (cl-cc/php::%php-file-get-contents path) :to-equal "abcdef"))
+          (cl-cc/php/stdlib:%php-file-put-contents path "abc")
+          (cl-cc/php/stdlib:%php-file-put-contents path "def" 8)
+          (expect (cl-cc/php/stdlib:%php-file-get-contents path) :to-equal "abcdef"))
         (ignore-errors (delete-file path)))))
   (it-sequential
     "file_exists, is_file, is_readable, filesize, and unlink track a real file"
     (let ((path (%io-test-path "ex")))
       (unwind-protect (progn
-          (cl-cc/php::%php-file-put-contents path "hello world")
-          (expect (cl-cc/php::%php-file-exists path) :to-be-truthy)
-          (expect (cl-cc/php::%php-is-file path) :to-be-truthy)
-          (expect (cl-cc/php::%php-is-readable path) :to-be-truthy)
-          (expect (cl-cc/php::%php-filesize path) :to-be 11)
-          (expect (cl-cc/php::%php-unlink path) :to-be-truthy)
-          (expect (cl-cc/php::%php-file-exists path) :to-be nil))
+          (cl-cc/php/stdlib:%php-file-put-contents path "hello world")
+          (expect (cl-cc/php/stdlib:%php-file-exists path) :to-be-truthy)
+          (expect (cl-cc/php/stdlib:%php-is-file path) :to-be-truthy)
+          (expect (cl-cc/php/stdlib:%php-is-readable path) :to-be-truthy)
+          (expect (cl-cc/php/stdlib:%php-filesize path) :to-be 11)
+          (expect (cl-cc/php/stdlib:%php-unlink path) :to-be-truthy)
+          (expect (cl-cc/php/stdlib:%php-file-exists path) :to-be nil))
         (ignore-errors (delete-file path)))))
   (it-sequential
     "is_dir is true for a directory and false for a nonexistent path"
     (expect
-      (cl-cc/php::%php-is-dir (namestring (uiop:temporary-directory)))
+      (cl-cc/php/stdlib:%php-is-dir (namestring (uiop:temporary-directory)))
       :to-be-truthy)
-    (expect (cl-cc/php::%php-is-dir "/no/such/directory/here") :to-be nil))
+    (expect (cl-cc/php/stdlib:%php-is-dir "/no/such/directory/here") :to-be nil))
   (it-sequential
     "file reads a file into an array of newline-terminated lines"
     (let ((path (%io-test-path "lines")))
       (unwind-protect (progn
-          (cl-cc/php::%php-file-put-contents path (format nil "alpha~%beta~%"))
+          (cl-cc/php/stdlib:%php-file-put-contents path (format nil "alpha~%beta~%"))
           (expect
-            (cl-cc/php::%php-array-values-list (cl-cc/php::%php-file path))
+            (cl-cc/php/arrays:%php-array-values-list (cl-cc/php/stdlib:%php-file path))
             :to-equal
             (list (format nil "alpha~%") (format nil "beta~%"))))
         (ignore-errors (delete-file path)))))
@@ -71,54 +71,54 @@
     "fopen/fread reads sequential chunks and sets EOF once the stream is exhausted"
     (let ((path (%io-test-path "read")))
       (unwind-protect (progn
-          (cl-cc/php::%php-file-put-contents path "hello world")
-          (let ((handle (cl-cc/php::%php-fopen path "r")))
+          (cl-cc/php/stdlib:%php-file-put-contents path "hello world")
+          (let ((handle (cl-cc/php/stdlib:%php-fopen path "r")))
             (unwind-protect (progn
-                (expect (cl-cc/php::%php-feof handle) :to-be nil)
-                (expect (cl-cc/php::%php-fread handle 5) :to-equal "hello")
-                (expect (cl-cc/php::%php-fread handle 6) :to-equal " world")
-                (expect (cl-cc/php::%php-fread handle 5) :to-equal "")
-                (expect (cl-cc/php::%php-feof handle) :to-be-truthy))
-              (cl-cc/php::%php-fclose handle))))
+                (expect (cl-cc/php/stdlib:%php-feof handle) :to-be nil)
+                (expect (cl-cc/php/stdlib:%php-fread handle 5) :to-equal "hello")
+                (expect (cl-cc/php/stdlib:%php-fread handle 6) :to-equal " world")
+                (expect (cl-cc/php/stdlib:%php-fread handle 5) :to-equal "")
+                (expect (cl-cc/php/stdlib:%php-feof handle) :to-be-truthy))
+              (cl-cc/php/stdlib:%php-fclose handle))))
         (ignore-errors (delete-file path)))))
   (it-sequential
     "fgets reads one line at a time and returns nil at end of file"
     (let ((path (%io-test-path "gets")))
       (unwind-protect (progn
-          (cl-cc/php::%php-file-put-contents path (format nil "line1~%line2~%"))
-          (let ((handle (cl-cc/php::%php-fopen path "r")))
+          (cl-cc/php/stdlib:%php-file-put-contents path (format nil "line1~%line2~%"))
+          (let ((handle (cl-cc/php/stdlib:%php-fopen path "r")))
             (unwind-protect (progn
-                (expect (cl-cc/php::%php-fgets handle) :to-equal (format nil "line1~%"))
-                (expect (cl-cc/php::%php-fgets handle) :to-equal (format nil "line2~%"))
-                (expect (cl-cc/php::%php-fgets handle) :to-be nil)
-                (expect (cl-cc/php::%php-feof handle) :to-be-truthy))
-              (cl-cc/php::%php-fclose handle))))
+                (expect (cl-cc/php/stdlib:%php-fgets handle) :to-equal (format nil "line1~%"))
+                (expect (cl-cc/php/stdlib:%php-fgets handle) :to-equal (format nil "line2~%"))
+                (expect (cl-cc/php/stdlib:%php-fgets handle) :to-be nil)
+                (expect (cl-cc/php/stdlib:%php-feof handle) :to-be-truthy))
+              (cl-cc/php/stdlib:%php-fclose handle))))
         (ignore-errors (delete-file path)))))
   (it-sequential
     "fwrite reports the characters written and fflush persists them to disk"
     (let ((path (%io-test-path "write")))
       (unwind-protect (progn
-          (let ((handle (cl-cc/php::%php-fopen path "w")))
+          (let ((handle (cl-cc/php/stdlib:%php-fopen path "w")))
             (unwind-protect (progn
-                (expect (cl-cc/php::%php-fwrite handle "payload") :to-be 7)
-                (expect (cl-cc/php::%php-fflush handle) :to-be-truthy)
-                (expect (cl-cc/php::%php-file-get-contents path) :to-equal "payload"))
-              (cl-cc/php::%php-fclose handle))))
+                (expect (cl-cc/php/stdlib:%php-fwrite handle "payload") :to-be 7)
+                (expect (cl-cc/php/stdlib:%php-fflush handle) :to-be-truthy)
+                (expect (cl-cc/php/stdlib:%php-file-get-contents path) :to-equal "payload"))
+              (cl-cc/php/stdlib:%php-fclose handle))))
         (ignore-errors (delete-file path)))))
   (it-sequential
     "ftell, fseek, and rewind move and report the stream position"
     (let ((path (%io-test-path "seek")))
       (unwind-protect (progn
-          (cl-cc/php::%php-file-put-contents path "hello world")
-          (let ((handle (cl-cc/php::%php-fopen path "r")))
+          (cl-cc/php/stdlib:%php-file-put-contents path "hello world")
+          (let ((handle (cl-cc/php/stdlib:%php-fopen path "r")))
             (unwind-protect (progn
-                (expect (cl-cc/php::%php-ftell handle) :to-be 0)
-                (cl-cc/php::%php-fread handle 5)
-                (expect (cl-cc/php::%php-ftell handle) :to-be 5)
-                (expect (cl-cc/php::%php-rewind handle) :to-be 0)
-                (expect (cl-cc/php::%php-ftell handle) :to-be 0)
-                (expect (cl-cc/php::%php-fread handle 5) :to-equal "hello"))
-              (cl-cc/php::%php-fclose handle))))
+                (expect (cl-cc/php/stdlib:%php-ftell handle) :to-be 0)
+                (cl-cc/php/stdlib:%php-fread handle 5)
+                (expect (cl-cc/php/stdlib:%php-ftell handle) :to-be 5)
+                (expect (cl-cc/php/stdlib:%php-rewind handle) :to-be 0)
+                (expect (cl-cc/php/stdlib:%php-ftell handle) :to-be 0)
+                (expect (cl-cc/php/stdlib:%php-fread handle 5) :to-equal "hello"))
+              (cl-cc/php/stdlib:%php-fclose handle))))
         (ignore-errors (delete-file path)))))
   (it-sequential
     "copy duplicates a file and rename moves it"
@@ -126,144 +126,144 @@
           (dst (%io-test-path "dst"))
           (dst2 (%io-test-path "dst2")))
       (unwind-protect (progn
-          (cl-cc/php::%php-file-put-contents src "data")
-          (expect (cl-cc/php::%php-copy src dst) :to-be-truthy)
-          (expect (cl-cc/php::%php-file-get-contents dst) :to-equal "data")
-          (expect (cl-cc/php::%php-rename dst dst2) :to-be-truthy)
-          (expect (cl-cc/php::%php-file-exists dst) :to-be nil)
-          (expect (cl-cc/php::%php-file-get-contents dst2) :to-equal "data"))
+          (cl-cc/php/stdlib:%php-file-put-contents src "data")
+          (expect (cl-cc/php/stdlib:%php-copy src dst) :to-be-truthy)
+          (expect (cl-cc/php/stdlib:%php-file-get-contents dst) :to-equal "data")
+          (expect (cl-cc/php/stdlib:%php-rename dst dst2) :to-be-truthy)
+          (expect (cl-cc/php/stdlib:%php-file-exists dst) :to-be nil)
+          (expect (cl-cc/php/stdlib:%php-file-get-contents dst2) :to-equal "data"))
         (ignore-errors (delete-file src))
         (ignore-errors (delete-file dst))
         (ignore-errors (delete-file dst2)))))
   (it-sequential
     "tempnam creates a fresh, existing file under the given directory"
-    (let ((path (cl-cc/php::%php-tempnam (namestring (uiop:temporary-directory)) "pre")))
+    (let ((path (cl-cc/php/stdlib:%php-tempnam (namestring (uiop:temporary-directory)) "pre")))
       (unwind-protect (progn
           (expect path :to-be-truthy)
-          (expect (cl-cc/php::%php-file-exists path) :to-be-truthy))
+          (expect (cl-cc/php/stdlib:%php-file-exists path) :to-be-truthy))
         (ignore-errors (delete-file path)))))
   (it-sequential
     "basename returns the trailing component and strips a matching suffix"
-    (expect (cl-cc/php::%php-basename "/foo/bar/baz.txt") :to-equal "baz.txt")
-    (expect (cl-cc/php::%php-basename "/foo/bar/baz.txt" ".txt") :to-equal "baz")
-    (expect (cl-cc/php::%php-basename "plain") :to-equal "plain"))
+    (expect (cl-cc/php/stdlib:%php-basename "/foo/bar/baz.txt") :to-equal "baz.txt")
+    (expect (cl-cc/php/stdlib:%php-basename "/foo/bar/baz.txt" ".txt") :to-equal "baz")
+    (expect (cl-cc/php/stdlib:%php-basename "plain") :to-equal "plain"))
   (it-sequential
     "dirname strips one or more levels of trailing components"
-    (expect (cl-cc/php::%php-dirname "/foo/bar/baz.txt") :to-equal "/foo/bar")
-    (expect (cl-cc/php::%php-dirname "/foo/bar/baz.txt" 2) :to-equal "/foo")
-    (expect (cl-cc/php::%php-dirname "noslash") :to-equal "."))
+    (expect (cl-cc/php/stdlib:%php-dirname "/foo/bar/baz.txt") :to-equal "/foo/bar")
+    (expect (cl-cc/php/stdlib:%php-dirname "/foo/bar/baz.txt" 2) :to-equal "/foo")
+    (expect (cl-cc/php/stdlib:%php-dirname "noslash") :to-equal "."))
   (it-sequential
     "pathinfo returns components as an array and as individual option lookups"
-    (let ((info (cl-cc/php::%php-pathinfo "/foo/bar.txt")))
-      (expect (cl-cc/php::%php-array-ref info "dirname") :to-equal "/foo")
-      (expect (cl-cc/php::%php-array-ref info "basename") :to-equal "bar.txt")
-      (expect (cl-cc/php::%php-array-ref info "extension") :to-equal "txt")
-      (expect (cl-cc/php::%php-array-ref info "filename") :to-equal "bar"))
-    (expect (cl-cc/php::%php-pathinfo "/foo/bar.txt" 1) :to-equal "/foo")
-    (expect (cl-cc/php::%php-pathinfo "/foo/bar.txt" 2) :to-equal "bar.txt")
-    (expect (cl-cc/php::%php-pathinfo "/foo/bar.txt" 4) :to-equal "txt")
-    (expect (cl-cc/php::%php-pathinfo "/foo/bar.txt" 8) :to-equal "bar"))
+    (let ((info (cl-cc/php/stdlib:%php-pathinfo "/foo/bar.txt")))
+      (expect (cl-cc/php:%php-array-ref info "dirname") :to-equal "/foo")
+      (expect (cl-cc/php:%php-array-ref info "basename") :to-equal "bar.txt")
+      (expect (cl-cc/php:%php-array-ref info "extension") :to-equal "txt")
+      (expect (cl-cc/php:%php-array-ref info "filename") :to-equal "bar"))
+    (expect (cl-cc/php/stdlib:%php-pathinfo "/foo/bar.txt" 1) :to-equal "/foo")
+    (expect (cl-cc/php/stdlib:%php-pathinfo "/foo/bar.txt" 2) :to-equal "bar.txt")
+    (expect (cl-cc/php/stdlib:%php-pathinfo "/foo/bar.txt" 4) :to-equal "txt")
+    (expect (cl-cc/php/stdlib:%php-pathinfo "/foo/bar.txt" 8) :to-equal "bar"))
   (it-sequential
     "sys_get_temp_dir reports /tmp and is_link is always false in the CLI model"
-    (expect (cl-cc/php::%php-sys-get-temp-dir) :to-equal "/tmp")
-    (expect (cl-cc/php::%php-is-link "/anything") :to-be nil))
+    (expect (cl-cc/php/stdlib:%php-sys-get-temp-dir) :to-equal "/tmp")
+    (expect (cl-cc/php/stdlib:%php-is-link "/anything") :to-be nil))
   (it-sequential
     "STDIN/STDOUT/STDERR are handles over the dynamically bound CL standard streams"
-    (let ((in (cl-cc/php::%php-stdin))
-          (out (cl-cc/php::%php-stdout))
-          (err (cl-cc/php::%php-stderr)))
-      (expect (cl-cc/php::%php-array-ref in "__stream__") :to-be *standard-input*)
-      (expect (cl-cc/php::%php-array-ref in "__standard__") :to-be-truthy)
-      (expect (cl-cc/php::%php-array-ref out "__stream__") :to-be *standard-output*)
-      (expect (cl-cc/php::%php-array-ref err "__stream__") :to-be *error-output*)))
+    (let ((in (cl-cc/php/stdlib:%php-stdin))
+          (out (cl-cc/php/stdlib:%php-stdout))
+          (err (cl-cc/php/stdlib:%php-stderr)))
+      (expect (cl-cc/php:%php-array-ref in "__stream__") :to-be *standard-input*)
+      (expect (cl-cc/php:%php-array-ref in "__standard__") :to-be-truthy)
+      (expect (cl-cc/php:%php-array-ref out "__stream__") :to-be *standard-output*)
+      (expect (cl-cc/php:%php-array-ref err "__stream__") :to-be *error-output*)))
   (it-sequential
     "flock acquires a shared or exclusive lock, and LOCK_UN releases it"
     (let ((path (%io-test-path "lock")))
-      (cl-cc/php::%php-file-put-contents path "x")
+      (cl-cc/php/stdlib:%php-file-put-contents path "x")
       (unwind-protect
-          (let ((h1 (cl-cc/php::%php-fopen path "r"))
-                (h2 (cl-cc/php::%php-fopen path "r")))
+          (let ((h1 (cl-cc/php/stdlib:%php-fopen path "r"))
+                (h2 (cl-cc/php/stdlib:%php-fopen path "r")))
             (unwind-protect
                 (progn
                   ;; Two readers can share a lock (LOCK_SH = 1).
-                  (expect (cl-cc/php::%php-flock h1 1) :to-be-truthy)
-                  (expect (cl-cc/php::%php-flock h2 1) :to-be-truthy)
+                  (expect (cl-cc/php/stdlib:%php-flock h1 1) :to-be-truthy)
+                  (expect (cl-cc/php/stdlib:%php-flock h2 1) :to-be-truthy)
                   ;; A third handle cannot take an exclusive lock (LOCK_EX = 2)
                   ;; while shared locks are held.
-                  (expect (cl-cc/php::%php-flock h1 2) :to-be nil)
+                  (expect (cl-cc/php/stdlib:%php-flock h1 2) :to-be nil)
                   ;; LOCK_UN (3) releases; once both shared locks are gone, an
                   ;; exclusive lock becomes available.
-                  (expect (cl-cc/php::%php-flock h1 3) :to-be-truthy)
-                  (expect (cl-cc/php::%php-flock h2 3) :to-be-truthy)
-                  (expect (cl-cc/php::%php-flock h1 2) :to-be-truthy))
-              (cl-cc/php::%php-fclose h1)
-              (cl-cc/php::%php-fclose h2)))
-        (cl-cc/php::%php-unlink path))))
+                  (expect (cl-cc/php/stdlib:%php-flock h1 3) :to-be-truthy)
+                  (expect (cl-cc/php/stdlib:%php-flock h2 3) :to-be-truthy)
+                  (expect (cl-cc/php/stdlib:%php-flock h1 2) :to-be-truthy))
+              (cl-cc/php/stdlib:%php-fclose h1)
+              (cl-cc/php/stdlib:%php-fclose h2)))
+        (cl-cc/php/stdlib:%php-unlink path))))
   (it-sequential
     "fgetc reads one character at a time and sets eof at the end"
     (let ((path (%io-test-path "getc")))
-      (cl-cc/php::%php-file-put-contents path "ab")
+      (cl-cc/php/stdlib:%php-file-put-contents path "ab")
       (unwind-protect
-          (let ((h (cl-cc/php::%php-fopen path "r")))
+          (let ((h (cl-cc/php/stdlib:%php-fopen path "r")))
             (unwind-protect
                 (progn
-                  (expect (cl-cc/php::%php-fgetc h) :to-equal "a")
-                  (expect (cl-cc/php::%php-fgetc h) :to-equal "b")
-                  (expect (cl-cc/php::%php-fgetc h) :to-be nil)
-                  (expect (cl-cc/php::%php-feof h) :to-be-truthy))
-              (cl-cc/php::%php-fclose h)))
-        (cl-cc/php::%php-unlink path))))
+                  (expect (cl-cc/php/stdlib:%php-fgetc h) :to-equal "a")
+                  (expect (cl-cc/php/stdlib:%php-fgetc h) :to-equal "b")
+                  (expect (cl-cc/php/stdlib:%php-fgetc h) :to-be nil)
+                  (expect (cl-cc/php/stdlib:%php-feof h) :to-be-truthy))
+              (cl-cc/php/stdlib:%php-fclose h)))
+        (cl-cc/php/stdlib:%php-unlink path))))
   (it-sequential
     "fseek/ftell/rewind move and report the stream position"
     (let ((path (%io-test-path "seek")))
-      (cl-cc/php::%php-file-put-contents path "0123456789")
+      (cl-cc/php/stdlib:%php-file-put-contents path "0123456789")
       (unwind-protect
-          (let ((h (cl-cc/php::%php-fopen path "r")))
+          (let ((h (cl-cc/php/stdlib:%php-fopen path "r")))
             (unwind-protect
                 (progn
-                  (expect (cl-cc/php::%php-fseek h 5) :to-be 0)
-                  (expect (cl-cc/php::%php-ftell h) :to-be 5)
-                  (expect (cl-cc/php::%php-fgetc h) :to-equal "5")
-                  (expect (cl-cc/php::%php-rewind h) :to-be 0)
-                  (expect (cl-cc/php::%php-ftell h) :to-be 0))
-              (cl-cc/php::%php-fclose h)))
-        (cl-cc/php::%php-unlink path))))
+                  (expect (cl-cc/php/stdlib:%php-fseek h 5) :to-be 0)
+                  (expect (cl-cc/php/stdlib:%php-ftell h) :to-be 5)
+                  (expect (cl-cc/php/stdlib:%php-fgetc h) :to-equal "5")
+                  (expect (cl-cc/php/stdlib:%php-rewind h) :to-be 0)
+                  (expect (cl-cc/php/stdlib:%php-ftell h) :to-be 0))
+              (cl-cc/php/stdlib:%php-fclose h)))
+        (cl-cc/php/stdlib:%php-unlink path))))
   (it-sequential
     "fgetcsv parses a comma-separated line into fields"
     (let ((path (%io-test-path "csv")))
-      (cl-cc/php::%php-file-put-contents path (format nil "a,b,c~%"))
+      (cl-cc/php/stdlib:%php-file-put-contents path (format nil "a,b,c~%"))
       (unwind-protect
-          (let ((h (cl-cc/php::%php-fopen path "r")))
+          (let ((h (cl-cc/php/stdlib:%php-fopen path "r")))
             (unwind-protect
                 (expect
-                  (cl-cc/php::%php-array-values-list (cl-cc/php::%php-fgetcsv h))
+                  (cl-cc/php/arrays:%php-array-values-list (cl-cc/php/stdlib:%php-fgetcsv h))
                   :to-equal
                   '("a" "b" "c"))
-              (cl-cc/php::%php-fclose h)))
-        (cl-cc/php::%php-unlink path))))
+              (cl-cc/php/stdlib:%php-fclose h)))
+        (cl-cc/php/stdlib:%php-unlink path))))
   (it-sequential
     "fputcsv writes every field joined by the separator, not just the first"
     (let ((path (%io-test-path "putcsv")))
       (unwind-protect
           (progn
-            (let ((h (cl-cc/php::%php-fopen path "w")))
+            (let ((h (cl-cc/php/stdlib:%php-fopen path "w")))
               (unwind-protect
-                  (cl-cc/php::%php-fputcsv
-                    h (cl-cc/php::%php-list-to-array '("a" "b" "c")))
-                (cl-cc/php::%php-fclose h)))
-            (expect (cl-cc/php::%php-file-get-contents path)
+                  (cl-cc/php/stdlib:%php-fputcsv
+                    h (cl-cc/php/arrays:%php-list-to-array '("a" "b" "c")))
+                (cl-cc/php/stdlib:%php-fclose h)))
+            (expect (cl-cc/php/stdlib:%php-file-get-contents path)
                     :to-equal (format nil "a,b,c~%")))
-        (cl-cc/php::%php-unlink path))))
+        (cl-cc/php/stdlib:%php-unlink path))))
   (it-sequential
     "fputcsv encloses a field containing the separator, doubling any embedded quotes"
     (let ((path (%io-test-path "putcsv-quote")))
       (unwind-protect
           (progn
-            (let ((h (cl-cc/php::%php-fopen path "w")))
+            (let ((h (cl-cc/php/stdlib:%php-fopen path "w")))
               (unwind-protect
-                  (cl-cc/php::%php-fputcsv
-                    h (cl-cc/php::%php-list-to-array (list "a,b" "say \"hi\"")))
-                (cl-cc/php::%php-fclose h)))
-            (expect (cl-cc/php::%php-file-get-contents path)
+                  (cl-cc/php/stdlib:%php-fputcsv
+                    h (cl-cc/php/arrays:%php-list-to-array (list "a,b" "say \"hi\"")))
+                (cl-cc/php/stdlib:%php-fclose h)))
+            (expect (cl-cc/php/stdlib:%php-file-get-contents path)
                     :to-equal (format nil "\"a,b\",\"say \"\"hi\"\"\"~%")))
-        (cl-cc/php::%php-unlink path)))))
+        (cl-cc/php/stdlib:%php-unlink path)))))

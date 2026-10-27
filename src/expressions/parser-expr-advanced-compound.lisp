@@ -2,7 +2,7 @@
 ;;;;
 ;;;; Split from parser-expr-advanced.lisp.
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/expressions)
 
 ;;; ─── Compound Assignment Lowering ────────────────────────────────────────────
 ;;;
@@ -10,18 +10,18 @@
 ;;; symbols.  Lowering logic stays in %PHP-COMPOUND-VALUE.
 
 (defparameter *php-compound-op-table*
-  '(("+="  . cl-cc/php::%php-add)
-    ("-="  . cl-cc/php::%php-sub)
-    ("*="  . cl-cc/php::%php-mul)
-    ("/="  . cl-cc/php::%php-div)
-    (".="  . cl-cc/php::%php-concat)
-    ("%="  . cl-cc/php::%php-modulo)
+  '(("+="  . %php-add)
+    ("-="  . %php-sub)
+    ("*="  . %php-mul)
+    ("/="  . %php-div)
+    (".="  . %php-concat)
+    ("%="  . %php-modulo)
     ("**=" . expt)
-    ("&="  . cl-cc/php::%php-bitwise-and)
-    ("|="  . cl-cc/php::%php-bitwise-or)
-    ("^="  . cl-cc/php::%php-bitwise-xor)
-    ("<<=" . cl-cc/php::%php-shift-left)
-    (">>=" . cl-cc/php::%php-shift-right))
+    ("&="  . %php-bitwise-and)
+    ("|="  . %php-bitwise-or)
+    ("^="  . %php-bitwise-xor)
+    ("<<=" . %php-shift-left)
+    (">>=" . %php-shift-right))
   "Alist mapping PHP compound-assignment operator strings to runtime helper symbols.")
 
 (defun %php-compound-value (op lhs rhs)
@@ -84,7 +84,7 @@ whole program."
               (key-sym (gensym "PHP-COMPOUND-KEY-"))
               (array-var (make-ast-var :name array-sym))
               (key-var (make-ast-var :name key-sym))
-              (current (%php-array-ref-call array-var key-var)))
+              (current (call-php-array-expression-lowerer :ref-call array-var key-var)))
          (make-ast-let
           :bindings (list (cons array-sym array)
                           (cons key-sym key))
@@ -95,11 +95,9 @@ whole program."
                              :bindings (list (cons current-sym current))
                              :body (list (make-ast-if
                                           :cond (%php-nullish-cond current-var)
-                                          :then (%php-array-set-call array-var key-var rhs-expr)
+                                          :then (call-php-array-expression-lowerer :set-call array-var key-var rhs-expr)
                                           :else current-var))))
-                          (%php-array-set-call
-                           array-var key-var
-                           (%php-compound-value op current rhs-expr))))))))
+                          (call-php-array-expression-lowerer :set-call array-var key-var (%php-compound-value op current rhs-expr))))))))
     (:property
      (let* ((object-sym (gensym "PHP-COMPOUND-OBJECT-"))
             (object-var (make-ast-var :name object-sym))

@@ -1,6 +1,6 @@
 ;;;; Math PHP builtin helpers.
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/stdlib)
 
 (defun %php-abs (number)
   "Return the absolute value of NUMBER."

@@ -1,6 +1,6 @@
 ;;;; String PHP builtin data.
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/stdlib)
 
 (defparameter +php-trim-characters+
   (list #\Space #\Tab #\Newline #\Return #\Null #\Page)

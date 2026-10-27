@@ -1,7 +1,7 @@
 ;;;; runtime-builtins-string-multibyte-test.lisp — src/runtime-builtins-string-multibyte.lisp — the
 ;;;; mb_* builtins.
 
-(in-package :cl-cc/php/strings/test)
+(in-package :cl-cc/php/stdlib/test)
 
 (describe
   "PHP mb_* multibyte string builtins"

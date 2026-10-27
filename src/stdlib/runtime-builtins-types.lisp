@@ -1,6 +1,6 @@
 ;;;; Type checking and conversion PHP builtin helpers.
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/stdlib)
 
 (defmacro define-php-type-predicate (name docstring predicate)
   "Define PHP type-test builtin NAME as (PREDICATE VALUE).  PREDICATE is a symbol
@@ -345,3 +345,11 @@ are allowed; trailing junk is ignored."
         (progn
           (%php-ref-set! v converted)
           t))))
+
+(eval-when (:load-toplevel :execute)
+  (register-php-runtime-symbol :intval '%php-intval)
+  (register-php-runtime-symbol :floatval '%php-floatval)
+  (register-php-runtime-symbol :strval '%php-strval)
+  (register-php-runtime-symbol :boolval '%php-boolval)
+  (register-php-runtime-symbol :settype-array-value '%php-settype-array-value)
+  (register-php-runtime-symbol :settype-object-value '%php-settype-object-value))

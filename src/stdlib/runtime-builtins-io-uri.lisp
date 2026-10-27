@@ -1,4 +1,4 @@
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/stdlib)
 
 (defparameter +php-uri-rfc3986-methods+ nil)
 (defparameter +php-uri-whatwg-methods+ nil)
@@ -460,3 +460,31 @@ synonyms of NAME."
         ("withQuery" %php-uri-with-query)
         ("withScheme" %php-uri-with-scheme)
         ("withUsername" %php-uri-with-username)))
+(defun %php-uri-static-member-lowerer (object member args method-p)
+  (let* ((class-name
+           (and (ast-var-p object)
+                (string-upcase (symbol-name (ast-var-name object)))))
+         (kind (cond
+                 ((equal class-name "URI\\RFC3986\\URI") :rfc3986)
+                 ((equal class-name "URI\\WHATWG\\URL") :whatwg))))
+    (if (and method-p kind (string= (symbol-name member) "PARSE"))
+        (progn
+          (when (null args)
+            (error "PHP parse error: Uri::parse() expects at least 1 argument"))
+          (values
+           (make-ast-call
+            :func (make-ast-var
+                   :name (%php-runtime-symbol
+                          (if (eq kind :rfc3986)
+                              :uri-rfc3986-parse
+                              :uri-whatwg-parse)))
+            :args args)
+           t))
+        (values nil nil))))
+(eval-when (:load-toplevel :execute)
+  (register-php-runtime-symbol :uri-rfc3986-new '%php-uri-rfc3986-new)
+  (register-php-runtime-symbol :uri-whatwg-new '%php-uri-whatwg-new)
+  (register-php-runtime-symbol :uri-rfc3986-parse '%php-uri-rfc3986-parse)
+  (register-php-runtime-symbol :uri-whatwg-parse '%php-uri-whatwg-parse)
+  (register-php-expression-static-member-lowerer
+   #'%php-uri-static-member-lowerer))

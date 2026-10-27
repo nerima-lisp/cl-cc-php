@@ -1,6 +1,6 @@
 ;;;; PHP runtime reflection objects.
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/stdlib)
 
 ;;; ─── Reflection runtime objects ─────────────────────────────────────────────
 
@@ -72,4 +72,7 @@ PHP null (reflection metadata this runtime does not model)."
      obj
      '(("getMangledName" %php-reflection-property-get-mangled-name)))
     obj))
+(eval-when (:load-toplevel :execute)
+  (register-php-runtime-symbol :reflection-constant-new '%php-reflection-constant-new)
+  (register-php-runtime-symbol :reflection-property-new '%php-reflection-property-new))
 

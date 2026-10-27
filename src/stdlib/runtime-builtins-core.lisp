@@ -1,6 +1,6 @@
 ;;;; Core PHP builtin helpers.
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/stdlib)
 
 (defun %php-empty (value)
   "Return true when VALUE is empty according to PHP truthiness rules."
@@ -134,103 +134,6 @@ hash-table. Repeated calls with the same ID return the same handle."
     (:string "string")
     (:array "array")
     (otherwise "object")))
-
-(defun %php-array-ordered-keys (array)
-  "Return ARRAY's user keys in PHP insertion order."
-  ;; (%php-array-ordered-keys (%php-array (list nil nil "a"))) => (0)
-  (check-type array hash-table)
-  (copy-list (gethash +php-array-order-key+ array)))
-
-(defun %php-array-pairs (array)
-  "Return ARRAY's ordered (KEY . VALUE) pairs."
-  ;; (%php-array-pairs (%php-array (list t "a" 1))) => (("a" . 1))
-  (check-type array hash-table)
-  (loop for key in (%php-array-ordered-keys array)
-        collect (cons key (gethash key array))))
-
-(defun %php-array-values-list (array)
-  "Return ARRAY's values as a Common Lisp list in PHP insertion order."
-  ;; (%php-array-values-list (%php-array (list nil nil "a") (list nil nil "b")))
-  ;; => ("a" "b")
-  (check-type array hash-table)
-  (loop for key in (%php-array-ordered-keys array)
-        collect (gethash key array)))
-
-(defvar *php-missing-call-arg* (list :php-missing-call-arg))
-
-(defun %php-call-args-with-named-spread
-    (fn-name param-names default-present default-values &rest descriptors)
-  "Return a runtime positional argument list for calls that mix ...spread and
-named arguments when the spread width is not statically known."
-  (let ((positional nil)
-        (named (make-hash-table :test #'equal))
-        (seen-named nil)
-        (highest-named-index -1))
-    (labels ((param-index (name)
-               (position name param-names :test #'string-equal))
-             (push-positional (value)
-               (when seen-named
-                 (error "PHP positional argument after named argument in call to ~A"
-                        fn-name))
-               (push value positional)))
-      (dolist (descriptor descriptors)
-        (destructuring-bind (kind &rest values) descriptor
-          (case kind
-            (:pos
-             (push-positional (first values)))
-            (:spread
-             (when seen-named
-               (error "PHP spread argument after named argument in call to ~A"
-                      fn-name))
-             (dolist (value (%php-array-values-list (first values)))
-               (push value positional)))
-            (:named
-             (setf seen-named t)
-             (destructuring-bind (name value) values
-               (let ((index (param-index name)))
-                 (unless index
-                   (error "Unknown named argument ~A for PHP function ~A"
-                          name fn-name))
-                 (multiple-value-bind (old present-p) (gethash name named)
-                   (declare (ignore old))
-                   (when present-p
-                     (error "Duplicate named argument ~A for PHP function ~A"
-                            name fn-name)))
-                 (setf (gethash name named) value
-                       highest-named-index (max highest-named-index index)))))
-            (otherwise
-              (error "Unknown PHP call argument descriptor ~S" kind)))))
-      (let* ((positional (nreverse positional))
-             (positional-count (length positional))
-             (result-size (max positional-count (1+ highest-named-index)))
-             (result (make-array result-size
-                                 :initial-element *php-missing-call-arg*)))
-        (loop for value in positional
-              for index from 0
-              do (setf (aref result index) value))
-        (maphash (lambda (name value)
-                   (let ((index (param-index name)))
-                     (when (< index positional-count)
-                       (error "Duplicate PHP argument for parameter ~A in call to ~A"
-                              name fn-name))
-                     (setf (aref result index) value)))
-                 named)
-        (loop for index below result-size
-              for value = (aref result index)
-              collect (cond
-                        ((not (eq value *php-missing-call-arg*)) value)
-                        ((nth index default-present)
-                         (nth index default-values))
-                        (t
-                         (error "Missing PHP argument ~A for function ~A"
-                                (nth index param-names) fn-name))))))))
-
-(defun %php-list-to-array (values)
-  "Return a PHP ordered array containing VALUES at numeric keys."
-  ;; (%php-count (%php-list-to-array '("a" "b"))) => 2
-  (let ((array (%php-array)))
-    (dolist (value values array)
-      (%php-array-set array (%php-array-next-auto-index array) value))))
 
 (defun %php-object-hashlike-storage (object)
   "Return OBJECT's underlying storage when OBJECT is a PHP object."

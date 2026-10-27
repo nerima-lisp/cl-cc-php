@@ -7,7 +7,7 @@
 ;;;; These lived in runtime-builtins-io.lisp for no reason other than history;
 ;;;; they are array operations and belong next to the other array builtins.
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/stdlib)
 
 (defun %php-array-map-keys (callback array)
   "PHP array_map with keys support (2-arg form with null callback)."

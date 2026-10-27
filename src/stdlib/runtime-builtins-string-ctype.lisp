@@ -1,6 +1,6 @@
 ;;;; runtime-builtins-string-ctype.lisp -- ctype PHP string predicates
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/stdlib)
 
 ;;; ─── ctype_* character classification (PHP ext/ctype) ────────────────────────
 

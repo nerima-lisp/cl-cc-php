@@ -1,14 +1,6 @@
 ;;;; parser-stmt-lowering.lisp — PHP Parser: Statement infrastructure and AST lowering
 
-(in-package :cl-cc/php)
-
-(defvar *php-stmt-parsers* (make-hash-table)
-  "Maps PHP keyword values to statement parser functions.")
-
-(defmacro define-php-stmt-parser (keyword (stream known-vars) &body body)
-  "Register a statement parser for KEYWORD in *php-stmt-parsers*."
-  `(setf (gethash ,keyword *php-stmt-parsers*)
-          (lambda (,stream ,known-vars) ,@body)))
+(in-package #:cl-cc/php/statements)
 
 ;;; %php-consume-expected and %php-keyword-p are defined in parser.lisp
 
@@ -170,3 +162,89 @@ the current tag, matching the core CL lowerer's ast-tagbody representation."
                  (if stmt (list stmt) nil)
                  known-vars)
                 rest kv))))
+
+(in-package #:cl-cc/php/statements)
+
+;;; ─── Statement Dispatcher ────────────────────────────────────────────────────
+
+(defun php-parse-statement (stream known-vars)
+  "Parse a single PHP statement. Returns (values ast rest known-vars).
+Dispatches keyword statements through *php-stmt-parsers*; falls through
+to %php-parse-expr-stmt for expression statements."
+  (multiple-value-bind (attributes stream)
+      (if *php-statement-attribute-parser*
+          (funcall *php-statement-attribute-parser* stream)
+          (values nil stream))
+    (labels ((attach-attributes (node &optional target-type)
+               (if *php-statement-attribute-attacher*
+                   (funcall *php-statement-attribute-attacher*
+                            node attributes target-type)
+                   node)))
+      (cond
+        ((eq (php-peek-type stream) :T-INLINE-HTML)
+         (multiple-value-bind (tok rest) (php-consume stream)
+           (values (attach-attributes
+                    (%php-call (%php-runtime-symbol :output-write)
+                               (make-ast-quote :value (php-tok-value tok))))
+                   rest known-vars)))
+        ((and (eq (php-peek-type stream) :T-IDENT)
+              (let ((next (second stream)))
+                (and next (eq (php-tok-type next) :T-COLON))))
+         (%php-unsupported
+          (format nil "labeled statement `~A:` (goto~Cs jump target) is not yet supported"
+                  (php-peek-value stream) (code-char 39))))
+        (t
+         (let ((handler (when (eq (php-peek-type stream) :T-KEYWORD)
+                          (gethash (php-peek-value stream) *php-stmt-parsers*))))
+           (if handler
+               (multiple-value-bind (_ rest) (php-consume stream)
+                 (multiple-value-bind (stmt rest2 kv2)
+                     (funcall handler rest known-vars)
+                   (let ((target-type (case (php-tok-value _)
+                                        ((:class :readonly) :class)
+                                        (:const :constant)
+                                        (:function :function)
+                                        ((:trait :interface :enum) :class)
+                                        (otherwise nil))))
+                     (when (and attributes
+                                (eq (php-tok-value _) :const)
+                                (ast-progn-p stmt))
+                       (error
+                        (concatenate (quote string)
+                                     "PHP parse error: attributes on grouped const "
+                                     "declarations require exactly one constant")))
+                     (values (attach-attributes stmt target-type)
+                             rest2 kv2))))
+               (multiple-value-bind (stmt rest2 kv2)
+                   (%php-parse-expr-stmt stream known-vars)
+                 (values (attach-attributes stmt) rest2 kv2)))))))))
+
+(in-package #:cl-cc/php/statements)
+
+;;; ─── Top-Level Entry Point ───────────────────────────────────────────────────
+
+(defun php-finish-let-bindings (stmts)
+  "Wrap each `ast-let' with an empty body around the statements that follow it.
+
+PHP's first assignment to a variable lowers to (ast-let ((var . value)) :body nil)
+— a declaration whose scope must cover every later statement in the same block.
+Walking STMTS backwards, each empty-bodied let absorbs the already-nested tail as
+its body, so `$x = 10; echo $x;' becomes (let (($x 10)) (echo $x)) rather than two
+siblings where echo sees an unbound $x. Statements that are not empty-bodied lets
+(including lets that already carry a body) pass through as siblings.
+
+This pass is applied at top level and in every braced block (see
+php-parse-block), keeping each first assignment visible to the later statements
+that share the same PHP block scope."
+  (let ((tail nil))
+    (dolist (stmt (reverse stmts) tail)
+      (if (and (ast-let-p stmt) (null (ast-let-body stmt)))
+          (progn
+            (setf (ast-let-body stmt) tail)
+            (setf tail (list stmt)))
+          (push stmt tail)))))
+;;; ─── Top-Level Entry Point ───────────────────────────────────────────────────
+
+(eval-when (:load-toplevel :execute)
+  (register-php-source-statement-parser (function php-parse-statement))
+  (register-php-source-finalizer 50 (function php-finish-let-bindings)))

@@ -1,8 +1,8 @@
 ;;;; runtime-builtins-regex-preg.lisp -- PHP preg_* regex engine and scalar regex builtins
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/stdlib)
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/stdlib)
 
 ;;; -----------------------------------------------------------------------
 ;;;  PHP pattern parser — strip /delimiters/ and extract flags
@@ -480,3 +480,6 @@ an array of every full match, k an array of every capture-group-k match."
           do (when (member ch '(#\. #\* #\+ #\? #\[ #\] #\^ #\$ #\( #\) #\{ #\} #\| #\\ #\/))
                (write-char #\\ out))
              (write-char ch out))))
+
+(eval-when (:load-toplevel :execute) (register-php-runtime-symbol :preg-match '%php-preg-match) (register-php-runtime-symbol :preg-match-all '%php-preg-match-all) (register-php-runtime-symbol :preg-match-matches '%php-preg-match-matches) (register-php-runtime-symbol :preg-match-all-matches '%php-preg-match-all-matches))
+

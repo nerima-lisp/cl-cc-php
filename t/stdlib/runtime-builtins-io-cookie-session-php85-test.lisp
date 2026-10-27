@@ -5,7 +5,7 @@
 ;;;; limit even after the split: these ten tests are the ones that exercise the cookie/session
 ;;;; builtins specifically, rather than the tokenizer/image/filter grab-bag the parent file covers.
 
-(in-package :cl-cc-php/test)
+(in-package :cl-cc/php/stdlib/test)
 
 (describe
   "PHP 8.5 partitioned cookies and session cookie params"
@@ -13,7 +13,7 @@
     "PHP 8.5 partitioned cookies require secure cookies."
     (let ((condition
           (handler-case (progn
-              (cl-cc/php::%php-setcookie
+              (cl-cc/php/stdlib:%php-setcookie
                 "chip"
                 "v"
                 (cl-cc/php:%php-array (list t "partitioned" t)))
@@ -34,35 +34,35 @@
                   (cl-cc/php:php-exception (e)
                     e))))
             (and condition (cl-cc/php:%php-exception-matches-p condition 'value-error)))))
-      (let ((numeric-options (cl-cc/php::%php-make-array))
-            (unknown-options (cl-cc/php::%php-make-array))
-            (bad-samesite-options (cl-cc/php::%php-make-array)))
-        (cl-cc/php::%php-array-set numeric-options 0 t)
-        (cl-cc/php::%php-array-set unknown-options "bogus" t)
-        (cl-cc/php::%php-array-set bad-samesite-options "samesite" "Relaxed")
+      (let ((numeric-options (cl-cc/php/arrays:%php-make-array))
+            (unknown-options (cl-cc/php/arrays:%php-make-array))
+            (bad-samesite-options (cl-cc/php/arrays:%php-make-array)))
+        (cl-cc/php:%php-array-set numeric-options 0 t)
+        (cl-cc/php:%php-array-set unknown-options "bogus" t)
+        (cl-cc/php:%php-array-set bad-samesite-options "samesite" "Relaxed")
         (expect
           (raises-value-error-p
             (lambda ()
-              (cl-cc/php::%php-setcookie "chip" "v" numeric-options)))
+              (cl-cc/php/stdlib:%php-setcookie "chip" "v" numeric-options)))
           :to-be-truthy)
         (expect
           (raises-value-error-p
             (lambda ()
-              (cl-cc/php::%php-setcookie "chip" "v" unknown-options)))
+              (cl-cc/php/stdlib:%php-setcookie "chip" "v" unknown-options)))
           :to-be-truthy)
         (expect
           (raises-value-error-p
             (lambda ()
-              (cl-cc/php::%php-setcookie "chip" "v" bad-samesite-options)))
+              (cl-cc/php/stdlib:%php-setcookie "chip" "v" bad-samesite-options)))
           :to-be-truthy))))
   (it-sequential
     "PHP 8.5 session_get_cookie_params() inserts partitioned after secure."
-    (let ((cl-cc/php::*php-session-cookie-params* nil))
+    (let ((cl-cc/php/stdlib:*php-session-cookie-params* nil))
       (expect
         (format
           nil
           "~{~A~^,~}"
-          (cl-cc/php::%php-array-ordered-keys (cl-cc/php::%php-session-get-cookie-params)))
+          (cl-cc/php/arrays:%php-array-ordered-keys (cl-cc/php/stdlib:%php-session-get-cookie-params)))
         :to-equal
         "lifetime,path,domain,secure,partitioned,httponly,samesite")))
   )

@@ -1,6 +1,6 @@
 ;;;; PHP array sorting builtins.
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/stdlib)
 
 (defun %php-sort-flag-type (sort-flags)
   "Return the comparison mode selected by PHP SORT_* flags."

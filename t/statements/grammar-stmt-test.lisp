@@ -1,6 +1,6 @@
 ;;;; grammar-stmt-test.lisp — src/grammar-stmt.lisp — statement lowering out of the CST.
 
-(in-package :cl-cc-php/test)
+(in-package :cl-cc/php/statements/test)
 
 (describe "PHP grammar statement lowering"
 

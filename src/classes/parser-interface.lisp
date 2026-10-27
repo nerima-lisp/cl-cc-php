@@ -1,5 +1,5 @@
 ;;;; parser-interface.lisp — PHP interface declaration parser
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/classes)
 
 ;;; ─── Interface Registry ──────────────────────────────────────────────────────
 

@@ -10,7 +10,7 @@
 ;;;; Load order: after parser-class.lisp, which supplies %php-slot-metadata and
 ;;;; calls %php-parse-property-slot-with-hooks below.
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/classes)
 
 ;;; ─── PHP 8.4 Property Hooks ─────────────────────────────────────────────────
 ;;;

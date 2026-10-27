@@ -1,6 +1,6 @@
 ;;;; runtime-builtins-regex-number.lisp -- PHP numeric formatting builtins
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/stdlib)
 
 (defun %php-round-half-up (x)
   "Round non-negative double X to the nearest integer with halves rounding UP —

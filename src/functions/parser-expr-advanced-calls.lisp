@@ -2,7 +2,7 @@
 ;;;;
 ;;;; Split from parser-expr-advanced.lisp.
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/functions)
 
 ;;; ─── Function Call / Builtin Resolution ─────────────────────────────────────
 
@@ -48,7 +48,7 @@ FN-SYM(...$a) — a variadic closure that forwards all of its arguments."
          (body (make-ast-apply
                 :func fn-sym
                 :args (list (make-ast-call
-                             :func (make-ast-var :name 'cl-cc/php::%php-array-values-list)
+                             :func (make-ast-var :name '%php-array-values-list)
                              :args (list (make-ast-var :name args-sym)))))))
     (multiple-value-bind (rest-param wrapped-body)
         (%php-variadic-rest-binding args-sym (list body))
@@ -72,9 +72,9 @@ flags/offset are bound to temps so each is evaluated once and the two helper
 calls never share arg AST nodes."
   (let* ((name (string-downcase (%php-strip-leading-namespace-separator qualified-name)))
          (all-p (string= name "preg_match_all"))
-         (matches-sym (if all-p 'cl-cc/php::%php-preg-match-all-matches
-                          'cl-cc/php::%php-preg-match-matches))
-         (count-sym (if all-p 'cl-cc/php::%php-preg-match-all '%php-preg-match))
+         (matches-sym (if all-p (%php-runtime-symbol :preg-match-all-matches)
+                          (%php-runtime-symbol :preg-match-matches)))
+         (count-sym (if all-p (%php-runtime-symbol :preg-match-all) (%php-runtime-symbol :preg-match)))
          (matches-var (cl-cc/ast:ast-var-name (third args)))
          (pat-tmp (gensym "PHP-PREG-PAT-"))
          (subj-tmp (gensym "PHP-PREG-SUBJ-"))
@@ -156,23 +156,23 @@ calls never share arg AST nodes."
                   collect (make-ast-setq
                            :var var
                            :value (make-ast-call
-                                   :func (make-ast-var :name 'cl-cc/php::%php-array-ref)
+                                   :func (make-ast-var :name '%php-array-ref)
                                         :args (list (make-ast-var :name values-tmp)
                                                     (make-ast-quote :value idx)))))
             (list (make-ast-call
-                   :func (make-ast-var :name 'cl-cc/php::%php-count)
+                   :func (make-ast-var :name '%php-count)
                    :args (list (make-ast-var :name values-tmp))))))))
 
 (defun %php-lower-sscanf-out-param (args)
   "Lower sscanf($str,$fmt,$a,...) into caller out-param assignments."
-  (%php-lower-scanf-like-out-param 'cl-cc/php::%php-sscanf-values
+  (%php-lower-scanf-like-out-param (%php-runtime-symbol :sscanf-values)
                                    (list (first args) (second args))
                                    (cddr args)
                                    "PHP-SSCANF-VALUES-"))
 
 (defun %php-lower-scanf-out-param (args)
   "Lower scanf($fmt,$a,...) into caller out-param assignments."
-  (%php-lower-scanf-like-out-param 'cl-cc/php::%php-scanf-values
+  (%php-lower-scanf-like-out-param (%php-runtime-symbol :scanf-values)
                                    (list (first args))
                                    (cdr args)
                                    "PHP-SCANF-VALUES-"))
@@ -210,13 +210,13 @@ can run, matching PHP's local mutation behavior for the callee body."
           do (if (member idx by-ref-indices :test #'=)
                  (let ((box-sym (gensym "PHP-BY-REF-ARG-")))
                    (push (cons box-sym
-                               (%php-call 'cl-cc/php::%php-make-ref arg))
+                               (%php-call '%php-make-ref arg))
                          box-bindings)
                    (push (make-ast-var :name box-sym) call-args)
                    (when (ast-var-p arg)
                      (push (make-ast-setq
                             :var (ast-var-name arg)
-                            :value (%php-call 'cl-cc/php::%php-deref
+                            :value (%php-call '%php-deref
                                               (make-ast-var :name box-sym)))
                            writebacks)))
                  (push arg call-args)))
@@ -428,3 +428,22 @@ The second value is true when NODE was fully understood."
               (if (eq builtin-kind :extract)
                   (append (%php-static-extract-bound-vars args) kv)
                   kv)))))
+
+(in-package #:cl-cc/php/functions)
+
+(defun %php-method-call-with-args (func method user-args &optional receiver-arg)
+  "Lower PHP method call arguments, including named and spread arguments.
+RECEIVER-ARG is the implicit $this argument for instance calls; named argument
+ordering only applies to user-visible parameters."
+  (let ((lowering-result
+          (if (%php-args-have-named-p user-args)
+              (%php-reorder-named-args-for-call method user-args)
+              (%php-static-call-lowering-result user-args))))
+    (%php-emit-lowered-call func lowering-result :receiver-arg receiver-arg)))
+(eval-when (:load-toplevel :execute)
+  (register-php-expression-function-call-parser
+   (function %php-parse-function-call))
+  (register-php-expression-method-call-lowerer
+   (function %php-method-call-with-args))
+  (register-php-expression-dynamic-call-lowerer
+   (function %php-call-with-spread)))

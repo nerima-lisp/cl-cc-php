@@ -1,4 +1,4 @@
-(in-package :cl-cc/php/strings/test)
+(in-package :cl-cc/php/stdlib/test)
 
 (describe "PHP string tests"
   (it-sequential

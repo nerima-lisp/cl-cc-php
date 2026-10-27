@@ -1,6 +1,6 @@
 ;;;; parser-stmt-decls-control.lisp — PHP Parser: registered control-flow statement parsers
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/statements)
 
 ;;; ─── Registered statement parsers (control flow) ─────────────────────────
 
@@ -21,8 +21,8 @@
       (setf current (cdr current)))
     ;; echo emits its arguments verbatim with NO trailing newline. Route through
     ;; the PHP output helper so ob_start/ob_get_* can capture emitted text.
-    (values (%php-call 'cl-cc/php::%php-output-write
-                       (apply #'%php-call 'cl-cc/php::%php-concat (nreverse exprs)))
+    (values (%php-call (%php-runtime-symbol :output-write)
+                       (apply #'%php-call (%php-runtime-symbol :concat) (nreverse exprs)))
             (php-skip-semis current) kv)))
 
 (define-php-stmt-parser :return (rest known-vars)
@@ -95,7 +95,7 @@
   (declare (ignore loop-tag))
   (let ((box-sym (gensym "FOREACH-BOX-"))
         (key-param (gensym "FOREACH-KEY-")))
-    (%php-call 'cl-cc/php::%php-foreach-by-ref
+    (%php-call (%php-runtime-symbol :foreach-by-ref)
                arr-expr
                (make-ast-lambda
                 :params (list box-sym key-param)
@@ -255,3 +255,34 @@
     (values (make-ast-throw :tag (make-ast-quote :value 'php-exception)
                             :value (%php-exception-payload-call expr))
             (php-skip-semis rest2) kv2)))
+
+(in-package #:cl-cc/php/statements)
+
+(defun %php-parse-catch-type-list (stream)
+  "Parse a PHP catch type or union type list, returning (values type stream)."
+  (let ((types nil)
+        (current stream))
+    (unless (or (eq (php-peek-type current) :T-BACKSLASH)
+                (%php-catch-type-token-p (php-peek current)))
+      (error "PHP parse error: expected catch type, got ~S" (php-peek current)))
+    (loop
+      (multiple-value-bind (catch-name after-name) (php-parse-qualified-name current)
+        (push (php-ident-sym (php-resolve-qualified-name catch-name :class)) types)
+        (setf current after-name))
+      (if (and (eq (php-peek-type current) :T-OP)
+               (equal (php-peek-value current) "|"))
+          (progn
+            (setf current (cdr current))
+            (unless (or (eq (php-peek-type current) :T-BACKSLASH)
+                        (%php-catch-type-token-p (php-peek current)))
+              (error "PHP parse error: expected catch type after |, got ~S" (php-peek current))))
+          (return)))
+    (let ((ordered (nreverse types)))
+      (values (if (rest ordered) ordered (first ordered)) current))))
+
+;;; ─── Catch type parsing ──────────────────────────────────────────────────
+
+(defun %php-catch-type-token-p (token)
+  "Return true when TOKEN can appear as a PHP catch class name."
+  (and token
+       (member (php-tok-type token) '(:T-IDENT :T-TYPE :T-KEYWORD) :test #'eq)))

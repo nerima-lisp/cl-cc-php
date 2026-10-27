@@ -5,7 +5,7 @@
 ;;;; eleven tests are the ones that derive a new array shape from existing arrays, rather than the
 ;;;; core CRUD/search/iteration operations the parent file covers.
 
-(in-package :cl-cc/php/arrays/test)
+(in-package :cl-cc/php/stdlib/test)
 
 (describe
   "PHP array_* builtins: reshaping and comparing"

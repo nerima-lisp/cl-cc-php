@@ -8,7 +8,7 @@
 ;;;; key/value structure is not the input's — unlike the sequence operations in
 ;;;; runtime-builtins-array.lisp, which preserve it.
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/stdlib)
 
 ;;; ─── Generation ─────────────────────────────────────────────────────────────
 

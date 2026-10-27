@@ -1,6 +1,6 @@
 ;;;; parser-interface-test.lisp — src/parser-interface.lisp — interface declarations.
 
-(in-package :cl-cc-php/test)
+(in-package :cl-cc/php/classes/test)
 
 (describe "PHP interfaces"
 
@@ -118,7 +118,7 @@
   (let* ((ast   (first (cl-cc/php:parse-php-source
                         "<?php interface SpecMulti { const int MIN = 1, MAX = 10; }")))
          (slots (cl-cc/ast:ast-defclass-slots ast))
-         (record (gethash (cl-cc/php::php-ident-sym "SpecMulti")
+         (record (gethash (cl-cc/php/syntax:php-ident-sym "SpecMulti")
                           cl-cc/php:*php-interface-registry*)))
     (expect (= 2 (length slots)) :to-be-truthy)
     (expect (mapcar (lambda (slot)

@@ -1,6 +1,6 @@
 ;;;; runtime-builtins-string-core.lisp -- Core PHP string operations
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/stdlib)
 
 (defun %php-char-bag (characters)
   "Return CHARACTERS as a list of characters for trim helpers."

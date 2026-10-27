@@ -1,6 +1,6 @@
 ;;;; PHP scanf and sscanf runtime builtins.
 
-(in-package #:cl-cc/php)
+(in-package #:cl-cc/php/stdlib)
 
 (defun %php-scan-whitespace-char-p (ch)
   (member ch '(#\Space #\Tab #\Newline #\Return #\Page) :test #'char=))
@@ -207,3 +207,6 @@ number of assigned values."
   "PHP scanf: parse the remaining standard input with FMT."
   (let ((values (%php-scanf-values fmt)))
     (if ignored (%php-count values) values)))
+
+(eval-when (:load-toplevel :execute) (register-php-runtime-symbol :sscanf-values '%php-sscanf-values) (register-php-runtime-symbol :scanf-values '%php-scanf-values))
+

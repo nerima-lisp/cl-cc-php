@@ -1,6 +1,6 @@
 ;;;; runtime-builtins-string-multibyte.lisp -- Multibyte PHP string operations
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/stdlib)
 
 ;;; ─── mb_* multibyte string functions ─────────────────────────────────────────
 ;;; In CL, strings are Unicode-aware, so mb_* is mostly identical to the regular

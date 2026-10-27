@@ -17,7 +17,7 @@
 ;;;;   $o->m(args)     → ast-call
 ;;;;   $o?->m(args)    → ast-if (null check) + ast-call
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/syntax)
 
 ;;; ─── Grammar Rules (expression-level) ──────────────────────────────────────
 
@@ -245,3 +245,95 @@ for group-use syntax such as Foo\\{Bar, Baz}."
 ;;; php-parse-expr, php-parse-arglist) is in parser-expr.lisp (loads next).
 ;;; Statement infrastructure/lowering is in parser-stmt-lowering.lisp;
 ;;; declaration structures and registered parsers are in parser-stmt-decls.lisp.
+
+(defun %php-helper-call-p (node symbol &optional arity)
+  "Return true when NODE is a call to the PHP runtime helper named SYMBOL.
+When ARITY is non-nil, also require exactly that many positional args."
+  (and (ast-call-p node)
+       (let ((func (ast-call-func node)))
+         (and (ast-var-p func)
+              (eq (ast-var-name func) symbol)))
+       (or (null arity)
+           (= (length (ast-call-args node)) arity))))
+
+(in-package #:cl-cc/php/syntax)
+
+(defun parse-php-source (source)
+  "Parse PHP SOURCE string and return a list of top-level AST nodes.
+Analogous to parse-all-forms for CL."
+  (unless *php-source-statement-parser*
+    (error "No PHP statement parser registered"))
+  (let ((state-bindings (when *php-source-state-initializer*
+                          (funcall *php-source-state-initializer*))))
+    (progv (mapcar (function car) state-bindings)
+        (mapcar (function cdr) state-bindings)
+      (let ((stream (tokenize-php-source source))
+            (stmts nil)
+            (known-vars nil)
+            (*php-current-namespace* nil)
+            (*php-current-imports* nil)
+            (*php-pending-top-level-forms* nil))
+        (loop
+          (setf stream (php-skip-semis stream))
+          (when (php-at-eof-p stream) (return))
+          (multiple-value-bind (stmt rest next-known-vars)
+              (funcall *php-source-statement-parser* stream known-vars)
+            (cond
+              (*php-pending-top-level-forms*
+               (dolist (form (reverse *php-pending-top-level-forms*))
+                 (push form stmts))
+               (setf *php-pending-top-level-forms* nil))
+              (stmt
+               (push (php-annotate-top-level-node stmt) stmts)))
+            (setf stream rest
+                  known-vars next-known-vars)))
+        (let ((forms (nreverse stmts)))
+          (dolist (phase (sort
+                          (loop for key being the hash-keys of *php-source-finalizers*
+                                collect key)
+                          #'<)
+                   forms)
+            (setf forms
+                  (funcall (gethash phase *php-source-finalizers*) forms))))))))
+
+(in-package #:cl-cc/php/syntax)
+
+(defun %php-reference-token-p (stream)
+  "Return true when STREAM begins with PHP's single ampersand token."
+  (and (eq (php-peek-type stream) :T-OP)
+       (equal "&" (php-peek-value stream))))
+
+(in-package #:cl-cc/php/syntax)
+(defun parse-php-source-to-cst (source &optional source-file)
+  "Parse PHP SOURCE string into CST nodes.
+   Returns (values cst-list diagnostics)."
+  (unless *php-cst-statement-parser*
+    (error "PHP CST statement parser is not registered."))
+  (let* ((tokens (tokenize-php-source source))
+         (ts (make-php-token-stream :tokens tokens
+                                    :source source
+                                    :source-file source-file))
+         (forms nil))
+    (loop
+      (php-ts-skip-semis ts)
+      (when (php-ts-at-end-p ts) (return))
+      (let ((form (funcall *php-cst-statement-parser* ts)))
+        (when form (push form forms))))
+    (values (nreverse forms)
+            (nreverse (php-token-stream-diagnostics ts)))))
+
+;;; ─── Named Arguments (PHP 8.0) ──────────────────────────────────────────────
+;;;
+;;; Named arguments allow passing arguments by parameter name:
+;;;
+;;;   htmlspecialchars(string: $str, flags: ENT_QUOTES, double_encode: false)
+;;;
+;;; The parser detects IDENT : patterns and tags them as :named in the arg list.
+
+(defun %php-named-arg-p (stream)
+  "Return true when STREAM starts with IDENT : (named argument syntax).
+Distinguishes from ternary ? : because the token type is :T-COLON not :T-NULLABLE."
+  (and stream
+       (member (php-peek-type stream) '(:T-IDENT :T-TYPE) :test #'eq)
+       (cdr stream)
+       (eq (php-peek-type (cdr stream)) :T-COLON)))

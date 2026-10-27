@@ -6,7 +6,7 @@
 ;;;; parameter registry. The division is positional, not thematic; do not merge
 ;;;; the two tables without checking what that seeding step reads.
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/stdlib)
 
 (defparameter +php-builtin-name-table-2+
   ;; Registered after %PHP-SEED-BY-REF-PARAM-REGISTRY, same reasoning as above.

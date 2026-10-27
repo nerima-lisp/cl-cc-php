@@ -1,7 +1,5 @@
 ;;;; parser-attribute-passes.lisp — PHP attribute validation and AST rewrites
-(in-package :cl-cc/php)
-
-(declaim (special *php-interface-registry*))
+(in-package #:cl-cc/php/attributes)
 
 (defun %php-attribute-short-name (name)
   "Return the unqualified tail of a PHP attribute name."
@@ -33,123 +31,6 @@
                                   (%php-attribute-short-name
                                    (php-attribute-name attribute)))))
              attrs)))
-
-(defun %php-override-attribute-p (attribute)
-  "Return true when ATTRIBUTE names #[Override]."
-  (and (php-attribute-p attribute)
-       (string-equal "Override"
-                     (%php-attribute-short-name (php-attribute-name attribute)))))
-
-(defun %php-member-attributes (slot)
-  "Return all PHP attributes attached to SLOT or its method body."
-  (append (copy-list (%php-metadata-get (ast-imports slot)
-                                        :php-attributes))
-          (when (and (ast-slot-def-p slot)
-                     (ast-defun-p (ast-slot-initform slot)))
-            (copy-list (%php-metadata-get (ast-defun-declarations (ast-slot-initform slot))
-                                          :php-attributes)))))
-
-(defun %php-member-override-attribute-p (slot)
-  "Return SLOT's #[Override] attribute, if present."
-  (find-if #'%php-override-attribute-p (%php-member-attributes slot)))
-
-(defun %php-member-kind (slot)
-  "Return SLOT's PHP member kind."
-  (cond ((not (ast-slot-def-p slot)) nil)
-        ((ast-defun-p (ast-slot-initform slot)) :method)
-        ((getf (ast-imports slot) :php-class-constant) :constant)
-        (t :property)))
-
-(defun %php-member-private-p (slot)
-  "Return true when SLOT is marked private."
-  (member :private (getf (ast-imports slot) :php-modifiers) :test #'eq))
-
-(defun %php-interface-member-present-p (interface-name member-name
-                                        &optional (seen (make-hash-table :test #'equal)))
-  "Return true when INTERFACE-NAME or one of its ancestors declares MEMBER-NAME."
-  (unless (gethash interface-name seen)
-    (setf (gethash interface-name seen) t)
-    (let ((record (gethash interface-name *php-interface-registry*)))
-      (when record
-        (or (find member-name (getf record :methods)
-                  :key (lambda (sig) (getf sig :name))
-                  :test #'equal)
-            (some (lambda (parent)
-                    (%php-interface-member-present-p parent member-name seen))
-                  (getf record :parents)))))))
-
-(defun %php-class-member-present-p (class-registry class-name member-name kind
-                                    &optional (seen (make-hash-table :test #'equal)))
-  "Return true when CLASS-NAME or one of its ancestors declares MEMBER-NAME."
-  (unless (gethash class-name seen)
-    (setf (gethash class-name seen) t)
-    (let ((class-node (gethash class-name class-registry)))
-      (when class-node
-        (or (find-if (lambda (slot)
-                       (and (ast-slot-def-p slot)
-                            (eq (ast-slot-name slot) member-name)
-                            (not (%php-member-private-p slot))
-                            (ecase kind
-                              (:method (ast-defun-p (ast-slot-initform slot)))
-                              (:property (and (not (ast-defun-p (ast-slot-initform slot)))
-                                              (not (getf (ast-imports slot)
-                                                         :php-class-constant))))
-                              (:constant (getf (ast-imports slot) :php-class-constant)))))
-                     (ast-defclass-slots class-node))
-            (some (lambda (parent)
-                    (cond ((gethash parent *php-interface-registry*)
-                           (and (eq kind :method)
-                                (%php-interface-member-present-p parent member-name seen)))
-                          ((gethash parent class-registry)
-                           (%php-class-member-present-p
-                            class-registry parent member-name kind seen))
-                          (t nil)))
-                  (ast-defclass-superclasses class-node)))))))
-
-(defun %php-class-registry (stmts)
-  "Build a compile-time registry for all class-like nodes in STMTS."
-  (let ((classes (make-hash-table :test #'equal)))
-    (labels ((visit (node)
-               (when (ast-defclass-p node)
-                 (setf (gethash (ast-defclass-name node) classes) node))
-               (dolist (child (ast-children node))
-                 (visit child))))
-      (dolist (stmt stmts)
-        (visit stmt)))
-    classes))
-
-(defun %php-validate-override-slot (class-registry class-node slot)
-  "Signal an error when SLOT's #[Override] attribute has no inherited target."
-  (when (%php-member-override-attribute-p slot)
-    (let ((kind (%php-member-kind slot))
-          (member-name (ast-slot-name slot)))
-      (unless (some (lambda (parent)
-                      (cond ((gethash parent *php-interface-registry*)
-                             (and (eq kind :method)
-                                  (%php-interface-member-present-p parent member-name)))
-                            ((gethash parent class-registry)
-                             (%php-class-member-present-p class-registry parent member-name kind))
-                            (t nil)))
-                    (ast-defclass-superclasses class-node))
-        (ast-error slot "#[Override] on ~A does not match an inherited ~A."
-                   (symbol-name member-name)
-                   (ecase kind
-                     (:method "method")
-                     (:property "property")
-                     (:constant "class constant")))))))
-
-(defun %php-validate-override-tree (stmts)
-  "Validate #[Override] attributes across the parsed AST tree."
-  (let ((class-registry (%php-class-registry stmts)))
-    (labels ((visit (node)
-               (when (ast-defclass-p node)
-                 (dolist (slot (ast-defclass-slots node))
-                   (%php-validate-override-slot class-registry node slot)))
-               (dolist (child (ast-children node))
-                 (visit child))))
-      (dolist (stmt stmts)
-        (visit stmt))))
-  stmts)
 
 (defun %php-attribute-string-arg (arg)
   "Return ARG as a string value when it is a literal PHP attribute argument."
@@ -248,18 +129,10 @@
 (defun %php-no-discard-warning-ast (message call-node)
   "Emit E_USER_WARNING before evaluating a discarded NoDiscard call."
   (make-ast-progn
-   :forms (list (%php-call 'cl-cc/php::%php-trigger-error
+   :forms (list (%php-call (%php-runtime-symbol :trigger-error)
                            (make-ast-quote :value message)
                            (make-ast-int :value 512))
                 call-node)))
-
-(defun %php-void-cast-progn-p (node)
-  "Return true when NODE is the lowering of PHP's `(void) EXPR` cast."
-  (and (ast-progn-p node)
-       (= (length (ast-progn-forms node)) 2)
-       (let ((last-form (second (ast-progn-forms node))))
-         (and (ast-quote-p last-form)
-              (eq (ast-quote-value last-form) +php-null+)))))
 
 (defun %php-apply-no-discard-warnings (stmts)
   "Wrap discarded calls to #[NoDiscard] functions and methods with warnings."
@@ -433,3 +306,6 @@
               (rewrite-list stmts nil)
             (declare (ignore ignored-env))
             rewritten)))))
+(eval-when (:load-toplevel :execute)
+  (register-php-source-finalizer
+   20 (function %php-apply-no-discard-warnings)))

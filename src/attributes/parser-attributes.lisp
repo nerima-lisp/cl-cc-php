@@ -1,4 +1,4 @@
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/attributes)
 
 (defstruct php-attribute
   "PHP 8 attribute descriptor preserved as parser metadata."
@@ -92,3 +92,6 @@
                      current rest)))
     (values attributes current)))
 
+(eval-when (:load-toplevel :execute)
+  (register-php-statement-attribute-parser (function %php-parse-attributes))
+  (register-php-statement-attribute-attacher (function %php-attach-attributes-to-node)))

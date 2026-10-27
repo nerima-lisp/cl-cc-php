@@ -19,28 +19,22 @@
 ;;;; to the VM the way JavaScript's array methods do, so there is no
 ;;;; VM-integration installer to register alongside it.
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/backend)
 
 (defun %php-host-bridge-entries ()
-  "Return (symbol . function) pairs for every fbound, non-macro %PHP-* function
-homed in :cl-cc/php.
-
-Derived from the package rather than hand-listed: an explicit alist had already
-drifted behind the lowering once, which is the failure this scan exists to
-prevent."
-  (let ((pkg (find-package :cl-cc/php))
-        (entries '()))
-    (when pkg
-      (do-symbols (sym pkg)
-        (when (and (eq (symbol-package sym) pkg)
-                   (fboundp sym)
-                   (not (macro-function sym))
-                   (not (special-operator-p sym))
-                   (let ((name (symbol-name sym)))
-                     (and (>= (length name) 5)
-                          (string= "%PHP-" name :end2 5))))
-          (push (cons sym (fdefinition sym)) entries))))
-    (nreverse entries)))
+  "Return (symbol . function) pairs for all owned runtime helpers."
+  (loop for pkg in (php-runtime-packages)
+        append (let ((entries nil))
+                 (do-symbols (sym pkg)
+                   (when (and (eq (symbol-package sym) pkg)
+                              (fboundp sym)
+                              (not (macro-function sym))
+                              (not (special-operator-p sym))
+                              (let ((name (symbol-name sym)))
+                                (and (>= (length name) 5)
+                                     (string= "%PHP-" name :end2 5))))
+                     (push (cons sym (fdefinition sym)) entries)))
+                 (nreverse entries))))
 
 (register-backend-bridge-provider #'%php-host-bridge-entries)
 

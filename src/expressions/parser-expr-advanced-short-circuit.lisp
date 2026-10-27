@@ -2,13 +2,13 @@
 ;;;;
 ;;;; Split from parser-expr-advanced.lisp.
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/expressions)
 
 ;;; ─── Null-coalesce / Elvis Lowering ─────────────────────────────────────────
 
 (defun %php-not-null-cond (expr)
   "Build (not (%php-null-p EXPR)) as an AST expression."
-  (%php-call 'not (%php-call 'cl-cc/php::%php-null-p expr)))
+  (%php-call 'not (%php-call '%php-null-p expr)))
 
 (defun %php-lower-null-coalesce (lhs rhs)
   "Lower LHS ?? RHS without evaluating LHS twice."

@@ -12,7 +12,7 @@
 ;;;; seeds the by-reference parameter registry, then registers the second, and
 ;;;; that order is load-bearing.
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/stdlib)
 
 (defun %php-register-vm-runtime-callables ()
   (let ((installer cl-cc/bootstrap:*vm-runtime-callable-installer*))
@@ -60,7 +60,7 @@
   ;; (%php-lookup-builtin "STRLEN") => #<FUNCTION %PHP-STRLEN>
   (gethash (%php-normalize-builtin-name name) *php-builtin-registry*))
 
-(defun %php-lookup-builtin-symbol (name)
+(defun %php-registered-builtin-symbol (name)
   "Return the helper symbol registered for PHP builtin NAME, or NIL."
   (gethash (%php-normalize-builtin-name name) *php-builtin-symbol-registry*))
 
@@ -79,14 +79,19 @@
   *php-builtin-registry*)
 
 (eval-when (:load-toplevel :execute)
-  (export '(*php-builtin-registry*
-            %php-register-builtin
-            %php-lookup-builtin
-            %php-register-all-builtins
-            %php-lookup-builtin-symbol
-            %php-array-pairs)
-          :cl-cc/php)
   (setf cl-cc/bootstrap:*runtime-vm-callable-register-hook*
         #'%php-register-vm-runtime-callables)
   (%php-register-vm-runtime-callables)
   (%php-register-all-builtins))
+
+(eval-when (:load-toplevel :execute) (register-php-builtin-function-resolver #'%php-lookup-builtin) (register-php-builtin-symbol-resolver #'%php-registered-builtin-symbol))
+
+(in-package #:cl-cc/php/stdlib)
+
+(eval-when (:load-toplevel :execute)
+  ;; PHP 8.1 Fiber builtins.
+  (%php-register-builtin "fiber_create"     '%php-fiber-make)
+  (%php-register-builtin "fiber_start"      '%php-fiber-start)
+  (%php-register-builtin "fiber_resume"     '%php-fiber-resume)
+  (%php-register-builtin "fiber_suspend"    '%php-fiber-suspend)
+  (%php-register-builtin "fiber_get_return" '%php-fiber-get-return))

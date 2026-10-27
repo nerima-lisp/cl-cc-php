@@ -1,6 +1,6 @@
 ;;;; runtime-builtins-string-extra.lisp -- Additional PHP string compatibility operations
 
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/stdlib)
 
 ;;; ─── is_countable (PHP 7.3) ──────────────────────────────────────────────────
 

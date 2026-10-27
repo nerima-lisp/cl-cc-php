@@ -9,7 +9,7 @@
 ;;;; Depends on parser.lisp for: php-tok-type, php-tok-value, php-peek,
 ;;;; php-peek-type, php-peek-value, php-consume, php-expect, php-var-sym,
 ;;;; php-ident-sym (all loaded before this file).
-(in-package :cl-cc/php)
+(in-package #:cl-cc/php/expressions)
 
 ;;; Bound dynamically by the class statement parser around the class body so
 ;;; self::, static::, and parent:: in method bodies resolve to the enclosing class
@@ -19,3 +19,8 @@
 
 (defvar *php-current-supers* nil
   "List of php-ident-sym superclass names for the class being parsed.")
+
+(in-package #:cl-cc/php/expressions)
+
+(defun %php-helper-var (name)
+  (make-ast-var :name name))
