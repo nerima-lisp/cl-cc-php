@@ -23,6 +23,15 @@
 
 (defun %php-host-bridge-entries ()
   "Return (symbol . function) pairs for all owned runtime helpers."
+  (let* ((optimizer (find-package "CL-CC/OPTIMIZE"))
+         (register (and optimizer
+                        (find-symbol "REGISTER-KNOWN-FUNCTION-PROPERTIES" optimizer))))
+    (when (and register (fboundp register))
+      (dolist (name '("%PHP-CONCAT" "%PHP-LT" "%PHP-GT" "%PHP-LE"
+                      "%PHP-TRUTHY" "%PHP-PREG-MATCH"
+                      "%PHP-PREG-REPLACE" "%PHP-PREG-SPLIT"))
+        (funcall register name '(:read-only)))
+      (funcall register "%PHP-OUTPUT-WRITE" '(:io))))
   (loop for pkg in (php-runtime-packages)
         append (let ((entries nil))
                  (do-symbols (sym pkg)
