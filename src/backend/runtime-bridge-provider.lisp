@@ -31,7 +31,7 @@
                       "%PHP-TRUTHY" "%PHP-PREG-MATCH"
                       "%PHP-PREG-REPLACE" "%PHP-PREG-SPLIT"))
         (funcall register name '(:read-only)))
-      (funcall register "%PHP-OUTPUT-WRITE" '(:io))))
+      (funcall register "%PHP-OUTPUT-WRITE" '(:io :read-only))))
   (loop for pkg in (php-runtime-packages)
         append (let ((entries nil))
                  (do-symbols (sym pkg)
